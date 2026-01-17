@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Users, Clock, Trophy, Play } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MatchStatusBadge, RegionBadge, PlatformBadge, ModeBadge } from '@/components/ui/custom-badge';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
-import { CountdownTimer } from '@/components/common/CountdownTimer';
 import { EpicUsernameWarning } from '@/components/common/EpicUsernameWarning';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
-import { LiveTimeBadge } from '@/components/matches/LiveTimeBadge';
-import { MatchResultDeclaration } from '@/components/matches/MatchResultDeclaration';
+import { ReadyUpSection } from '@/components/matches/ReadyUpSection';
+import { ResultDeclaration } from '@/components/matches/ResultDeclaration';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Match } from '@/types';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function MatchDetails() {
   const { id } = useParams<{ id: string }>();
@@ -25,8 +25,8 @@ export default function MatchDetails() {
 
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   const fetchMatch = async () => {
     if (!id) return;
@@ -55,117 +55,97 @@ export default function MatchDetails() {
       return;
     }
 
-    setMatch(data as unknown as Match);
+    const matchData = data as unknown as Match;
+    
+    // Access control: if match is not open, only participants can view
+    if (matchData.status !== 'open' && user) {
+      const isParticipant = matchData.participants?.some(p => p.user_id === user.id);
+      if (!isParticipant) {
+        toast({
+          title: 'Access Denied',
+          description: 'You are not a participant in this match.',
+          variant: 'destructive',
+        });
+        navigate('/matches');
+        return;
+      }
+    }
+
+    setMatch(matchData);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchMatch();
-  }, [id, navigate, toast]);
+  }, [id, user]);
 
-  const handleStartMatch = async () => {
+  const handleCancelMatch = async () => {
     if (!match) return;
     
-    setStarting(true);
+    setCanceling(true);
     
     try {
-      const { error } = await supabase
-        .from('matches')
-        .update({ status: 'started', started_at: new Date().toISOString() })
-        .eq('id', match.id);
+      const { data, error } = await supabase.rpc('cancel_match_v2', {
+        p_match_id: match.id,
+      });
 
       if (error) throw error;
 
-      toast({
-        title: 'Match iniziato!',
-        description: 'Buona fortuna! Dichiara il risultato quando finisci.',
-      });
-
-      fetchMatch();
-    } catch (error) {
-      toast({
-        title: 'Errore',
-        description: 'Impossibile avviare il match.',
-        variant: 'destructive',
-      });
-    } finally {
-      setStarting(false);
-    }
-  };
-
-  const handleJoin = async () => {
-    if (!user || !match || !wallet) return;
-
-    if (!isProfileComplete) {
-      toast({
-        title: 'Complete your profile',
-        description: 'Add your Epic Games Username before joining matches.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (wallet.balance < match.entry_fee) {
-      toast({
-        title: 'Insufficient balance',
-        description: 'You need more Coins to join this match.',
-        variant: 'destructive',
-      });
-      navigate('/buy');
-      return;
-    }
-
-    setJoining(true);
-
-    try {
-      // Lock coins using secure server-side function
-      const { data: lockResult, error: lockError } = await supabase.rpc('lock_funds_for_match', {
-        p_match_id: match.id,
-        p_amount: match.entry_fee,
-      });
-
-      if (lockError) throw lockError;
-      const lockData = lockResult as { success: boolean; error?: string } | null;
-      if (lockData && !lockData.success) {
-        throw new Error(lockData.error || 'Failed to lock funds');
-      }
-
-      // Join match
-      const { error: joinError } = await supabase
-        .from('match_participants')
-        .insert({
-          match_id: match.id,
-          user_id: user.id,
-        });
-
-      if (joinError) throw joinError;
-
-      // Check if match is now full
-      const participantCount = (match.participants?.length ?? 0) + 1;
-      const maxParticipants = match.team_size * 2;
-
-      if (participantCount >= maxParticipants) {
-        await supabase
-          .from('matches')
-          .update({ status: 'full' })
-          .eq('id', match.id);
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to cancel');
       }
 
       toast({
-        title: 'Joined!',
-        description: 'You have joined the match successfully.',
+        title: 'Match Canceled',
+        description: 'Your entry fee has been refunded.',
       });
 
       await refreshWallet();
-      fetchMatch();
-    } catch (error) {
+      navigate('/matches');
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to join match. Please try again.',
+        description: error.message || 'Failed to cancel match',
         variant: 'destructive',
       });
     } finally {
-      setJoining(false);
+      setCanceling(false);
+    }
+  };
+
+  const handleLeaveMatch = async () => {
+    if (!match) return;
+    
+    setLeaving(true);
+    
+    try {
+      const { data, error } = await supabase.rpc('leave_match', {
+        p_match_id: match.id,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to leave');
+      }
+
+      toast({
+        title: 'Left Match',
+        description: 'Your entry fee has been refunded.',
+      });
+
+      await refreshWallet();
+      navigate('/matches');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to leave match',
+        variant: 'destructive',
+      });
+    } finally {
+      setLeaving(false);
     }
   };
 
@@ -174,23 +154,26 @@ export default function MatchDetails() {
 
   const participantCount = match.participants?.length ?? 0;
   const maxParticipants = match.team_size * 2;
-  const isFull = participantCount >= maxParticipants;
   const isCreator = user?.id === match.creator_id;
-  const isParticipant = match.participants?.some(p => p.user_id === user?.id);
-  const canJoin = match.status === 'open' && !isFull && !isCreator && !isParticipant && user;
-  const canStartMatch = isCreator && match.status === 'full';
-  const showResultDeclaration = isParticipant && (match.status === 'full' || match.status === 'started' || match.status === 'finished' || match.status === 'disputed');
+  const participant = match.participants?.find(p => p.user_id === user?.id);
+  const isParticipant = !!participant;
+  
+  const canCancel = isCreator && match.status === 'open';
+  const canLeave = isParticipant && !isCreator && match.status === 'ready_check' && !participant?.ready;
+  
+  const showReadyUp = match.status === 'ready_check' && isParticipant;
+  const showResultDeclaration = isParticipant && (match.status === 'in_progress' || match.status === 'result_pending');
 
   return (
     <MainLayout showChat={false}>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Back button */}
         <Link
-          to="/matches"
+          to={match.status === 'open' ? '/matches' : '/my-matches'}
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Matches
+          {match.status === 'open' ? 'Back to Matches' : 'Back to My Matches'}
         </Link>
 
         {/* Epic Username Warning */}
@@ -214,13 +197,9 @@ export default function MatchDetails() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <MatchStatusBadge status={match.status} />
-                {(match.status === 'full' || match.status === 'started') && (
-                  <LiveTimeBadge 
-                    createdAt={match.created_at} 
-                    startedAt={match.started_at}
-                    status={match.status} 
-                  />
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Created {formatDistanceToNow(new Date(match.created_at), { addSuffix: true })}
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -253,62 +232,85 @@ export default function MatchDetails() {
               </div>
             </div>
 
-            {/* Timer */}
-            {match.status === 'open' && (
-              <div className="flex items-center justify-center gap-2 py-4">
-                <Clock className="w-5 h-5 text-muted-foreground" />
-                <span className="text-muted-foreground">Expires in:</span>
-                <CountdownTimer expiresAt={match.expires_at} />
-              </div>
-            )}
-
-            {/* Start Match Button (Creator only when full) */}
-            {canStartMatch && (
-              <Button
-                size="lg"
-                className="w-full bg-success hover:bg-success/90"
-                onClick={handleStartMatch}
-                disabled={starting}
-              >
-                <Play className="w-5 h-5 mr-2" />
-                {starting ? 'Avvio in corso...' : 'Inizia Match'}
-              </Button>
-            )}
-
-            {/* Join Button */}
-            {canJoin && (
-              <Button
-                size="lg"
-                className="w-full glow-blue"
-                onClick={handleJoin}
-                disabled={joining || !isProfileComplete}
-              >
-                {joining ? 'Joining...' : `Join Match (${match.entry_fee} Coins)`}
-              </Button>
-            )}
-
-            {isParticipant && match.status === 'open' && (
-              <div className="text-center py-4 rounded-lg bg-success/10 text-success">
-                <Trophy className="w-6 h-6 mx-auto mb-2" />
-                <p className="font-medium">You're in this match!</p>
-                <p className="text-sm text-muted-foreground">Waiting for opponent...</p>
-              </div>
-            )}
-
-            {isCreator && match.status === 'open' && (
+            {/* Status Messages */}
+            {match.status === 'open' && isCreator && (
               <div className="text-center py-4 rounded-lg bg-primary/10 text-primary">
                 <Users className="w-6 h-6 mx-auto mb-2" />
-                <p className="font-medium">You created this match</p>
-                <p className="text-sm text-muted-foreground">Waiting for opponent...</p>
+                <p className="font-medium">Waiting for opponent...</p>
+                <p className="text-sm text-muted-foreground">Your match is live and visible to others</p>
               </div>
+            )}
+
+            {match.status === 'completed' && (
+              <div className="text-center py-4 rounded-lg bg-success/10 text-success">
+                <Trophy className="w-6 h-6 mx-auto mb-2" />
+                <p className="font-medium">Match Completed</p>
+                {match.result?.winner_user_id === user?.id ? (
+                  <p className="text-sm">Congratulations! You won!</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Better luck next time!</p>
+                )}
+              </div>
+            )}
+
+            {match.status === 'disputed' && (
+              <div className="text-center py-4 rounded-lg bg-destructive/10 text-destructive">
+                <Clock className="w-6 h-6 mx-auto mb-2" />
+                <p className="font-medium">Under Admin Review</p>
+                <p className="text-sm text-muted-foreground">
+                  {match.result?.dispute_reason || 'Results conflict - awaiting resolution'}
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            {canCancel && (
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={handleCancelMatch}
+                disabled={canceling}
+              >
+                {canceling ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <XCircle className="w-4 h-4 mr-2" />
+                )}
+                Cancel Match
+              </Button>
+            )}
+
+            {canLeave && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleLeaveMatch}
+                disabled={leaving}
+              >
+                {leaving ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <XCircle className="w-4 h-4 mr-2" />
+                )}
+                Leave Match
+              </Button>
             )}
           </CardContent>
         </Card>
 
+        {/* Ready Up Section */}
+        {showReadyUp && user && (
+          <ReadyUpSection
+            match={match}
+            currentUserId={user.id}
+            onReadyChange={fetchMatch}
+          />
+        )}
+
         {/* Result Declaration */}
         {showResultDeclaration && user && (
-          <MatchResultDeclaration 
-            match={match} 
+          <ResultDeclaration
+            match={match}
             currentUserId={user.id}
             onResultDeclared={fetchMatch}
           />
@@ -333,21 +335,26 @@ export default function MatchDetails() {
                         {p.profile?.username?.charAt(0).toUpperCase() ?? '?'}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium">{p.profile?.username}</p>
                       <p className="text-xs text-muted-foreground">
                         {p.profile?.epic_username ?? 'Epic username not set'}
                       </p>
                     </div>
-                    {match.result?.winner_user_id === p.user_id && match.status === 'finished' && (
-                      <Trophy className="w-5 h-5 text-warning ml-auto" />
+                    {p.team_side && (
+                      <span className="text-xs text-muted-foreground">
+                        Team {p.team_side}
+                      </span>
+                    )}
+                    {match.result?.winner_user_id === p.user_id && (
+                      <Trophy className="w-5 h-5 text-warning" />
                     )}
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                No participants yet. Be the first to join!
+                No participants yet.
               </p>
             )}
           </CardContent>

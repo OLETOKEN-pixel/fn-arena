@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   Home, 
   Swords, 
+  Gamepad2,
   Users, 
   Wallet, 
   User, 
@@ -23,7 +24,8 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: Home, label: 'Home', href: '/' },
-  { icon: Swords, label: 'Matches', href: '/matches' },
+  { icon: Swords, label: 'Live Matches', href: '/matches' },
+  { icon: Gamepad2, label: 'My Matches', href: '/my-matches', requiresAuth: true },
   { icon: Users, label: 'Teams', href: '/teams', requiresAuth: true },
   { icon: Wallet, label: 'Wallet', href: '/wallet', requiresAuth: true },
   { icon: User, label: 'Profile', href: '/profile', requiresAuth: true },

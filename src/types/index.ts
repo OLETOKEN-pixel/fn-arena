@@ -8,7 +8,22 @@ export type Platform = 'PC' | 'Console' | 'Mobile' | 'All';
 
 export type GameMode = 'Box Fight' | 'Realistic' | 'Zone Wars' | '1v1' | '2v2' | '3v3' | '4v4';
 
-export type MatchStatus = 'open' | 'full' | 'started' | 'finished' | 'canceled' | 'expired' | 'disputed';
+// New comprehensive match status
+export type MatchStatus = 
+  | 'open'           // Match pubblico, in attesa di avversario
+  | 'ready_check'    // Avversario joinato, fase ready-up
+  | 'in_progress'    // Tutti ready, partita in corso
+  | 'result_pending' // In attesa dichiarazione risultati
+  | 'completed'      // Match concluso con payout
+  | 'disputed'       // Conflitto risultati
+  | 'canceled'       // Cancellato dall'host (solo se open)
+  | 'admin_resolved' // Risolto da admin
+  // Legacy states for backwards compatibility
+  | 'joined'
+  | 'full'
+  | 'started'
+  | 'finished'
+  | 'expired';
 
 export type TransactionType = 'deposit' | 'lock' | 'unlock' | 'payout' | 'refund' | 'fee';
 
@@ -17,6 +32,10 @@ export type TeamMemberRole = 'owner' | 'captain' | 'member';
 export type TeamMemberStatus = 'pending' | 'accepted' | 'rejected';
 
 export type MatchResultStatus = 'pending' | 'confirmed' | 'disputed' | 'resolved';
+
+export type TeamSide = 'A' | 'B';
+
+export type ResultChoice = 'WIN' | 'LOSS';
 
 export interface Profile {
   id: string;
@@ -124,6 +143,11 @@ export interface MatchParticipant {
   match_id: string;
   user_id: string;
   team_id: string | null;
+  team_side: TeamSide | null;
+  ready: boolean;
+  ready_at: string | null;
+  result_choice: ResultChoice | null;
+  result_at: string | null;
   status: 'joined' | 'ready' | 'playing' | 'finished' | 'left';
   joined_at: string;
   profile?: Profile;
@@ -196,3 +220,31 @@ export const COIN_PACKAGES: CoinPackage[] = [
   { id: 'pack-25', coins: 25, price: 25 },
   { id: 'pack-50', coins: 50, price: 50, bonus: 5 },
 ];
+
+// Status labels for UI
+export const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {
+  open: 'OPEN',
+  ready_check: 'READY CHECK',
+  in_progress: 'IN PROGRESS',
+  result_pending: 'AWAITING RESULT',
+  completed: 'COMPLETED',
+  disputed: 'DISPUTED',
+  canceled: 'CANCELED',
+  admin_resolved: 'RESOLVED',
+  joined: 'JOINED',
+  full: 'FULL',
+  started: 'LIVE',
+  finished: 'FINISHED',
+  expired: 'EXPIRED',
+};
+
+// Helper to check if match requires user action
+export const matchRequiresAction = (match: Match, userId: string): boolean => {
+  const participant = match.participants?.find(p => p.user_id === userId);
+  if (!participant) return false;
+  
+  if (match.status === 'ready_check' && !participant.ready) return true;
+  if ((match.status === 'in_progress' || match.status === 'result_pending') && !participant.result_choice) return true;
+  
+  return false;
+};

@@ -337,8 +337,10 @@ export type Database = {
           created_at: string | null
           email: string
           epic_username: string | null
+          iban: string | null
           id: string
           is_banned: boolean | null
+          paypal_email: string | null
           preferred_platform: string | null
           preferred_region: string | null
           role: string | null
@@ -351,8 +353,10 @@ export type Database = {
           created_at?: string | null
           email: string
           epic_username?: string | null
+          iban?: string | null
           id?: string
           is_banned?: boolean | null
+          paypal_email?: string | null
           preferred_platform?: string | null
           preferred_region?: string | null
           role?: string | null
@@ -365,8 +369,10 @@ export type Database = {
           created_at?: string | null
           email?: string
           epic_username?: string | null
+          iban?: string | null
           id?: string
           is_banned?: boolean | null
+          paypal_email?: string | null
           preferred_platform?: string | null
           preferred_region?: string | null
           role?: string | null
@@ -642,6 +648,88 @@ export type Database = {
           },
         ]
       }
+      withdrawal_requests: {
+        Row: {
+          admin_notes: string | null
+          amount: number
+          created_at: string | null
+          id: string
+          payment_details: string
+          payment_method: string
+          processed_at: string | null
+          processed_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          amount: number
+          created_at?: string | null
+          id?: string
+          payment_details: string
+          payment_method: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_notes?: string | null
+          amount?: number
+          created_at?: string | null
+          id?: string
+          payment_details?: string
+          payment_method?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "withdrawal_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       leaderboard: {
@@ -705,6 +793,14 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       lock_funds_for_match: {
         Args: { p_amount: number; p_match_id: string }
+        Returns: Json
+      }
+      process_withdrawal: {
+        Args: {
+          p_admin_notes?: string
+          p_status: string
+          p_withdrawal_id: string
+        }
         Returns: Json
       }
     }

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { ChatPanel } from './ChatPanel';
 import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
@@ -9,9 +8,8 @@ interface MainLayoutProps {
   showChat?: boolean;
 }
 
-export function MainLayout({ children, showChat = true }: MainLayoutProps) {
+export function MainLayout({ children }: MainLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(true);
 
   return (
     <div className="min-h-screen bg-background">
@@ -28,32 +26,21 @@ export function MainLayout({ children, showChat = true }: MainLayoutProps) {
         <Sidebar />
       </div>
 
-      {/* Main content area */}
+      {/* Main content area - Centered */}
       <div className="lg:pl-64">
-        <div className={cn(
-          'flex flex-col min-h-screen',
-          showChat && 'lg:pr-80 xl:pr-96'
-        )}>
+        <div className="flex flex-col min-h-screen">
           <Header 
             onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             isMobileMenuOpen={isMobileMenuOpen}
           />
           
           <main className="flex-1 p-4 lg:p-6">
-            {children}
+            <div className="max-w-6xl mx-auto">
+              {children}
+            </div>
           </main>
         </div>
       </div>
-
-      {/* Chat Panel - Desktop */}
-      {showChat && (
-        <div className="hidden lg:block fixed right-0 top-0 h-screen w-80 xl:w-96">
-          <ChatPanel 
-            isOpen={isChatOpen} 
-            onClose={() => setIsChatOpen(false)}
-          />
-        </div>
-      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Gamepad2, MapPin, Save, AlertTriangle } from 'lucide-react';
+import { User, Gamepad2, MapPin, Save, AlertTriangle, CreditCard } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,8 @@ export default function Profile() {
   const [epicUsername, setEpicUsername] = useState('');
   const [preferredRegion, setPreferredRegion] = useState<Region>('EU');
   const [preferredPlatform, setPreferredPlatform] = useState<Platform>('PC');
+  const [paypalEmail, setPaypalEmail] = useState('');
+  const [iban, setIban] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -36,6 +38,8 @@ export default function Profile() {
       setEpicUsername(profile.epic_username ?? '');
       setPreferredRegion(profile.preferred_region as Region);
       setPreferredPlatform(profile.preferred_platform as Platform);
+      setPaypalEmail(profile.paypal_email ?? '');
+      setIban(profile.iban ?? '');
     }
   }, [profile]);
 
@@ -50,19 +54,21 @@ export default function Profile() {
         epic_username: epicUsername || null,
         preferred_region: preferredRegion,
         preferred_platform: preferredPlatform,
+        paypal_email: paypalEmail || null,
+        iban: iban || null,
       })
       .eq('user_id', user.id);
 
     if (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to update profile.',
+        title: 'Errore',
+        description: 'Impossibile aggiornare il profilo.',
         variant: 'destructive',
       });
     } else {
       toast({
-        title: 'Profile updated',
-        description: 'Your changes have been saved.',
+        title: 'Profilo aggiornato',
+        description: 'Le modifiche sono state salvate.',
       });
       await refreshProfile();
     }
@@ -74,17 +80,17 @@ export default function Profile() {
   if (!profile) return null;
 
   return (
-    <MainLayout showChat={false}>
+    <MainLayout>
       <div className="max-w-2xl mx-auto space-y-6">
-        <h1 className="font-display text-3xl font-bold">Profile</h1>
+        <h1 className="font-display text-3xl font-bold">Profilo</h1>
 
         {/* Epic Username Warning */}
         {!isProfileComplete && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Complete Your Profile</AlertTitle>
+            <AlertTitle>Completa il Profilo</AlertTitle>
             <AlertDescription>
-              Add your Epic Games Username below to create or join matches.
+              Aggiungi il tuo Epic Games Username per creare o unirti ai match.
             </AlertDescription>
           </Alert>
         )}
@@ -116,12 +122,12 @@ export default function Profile() {
               </Label>
               <Input
                 id="epic"
-                placeholder="Your Epic Games username"
+                placeholder="Il tuo username Epic Games"
                 value={epicUsername}
                 onChange={(e) => setEpicUsername(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                This is required to play matches. Make sure it matches your FN account.
+                Richiesto per giocare. Assicurati che corrisponda al tuo account FN.
               </p>
             </div>
 
@@ -129,7 +135,7 @@ export default function Profile() {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
-                Preferred Region
+                Regione Preferita
               </Label>
               <Select value={preferredRegion} onValueChange={(v) => setPreferredRegion(v as Region)}>
                 <SelectTrigger>
@@ -147,7 +153,7 @@ export default function Profile() {
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <User className="w-4 h-4" />
-                Preferred Platform
+                Piattaforma Preferita
               </Label>
               <Select value={preferredPlatform} onValueChange={(v) => setPreferredPlatform(v as Platform)}>
                 <SelectTrigger>
@@ -163,7 +169,47 @@ export default function Profile() {
 
             <Button onClick={handleSave} disabled={saving} className="w-full">
               <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? 'Salvataggio...' : 'Salva Modifiche'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Payment Details Card */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Dati di Pagamento
+            </CardTitle>
+            <CardDescription>
+              Necessari per ricevere i prelievi
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="paypal">Email PayPal</Label>
+              <Input
+                id="paypal"
+                type="email"
+                placeholder="email@paypal.com"
+                value={paypalEmail}
+                onChange={(e) => setPaypalEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="iban">IBAN (per Bonifico)</Label>
+              <Input
+                id="iban"
+                placeholder="IT60X0542811101000000123456"
+                value={iban}
+                onChange={(e) => setIban(e.target.value.toUpperCase())}
+              />
+            </div>
+
+            <Button onClick={handleSave} disabled={saving} variant="outline" className="w-full">
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? 'Salvataggio...' : 'Salva Dati Pagamento'}
             </Button>
           </CardContent>
         </Card>
@@ -171,11 +217,11 @@ export default function Profile() {
         {/* Stats Card */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle>Match History</CardTitle>
+            <CardTitle>Storico Match</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-center text-muted-foreground py-8">
-              No matches played yet.
+              Nessun match giocato.
             </p>
           </CardContent>
         </Card>

@@ -29,8 +29,26 @@ export interface Profile {
   preferred_platform: Platform;
   role: UserRole;
   is_banned: boolean;
+  paypal_email: string | null;
+  iban: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'completed';
+
+export interface WithdrawalRequest {
+  id: string;
+  user_id: string;
+  amount: number;
+  payment_method: 'paypal' | 'bank';
+  payment_details: string;
+  status: WithdrawalStatus;
+  admin_notes: string | null;
+  created_at: string;
+  processed_at: string | null;
+  processed_by: string | null;
+  profile?: Profile;
 }
 
 export interface Wallet {

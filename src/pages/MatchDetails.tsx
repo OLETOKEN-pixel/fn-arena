@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Users, Clock, Trophy, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Users, Clock, Trophy, Play } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,8 @@ import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { CountdownTimer } from '@/components/common/CountdownTimer';
 import { EpicUsernameWarning } from '@/components/common/EpicUsernameWarning';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
+import { LiveTimeBadge } from '@/components/matches/LiveTimeBadge';
+import { MatchResultDeclaration } from '@/components/matches/MatchResultDeclaration';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,41 +26,72 @@ export default function MatchDetails() {
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [starting, setStarting] = useState(false);
+
+  const fetchMatch = async () => {
+    if (!id) return;
+
+    const { data, error } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        creator:profiles!matches_creator_id_fkey(*),
+        participants:match_participants(
+          *,
+          profile:profiles(*)
+        ),
+        result:match_results(*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Match not found',
+        variant: 'destructive',
+      });
+      navigate('/matches');
+      return;
+    }
+
+    setMatch(data as unknown as Match);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchMatch = async () => {
-      if (!id) return;
-
-      const { data, error } = await supabase
-        .from('matches')
-        .select(`
-          *,
-          creator:profiles!matches_creator_id_fkey(*),
-          participants:match_participants(
-            *,
-            profile:profiles(*)
-          ),
-          result:match_results(*)
-        `)
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        toast({
-          title: 'Error',
-          description: 'Match not found',
-          variant: 'destructive',
-        });
-        navigate('/matches');
-        return;
-      }
-
-      setMatch(data as unknown as Match);
-      setLoading(false);
-    };
-
     fetchMatch();
   }, [id, navigate, toast]);
+
+  const handleStartMatch = async () => {
+    if (!match) return;
+    
+    setStarting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('matches')
+        .update({ status: 'started', started_at: new Date().toISOString() })
+        .eq('id', match.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Match iniziato!',
+        description: 'Buona fortuna! Dichiara il risultato quando finisci.',
+      });
+
+      fetchMatch();
+    } catch (error) {
+      toast({
+        title: 'Errore',
+        description: 'Impossibile avviare il match.',
+        variant: 'destructive',
+      });
+    } finally {
+      setStarting(false);
+    }
+  };
 
   const handleJoin = async () => {
     if (!user || !match || !wallet) return;
@@ -85,7 +118,7 @@ export default function MatchDetails() {
     setJoining(true);
 
     try {
-      // Lock coins using secure server-side function (prevents race conditions & manipulation)
+      // Lock coins using secure server-side function
       const { data: lockResult, error: lockError } = await supabase.rpc('lock_funds_for_match', {
         p_match_id: match.id,
         p_amount: match.entry_fee,
@@ -124,7 +157,7 @@ export default function MatchDetails() {
       });
 
       await refreshWallet();
-      window.location.reload();
+      fetchMatch();
     } catch (error) {
       toast({
         title: 'Error',
@@ -145,6 +178,8 @@ export default function MatchDetails() {
   const isCreator = user?.id === match.creator_id;
   const isParticipant = match.participants?.some(p => p.user_id === user?.id);
   const canJoin = match.status === 'open' && !isFull && !isCreator && !isParticipant && user;
+  const canStartMatch = isCreator && match.status === 'full';
+  const showResultDeclaration = isParticipant && (match.status === 'full' || match.status === 'started' || match.status === 'finished' || match.status === 'disputed');
 
   return (
     <MainLayout showChat={false}>
@@ -177,7 +212,16 @@ export default function MatchDetails() {
                   <p className="text-sm text-muted-foreground">Host</p>
                 </div>
               </div>
-              <MatchStatusBadge status={match.status} />
+              <div className="flex flex-col items-end gap-2">
+                <MatchStatusBadge status={match.status} />
+                {(match.status === 'full' || match.status === 'started') && (
+                  <LiveTimeBadge 
+                    createdAt={match.created_at} 
+                    startedAt={match.started_at}
+                    status={match.status} 
+                  />
+                )}
+              </div>
             </div>
           </CardHeader>
 
@@ -218,6 +262,19 @@ export default function MatchDetails() {
               </div>
             )}
 
+            {/* Start Match Button (Creator only when full) */}
+            {canStartMatch && (
+              <Button
+                size="lg"
+                className="w-full bg-success hover:bg-success/90"
+                onClick={handleStartMatch}
+                disabled={starting}
+              >
+                <Play className="w-5 h-5 mr-2" />
+                {starting ? 'Avvio in corso...' : 'Inizia Match'}
+              </Button>
+            )}
+
             {/* Join Button */}
             {canJoin && (
               <Button
@@ -230,21 +287,32 @@ export default function MatchDetails() {
               </Button>
             )}
 
-            {isParticipant && (
+            {isParticipant && match.status === 'open' && (
               <div className="text-center py-4 rounded-lg bg-success/10 text-success">
                 <Trophy className="w-6 h-6 mx-auto mb-2" />
                 <p className="font-medium">You're in this match!</p>
+                <p className="text-sm text-muted-foreground">Waiting for opponent...</p>
               </div>
             )}
 
-            {isCreator && (
+            {isCreator && match.status === 'open' && (
               <div className="text-center py-4 rounded-lg bg-primary/10 text-primary">
                 <Users className="w-6 h-6 mx-auto mb-2" />
                 <p className="font-medium">You created this match</p>
+                <p className="text-sm text-muted-foreground">Waiting for opponent...</p>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Result Declaration */}
+        {showResultDeclaration && user && (
+          <MatchResultDeclaration 
+            match={match} 
+            currentUserId={user.id}
+            onResultDeclared={fetchMatch}
+          />
+        )}
 
         {/* Participants */}
         <Card className="bg-card border-border">
@@ -271,6 +339,9 @@ export default function MatchDetails() {
                         {p.profile?.epic_username ?? 'Epic username not set'}
                       </p>
                     </div>
+                    {match.result?.winner_user_id === p.user_id && match.status === 'finished' && (
+                      <Trophy className="w-5 h-5 text-warning ml-auto" />
+                    )}
                   </div>
                 ))}
               </div>

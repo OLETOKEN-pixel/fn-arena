@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Users, Swords, Clock } from 'lucide-react';
+import { Users, Swords } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MatchStatusBadge, RegionBadge, PlatformBadge, ModeBadge } from '@/components/ui/custom-badge';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { CountdownTimer } from '@/components/common/CountdownTimer';
+import { LiveTimeBadge } from '@/components/matches/LiveTimeBadge';
 import type { Match } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -21,8 +22,13 @@ export function MatchCard({ match, onJoin, isJoining }: MatchCardProps) {
   const isFull = participantCount >= maxParticipants;
   const canJoin = match.status === 'open' && !isFull;
 
+  const isLive = match.status === 'full' || match.status === 'started';
+
   return (
-    <Card className="card-hover bg-card border-border overflow-hidden">
+    <Card className={cn(
+      "card-hover bg-card border-border overflow-hidden",
+      isLive && "ring-2 ring-success/50"
+    )}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -77,12 +83,18 @@ export function MatchCard({ match, onJoin, isJoining }: MatchCardProps) {
           </div>
         </div>
 
-        {/* Timer */}
-        {match.status === 'open' && (
-          <div className="flex items-center justify-center">
+        {/* Timer / Live Badge */}
+        <div className="flex items-center justify-center">
+          {match.status === 'open' ? (
             <CountdownTimer expiresAt={match.expires_at} />
-          </div>
-        )}
+          ) : (
+            <LiveTimeBadge 
+              createdAt={match.created_at} 
+              startedAt={match.started_at}
+              status={match.status} 
+            />
+          )}
+        </div>
 
         {/* Prize Pool */}
         <div className="text-center py-2 rounded-lg bg-accent/10">

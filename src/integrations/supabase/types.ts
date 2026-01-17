@@ -691,6 +691,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_username_available: {
+        Args: { p_username: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

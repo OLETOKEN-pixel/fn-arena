@@ -117,6 +117,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, username: string) => {
+    // First, check if username is available (case-insensitive)
+    const { data: isAvailable, error: checkError } = await supabase.rpc('check_username_available', {
+      p_username: username,
+    });
+
+    if (checkError) {
+      console.error('Error checking username:', checkError);
+      return { error: new Error('Failed to verify username availability') };
+    }
+
+    if (!isAvailable) {
+      return { error: new Error('Username is already taken. Please choose a different one.') };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
     
     const { data, error } = await supabase.auth.signUp({
@@ -143,6 +157,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileError) {
         console.error('Error creating profile:', profileError);
+        // Check for unique constraint violation
+        if (profileError.code === '23505' && profileError.message.includes('username')) {
+          return { error: new Error('Username is already taken. Please choose a different one.') };
+        }
         return { error: new Error(profileError.message) };
       }
     }

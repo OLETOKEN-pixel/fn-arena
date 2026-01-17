@@ -79,6 +79,13 @@ export default function Auth() {
               description: 'This email is already registered. Please sign in.',
               variant: 'destructive',
             });
+          } else if (error.message.includes('Username is already taken')) {
+            toast({
+              title: 'Username not available',
+              description: 'This username is already taken. Please choose a different one.',
+              variant: 'destructive',
+            });
+            setErrors({ ...errors, username: 'Username already taken' });
           } else {
             toast({
               title: 'Sign up failed',

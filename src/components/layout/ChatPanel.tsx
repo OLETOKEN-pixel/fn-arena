@@ -34,7 +34,7 @@ export function ChatPanel({ className, isOpen = true, onClose }: ChatPanelProps)
     const fetchMessages = async () => {
       const { data, error } = await supabase
         .from('chat_messages')
-        .select('*, profiles(*)')
+        .select('*, profiles:user_id(*)')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(50);

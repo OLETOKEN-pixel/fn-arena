@@ -89,24 +89,39 @@ export type Database = {
           id: string
           joined_at: string | null
           match_id: string
+          ready: boolean | null
+          ready_at: string | null
+          result_at: string | null
+          result_choice: string | null
           status: string | null
           team_id: string | null
+          team_side: string | null
           user_id: string
         }
         Insert: {
           id?: string
           joined_at?: string | null
           match_id: string
+          ready?: boolean | null
+          ready_at?: string | null
+          result_at?: string | null
+          result_choice?: string | null
           status?: string | null
           team_id?: string | null
+          team_side?: string | null
           user_id: string
         }
         Update: {
           id?: string
           joined_at?: string | null
           match_id?: string
+          ready?: boolean | null
+          ready_at?: string | null
+          result_at?: string | null
+          result_choice?: string | null
           status?: string | null
           team_id?: string | null
+          team_side?: string | null
           user_id?: string
         }
         Relationships: [
@@ -837,6 +852,11 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_resolve_match_v2: {
+        Args: { p_action: string; p_match_id: string; p_notes?: string }
+        Returns: Json
+      }
+      cancel_match_v2: { Args: { p_match_id: string }; Returns: Json }
       check_username_available: {
         Args: { p_username: string }
         Returns: boolean
@@ -857,6 +877,8 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      join_match_v2: { Args: { p_match_id: string }; Returns: Json }
+      leave_match: { Args: { p_match_id: string }; Returns: Json }
       lock_funds_for_match: {
         Args: { p_amount: number; p_match_id: string }
         Returns: Json
@@ -871,6 +893,11 @@ export type Database = {
       }
       record_platform_fee: {
         Args: { p_fee_amount: number; p_match_id: string }
+        Returns: Json
+      }
+      set_player_ready: { Args: { p_match_id: string }; Returns: Json }
+      submit_match_result: {
+        Args: { p_match_id: string; p_result: string }
         Returns: Json
       }
       withdraw_platform_earnings: {

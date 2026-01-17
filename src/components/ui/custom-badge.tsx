@@ -36,22 +36,36 @@ export function Badge({
 // Match Status Badge
 const statusVariants: Record<MatchStatus, BadgeProps['variant']> = {
   open: 'success',
+  ready_check: 'warning',
+  in_progress: 'primary',
+  result_pending: 'warning',
+  completed: 'success',
+  disputed: 'destructive',
+  canceled: 'default',
+  admin_resolved: 'success',
+  // Legacy states
+  joined: 'warning',
   full: 'warning',
   started: 'primary',
   finished: 'default',
-  canceled: 'destructive',
   expired: 'default',
-  disputed: 'destructive',
 };
 
 const statusLabels: Record<MatchStatus, string> = {
   open: 'OPEN',
+  ready_check: 'READY CHECK',
+  in_progress: 'IN PROGRESS',
+  result_pending: 'AWAITING RESULT',
+  completed: 'COMPLETED',
+  disputed: 'DISPUTED',
+  canceled: 'CANCELED',
+  admin_resolved: 'RESOLVED',
+  // Legacy states
+  joined: 'JOINED',
   full: 'FULL',
   started: 'LIVE',
   finished: 'FINISHED',
-  canceled: 'CANCELED',
   expired: 'EXPIRED',
-  disputed: 'DISPUTED',
 };
 
 export function MatchStatusBadge({ status }: { status: MatchStatus }) {

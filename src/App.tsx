@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Matches from "./pages/Matches";
+import MyMatches from "./pages/MyMatches";
 import MatchDetails from "./pages/MatchDetails";
 import CreateMatch from "./pages/CreateMatch";
 import Profile from "./pages/Profile";
@@ -32,6 +33,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/matches" element={<Matches />} />
+              <Route path="/my-matches" element={<MyMatches />} />
               <Route path="/matches/:id" element={<MatchDetails />} />
               <Route path="/matches/create" element={<CreateMatch />} />
               <Route path="/profile" element={<Profile />} />

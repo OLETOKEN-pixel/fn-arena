@@ -24,17 +24,35 @@ export default function Admin() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  // Check admin status via secure server-side function
   useEffect(() => {
-    if (!authLoading && (!user || profile?.role !== 'admin')) {
-      navigate('/');
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      const { data, error } = await supabase.rpc('is_admin');
+      if (error || !data) {
+        setIsAdmin(false);
+        navigate('/');
+      } else {
+        setIsAdmin(true);
+      }
+    };
+    
+    if (!authLoading) {
+      checkAdmin();
     }
-  }, [user, profile, authLoading, navigate]);
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (!user || profile?.role !== 'admin') return;
+    if (!user || isAdmin !== true) return;
 
     const fetchData = async () => {
-      // Fetch users
+      // Fetch users - now protected by RLS, only admins can see all
       const { data: usersData } = await supabase
         .from('profiles')
         .select('*')
@@ -52,7 +70,7 @@ export default function Admin() {
 
       if (matchesData) setMatches(matchesData as unknown as Match[]);
 
-      // Fetch transactions
+      // Fetch transactions - now protected by RLS, only admins can see all
       const { data: transactionsData } = await supabase
         .from('transactions')
         .select('*')
@@ -65,7 +83,7 @@ export default function Admin() {
     };
 
     fetchData();
-  }, [user, profile]);
+  }, [user, isAdmin]);
 
   const handleBanUser = async (userId: string, isBanned: boolean) => {
     const { error } = await supabase
@@ -91,8 +109,8 @@ export default function Admin() {
     }
   };
 
-  if (authLoading) return <MainLayout><LoadingPage /></MainLayout>;
-  if (profile?.role !== 'admin') return null;
+  if (authLoading || isAdmin === null) return <MainLayout><LoadingPage /></MainLayout>;
+  if (isAdmin !== true) return null;
 
   return (
     <MainLayout showChat={false}>

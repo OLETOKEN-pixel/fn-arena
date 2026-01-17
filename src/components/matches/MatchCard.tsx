@@ -1,0 +1,118 @@
+import { Link } from 'react-router-dom';
+import { Users, Swords, Clock } from 'lucide-react';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MatchStatusBadge, RegionBadge, PlatformBadge, ModeBadge } from '@/components/ui/custom-badge';
+import { CoinDisplay } from '@/components/common/CoinDisplay';
+import { CountdownTimer } from '@/components/common/CountdownTimer';
+import type { Match } from '@/types';
+import { cn } from '@/lib/utils';
+
+interface MatchCardProps {
+  match: Match;
+  onJoin?: (matchId: string) => void;
+  isJoining?: boolean;
+}
+
+export function MatchCard({ match, onJoin, isJoining }: MatchCardProps) {
+  const participantCount = match.participants?.length ?? 0;
+  const maxParticipants = match.team_size * 2;
+  const isFull = participantCount >= maxParticipants;
+  const canJoin = match.status === 'open' && !isFull;
+
+  return (
+    <Card className="card-hover bg-card border-border overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-8 h-8">
+            <AvatarImage src={match.creator?.avatar_url ?? undefined} />
+            <AvatarFallback className="text-xs bg-primary/20 text-primary">
+              {match.creator?.username?.charAt(0).toUpperCase() ?? '?'}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className="text-sm font-medium">{match.creator?.username ?? 'Unknown'}</p>
+            <p className="text-xs text-muted-foreground">Host</p>
+          </div>
+        </div>
+        <MatchStatusBadge status={match.status} />
+      </div>
+
+      <CardContent className="p-4 space-y-4">
+        {/* Game & Mode */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Swords className="w-5 h-5 text-primary" />
+            <span className="font-display font-bold text-lg">FN</span>
+          </div>
+          <ModeBadge mode={match.mode} />
+        </div>
+
+        {/* Badges */}
+        <div className="flex flex-wrap gap-2">
+          <RegionBadge region={match.region} />
+          <PlatformBadge platform={match.platform} />
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 py-3 border-y border-border">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-1">Entry Fee</p>
+            <CoinDisplay amount={match.entry_fee} size="sm" />
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-1">First to</p>
+            <p className="font-semibold">{match.first_to}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-1">Players</p>
+            <p className={cn(
+              'font-semibold',
+              isFull && 'text-warning'
+            )}>
+              {participantCount}/{maxParticipants}
+            </p>
+          </div>
+        </div>
+
+        {/* Timer */}
+        {match.status === 'open' && (
+          <div className="flex items-center justify-center">
+            <CountdownTimer expiresAt={match.expires_at} />
+          </div>
+        )}
+
+        {/* Prize Pool */}
+        <div className="text-center py-2 rounded-lg bg-accent/10">
+          <p className="text-xs text-muted-foreground mb-1">Prize Pool</p>
+          <CoinDisplay 
+            amount={match.entry_fee * maxParticipants * 0.95} 
+            size="lg" 
+            className="glow-text-gold"
+          />
+        </div>
+      </CardContent>
+
+      <CardFooter className="p-4 pt-0 gap-2">
+        <Button 
+          variant="outline" 
+          className="flex-1"
+          asChild
+        >
+          <Link to={`/matches/${match.id}`}>View Details</Link>
+        </Button>
+        {canJoin && onJoin && (
+          <Button 
+            className="flex-1"
+            onClick={() => onJoin(match.id)}
+            disabled={isJoining}
+          >
+            {isJoining ? 'Joining...' : 'Join Match'}
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  );
+}

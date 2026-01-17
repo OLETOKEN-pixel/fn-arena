@@ -829,9 +829,25 @@ export type Database = {
       }
     }
     Functions: {
+      admin_resolve_dispute: {
+        Args: {
+          p_admin_notes?: string
+          p_match_id: string
+          p_winner_user_id: string
+        }
+        Returns: Json
+      }
       check_username_available: {
         Args: { p_username: string }
         Returns: boolean
+      }
+      complete_match_payout: {
+        Args: { p_match_id: string; p_winner_user_id: string }
+        Returns: Json
+      }
+      declare_match_result: {
+        Args: { p_i_won: boolean; p_match_id: string }
+        Returns: Json
       }
       has_role: {
         Args: {

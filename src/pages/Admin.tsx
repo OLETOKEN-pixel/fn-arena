@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Profile, Match, Transaction, WithdrawalRequest } from '@/types';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
+import { DisputeManager } from '@/components/matches/DisputeManager';
 
 interface WithdrawalWithProfile extends WithdrawalRequest {
   profiles: Profile;
@@ -85,10 +86,18 @@ export default function Admin() {
 
       if (usersData) setUsers(usersData as Profile[]);
 
-      // Fetch matches
+      // Fetch matches with participants
       const { data: matchesData } = await supabase
         .from('matches')
-        .select('*, creator:profiles!matches_creator_id_fkey(*)')
+        .select(`
+          *, 
+          creator:profiles!matches_creator_id_fkey(*),
+          participants:match_participants(
+            *,
+            profile:profiles(*)
+          ),
+          result:match_results(*)
+        `)
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -342,8 +351,17 @@ export default function Admin() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="earnings">
+        <Tabs defaultValue="disputes">
           <TabsList>
+            <TabsTrigger value="disputes" className="relative">
+              <AlertTriangle className="w-4 h-4 mr-1" />
+              Dispute
+              {matches.filter(m => m.status === 'disputed').length > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
+                  {matches.filter(m => m.status === 'disputed').length}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="earnings" className="relative">
               <TrendingUp className="w-4 h-4 mr-1" />
               Guadagni
@@ -360,6 +378,38 @@ export default function Admin() {
             <TabsTrigger value="matches">Match</TabsTrigger>
             <TabsTrigger value="transactions">Transazioni</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="disputes" className="mt-4">
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-destructive" />
+                  Match in Disputa
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DisputeManager 
+                  matches={matches} 
+                  onResolved={async () => {
+                    const { data } = await supabase
+                      .from('matches')
+                      .select(`
+                        *, 
+                        creator:profiles!matches_creator_id_fkey(*),
+                        participants:match_participants(
+                          *,
+                          profile:profiles(*)
+                        ),
+                        result:match_results(*)
+                      `)
+                      .order('created_at', { ascending: false })
+                      .limit(50);
+                    if (data) setMatches(data as unknown as Match[]);
+                  }}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="earnings" className="mt-4">
             <div className="grid gap-4 md:grid-cols-2">

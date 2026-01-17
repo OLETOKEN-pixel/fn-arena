@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { COIN_PACKAGES, type CoinPackage } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -51,13 +52,30 @@ export default function BuyCoins() {
 
     setProcessing(true);
 
-    // TODO: Implement Stripe checkout
-    toast({
-      title: 'Coming soon!',
-      description: 'Stripe payment integration will be added next.',
-    });
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { amount: finalAmount },
+      });
 
-    setProcessing(false);
+      if (error) {
+        throw error;
+      }
+
+      if (data?.url) {
+        // Redirect to Stripe checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create checkout session. Please try again.',
+        variant: 'destructive',
+      });
+      setProcessing(false);
+    }
   };
 
   return (

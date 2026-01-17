@@ -97,25 +97,17 @@ export default function CreateMatch() {
 
       if (matchError) throw matchError;
 
-      // Lock coins
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({
-          balance: wallet!.balance - actualFee,
-          locked_balance: wallet!.locked_balance + actualFee,
-        })
-        .eq('user_id', user.id);
-
-      if (walletError) throw walletError;
-
-      // Add transaction
-      await supabase.from('transactions').insert({
-        user_id: user.id,
-        type: 'lock',
-        amount: actualFee,
-        description: `Created match ${match.id}`,
-        match_id: match.id,
+      // Lock coins using secure server-side function (prevents race conditions & manipulation)
+      const { data: lockResult, error: lockError } = await supabase.rpc('lock_funds_for_match', {
+        p_match_id: match.id,
+        p_amount: actualFee,
       });
+
+      if (lockError) throw lockError;
+      const lockData = lockResult as { success: boolean; error?: string } | null;
+      if (lockData && !lockData.success) {
+        throw new Error(lockData.error || 'Failed to lock funds');
+      }
 
       // Add creator as participant
       await supabase.from('match_participants').insert({

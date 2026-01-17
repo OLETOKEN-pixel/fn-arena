@@ -85,25 +85,17 @@ export default function MatchDetails() {
     setJoining(true);
 
     try {
-      // Lock coins
-      const { error: walletError } = await supabase
-        .from('wallets')
-        .update({
-          balance: wallet.balance - match.entry_fee,
-          locked_balance: wallet.locked_balance + match.entry_fee,
-        })
-        .eq('user_id', user.id);
-
-      if (walletError) throw walletError;
-
-      // Add transaction
-      await supabase.from('transactions').insert({
-        user_id: user.id,
-        type: 'lock',
-        amount: match.entry_fee,
-        description: `Joined match ${match.id}`,
-        match_id: match.id,
+      // Lock coins using secure server-side function (prevents race conditions & manipulation)
+      const { data: lockResult, error: lockError } = await supabase.rpc('lock_funds_for_match', {
+        p_match_id: match.id,
+        p_amount: match.entry_fee,
       });
+
+      if (lockError) throw lockError;
+      const lockData = lockResult as { success: boolean; error?: string } | null;
+      if (lockData && !lockData.success) {
+        throw new Error(lockData.error || 'Failed to lock funds');
+      }
 
       // Join match
       const { error: joinError } = await supabase

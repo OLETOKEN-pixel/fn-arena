@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Swords, DollarSign, AlertTriangle, Ban, CheckCircle, Banknote, XCircle, Clock } from 'lucide-react';
+import { Shield, Users, Swords, DollarSign, AlertTriangle, Ban, CheckCircle, Banknote, XCircle, Clock, TrendingUp, Wallet } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,15 @@ export default function Admin() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
+  // Platform earnings state
+  const [platformBalance, setPlatformBalance] = useState<number>(0);
+  const [platformEarnings, setPlatformEarnings] = useState<{ id: string; match_id: string; amount: number; created_at: string }[]>([]);
+  const [withdrawPlatformDialog, setWithdrawPlatformDialog] = useState(false);
+  const [platformWithdrawAmount, setPlatformWithdrawAmount] = useState('');
+  const [platformPaymentMethod, setPlatformPaymentMethod] = useState<'paypal' | 'bank'>('paypal');
+  const [platformPaymentDetails, setPlatformPaymentDetails] = useState('');
+  const [withdrawingPlatform, setWithdrawingPlatform] = useState(false);
 
   // Dialog state for processing withdrawals
   const [processDialog, setProcessDialog] = useState<{ open: boolean; withdrawal: WithdrawalWithProfile | null; action: 'approve' | 'reject' | null }>({
@@ -101,6 +110,24 @@ export default function Admin() {
         .order('created_at', { ascending: false });
 
       if (withdrawalsData) setWithdrawals(withdrawalsData as unknown as WithdrawalWithProfile[]);
+
+      // Fetch platform wallet
+      const { data: platformWalletData } = await supabase
+        .from('platform_wallet')
+        .select('balance')
+        .limit(1)
+        .maybeSingle();
+
+      if (platformWalletData) setPlatformBalance(Number(platformWalletData.balance));
+
+      // Fetch platform earnings
+      const { data: earningsData } = await supabase
+        .from('platform_earnings')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (earningsData) setPlatformEarnings(earningsData as { id: string; match_id: string; amount: number; created_at: string }[]);
 
       setLoading(false);
     };
@@ -180,6 +207,51 @@ export default function Admin() {
 
   const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending');
 
+  const handleWithdrawPlatformEarnings = async () => {
+    const amount = parseFloat(platformWithdrawAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ title: 'Errore', description: 'Inserisci un importo valido.', variant: 'destructive' });
+      return;
+    }
+    if (amount > platformBalance) {
+      toast({ title: 'Errore', description: 'Importo superiore al saldo disponibile.', variant: 'destructive' });
+      return;
+    }
+    if (!platformPaymentDetails.trim()) {
+      toast({ title: 'Errore', description: 'Inserisci i dettagli di pagamento.', variant: 'destructive' });
+      return;
+    }
+
+    setWithdrawingPlatform(true);
+
+    const { data, error } = await supabase.rpc('withdraw_platform_earnings', {
+      p_amount: amount,
+      p_payment_method: platformPaymentMethod,
+      p_payment_details: platformPaymentDetails,
+    });
+
+    const result = data as { success: boolean; error?: string } | null;
+
+    if (error || (result && !result.success)) {
+      toast({
+        title: 'Errore',
+        description: result?.error || 'Impossibile richiedere il prelievo.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Richiesta inviata',
+        description: 'Il prelievo dei guadagni è stato richiesto.',
+      });
+      setPlatformBalance(platformBalance - amount);
+      setWithdrawPlatformDialog(false);
+      setPlatformWithdrawAmount('');
+      setPlatformPaymentDetails('');
+    }
+
+    setWithdrawingPlatform(false);
+  };
+
   if (authLoading || isAdmin === null) return <MainLayout><LoadingPage /></MainLayout>;
   if (isAdmin !== true) return null;
 
@@ -198,7 +270,7 @@ export default function Admin() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card className="bg-card border-border">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -256,11 +328,26 @@ export default function Admin() {
               </div>
             </CardContent>
           </Card>
+          <Card className="bg-gradient-to-br from-accent/20 to-accent/5 border-accent/30">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <TrendingUp className="w-8 h-8 text-accent" />
+                <div>
+                  <p className="text-2xl font-bold text-accent">{platformBalance.toFixed(2)}€</p>
+                  <p className="text-sm text-muted-foreground">Guadagni Piattaforma</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="withdrawals">
+        <Tabs defaultValue="earnings">
           <TabsList>
+            <TabsTrigger value="earnings" className="relative">
+              <TrendingUp className="w-4 h-4 mr-1" />
+              Guadagni
+            </TabsTrigger>
             <TabsTrigger value="withdrawals" className="relative">
               Prelievi
               {pendingWithdrawals.length > 0 && (
@@ -273,6 +360,65 @@ export default function Admin() {
             <TabsTrigger value="matches">Match</TabsTrigger>
             <TabsTrigger value="transactions">Transazioni</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="earnings" className="mt-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Platform Wallet Card */}
+              <Card className="bg-gradient-to-br from-accent/10 to-transparent border-accent/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-accent" />
+                    Wallet Piattaforma
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Saldo disponibile</p>
+                    <p className="text-4xl font-bold text-accent">{platformBalance.toFixed(2)}€</p>
+                  </div>
+                  <Button 
+                    onClick={() => setWithdrawPlatformDialog(true)}
+                    disabled={platformBalance <= 0}
+                    className="w-full"
+                  >
+                    <Banknote className="w-4 h-4 mr-2" />
+                    Preleva Guadagni
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Recent Fees */}
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle>Ultime Fee Raccolte</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {platformEarnings.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">Nessuna fee raccolta</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {platformEarnings.map((earning) => (
+                        <div
+                          key={earning.id}
+                          className="flex items-center justify-between p-3 rounded-lg bg-secondary"
+                        >
+                          <div>
+                            <p className="text-sm font-medium text-accent">+{earning.amount.toFixed(2)}€</p>
+                            <p className="text-xs text-muted-foreground">
+                              Match: {earning.match_id.slice(0, 8)}...
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(earning.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="withdrawals" className="mt-4">
             <Card className="bg-card border-border">
@@ -514,6 +660,81 @@ export default function Admin() {
               disabled={processing}
             >
               {processing ? 'Elaborazione...' : processDialog.action === 'approve' ? 'Conferma Approvazione' : 'Conferma Rifiuto'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdraw Platform Earnings Dialog */}
+      <Dialog open={withdrawPlatformDialog} onOpenChange={setWithdrawPlatformDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Preleva Guadagni Piattaforma</DialogTitle>
+            <DialogDescription>
+              Saldo disponibile: <strong>{platformBalance.toFixed(2)}€</strong>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Importo (€)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={platformBalance}
+                value={platformWithdrawAmount}
+                onChange={(e) => setPlatformWithdrawAmount(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-input bg-background"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Metodo di pagamento</label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={platformPaymentMethod === 'paypal' ? 'default' : 'outline'}
+                  onClick={() => setPlatformPaymentMethod('paypal')}
+                  className="flex-1"
+                >
+                  PayPal
+                </Button>
+                <Button
+                  type="button"
+                  variant={platformPaymentMethod === 'bank' ? 'default' : 'outline'}
+                  onClick={() => setPlatformPaymentMethod('bank')}
+                  className="flex-1"
+                >
+                  Bonifico
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                {platformPaymentMethod === 'paypal' ? 'Email PayPal' : 'IBAN'}
+              </label>
+              <input
+                type="text"
+                value={platformPaymentDetails}
+                onChange={(e) => setPlatformPaymentDetails(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border border-input bg-background"
+                placeholder={platformPaymentMethod === 'paypal' ? 'email@paypal.com' : 'IT60X0542811101000000123456'}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWithdrawPlatformDialog(false)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={handleWithdrawPlatformEarnings}
+              disabled={withdrawingPlatform}
+            >
+              {withdrawingPlatform ? 'Elaborazione...' : 'Richiedi Prelievo'}
             </Button>
           </DialogFooter>
         </DialogContent>

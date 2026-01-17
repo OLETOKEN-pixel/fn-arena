@@ -331,6 +331,56 @@ export type Database = {
           },
         ]
       }
+      platform_earnings: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          match_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          match_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          match_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_earnings_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_wallet: {
+        Row: {
+          balance: number
+          created_at: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          balance?: number
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          balance?: number
+          created_at?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -800,6 +850,18 @@ export type Database = {
           p_admin_notes?: string
           p_status: string
           p_withdrawal_id: string
+        }
+        Returns: Json
+      }
+      record_platform_fee: {
+        Args: { p_fee_amount: number; p_match_id: string }
+        Returns: Json
+      }
+      withdraw_platform_earnings: {
+        Args: {
+          p_amount: number
+          p_payment_details: string
+          p_payment_method: string
         }
         Returns: Json
       }

@@ -81,40 +81,23 @@ export default function Teams() {
     setCreating(true);
 
     try {
-      // Auto-generate tag from first 4 characters of name
-      const autoTag = teamName.replace(/\s+/g, '').slice(0, 4).toUpperCase();
+      // Use atomic RPC that creates team + owner member in one transaction
+      const { data, error } = await supabase.rpc('create_team', {
+        p_name: teamName.trim(),
+      });
 
-      // Create team
-      const { data: team, error: teamError } = await supabase
-        .from('teams')
-        .insert({
-          name: teamName.trim(),
-          tag: autoTag,
-          owner_id: user.id,
-        })
-        .select()
-        .single();
+      if (error) throw error;
 
-      if (teamError) {
-        if (teamError.message.includes('unique')) {
-          toast({
-            title: 'Team exists',
-            description: 'A team with this name already exists.',
-            variant: 'destructive',
-          });
-        } else {
-          throw teamError;
-        }
+      const result = data as { success: boolean; team_id?: string; error?: string };
+
+      if (!result.success) {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to create team',
+          variant: 'destructive',
+        });
         return;
       }
-
-      // Add owner as member
-      await supabase.from('team_members').insert({
-        team_id: team.id,
-        user_id: user.id,
-        role: 'owner',
-        status: 'accepted',
-      });
 
       toast({
         title: 'Team created!',
@@ -124,12 +107,13 @@ export default function Teams() {
       setCreateOpen(false);
       setTeamName('');
 
-      // Navigate to team details to invite members
-      navigate(`/teams/${team.id}`);
+      // Navigate to team details
+      navigate(`/teams/${result.team_id}`);
     } catch (error) {
+      console.error('Create team error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create team.',
+        description: error instanceof Error ? error.message : 'Failed to create team',
         variant: 'destructive',
       });
     } finally {

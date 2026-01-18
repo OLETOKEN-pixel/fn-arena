@@ -924,6 +924,7 @@ export type Database = {
         Args: { p_match_id: string; p_winner_user_id: string }
         Returns: Json
       }
+      create_team: { Args: { p_name: string }; Returns: Json }
       create_team_match: {
         Args: {
           p_entry_fee: number

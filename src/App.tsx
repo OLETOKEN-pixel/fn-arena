@@ -20,6 +20,8 @@ import Notifications from "./pages/Notifications";
 import Wallet from "./pages/Wallet";
 import BuyCoins from "./pages/BuyCoins";
 import Admin from "./pages/Admin";
+import AdminMatchDetail from "./pages/AdminMatchDetail";
+import AdminUserDetail from "./pages/AdminUserDetail";
 
 const queryClient = new QueryClient();
 
@@ -46,6 +48,8 @@ function App() {
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/buy" element={<BuyCoins />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/matches/:id" element={<AdminMatchDetail />} />
+              <Route path="/admin/users/:id" element={<AdminUserDetail />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

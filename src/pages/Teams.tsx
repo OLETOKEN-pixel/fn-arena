@@ -31,8 +31,6 @@ export default function Teams() {
 
   // Create team form
   const [teamName, setTeamName] = useState('');
-  const [teamTag, setTeamTag] = useState('');
-  const [teamDescription, setTeamDescription] = useState('');
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -78,27 +76,20 @@ export default function Teams() {
   }, [user]);
 
   const handleCreateTeam = async () => {
-    if (!user || !teamName.trim() || !teamTag.trim()) return;
-
-    if (teamTag.length > 5) {
-      toast({
-        title: 'Invalid tag',
-        description: 'Team tag must be 5 characters or less.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    if (!user || !teamName.trim()) return;
 
     setCreating(true);
 
     try {
+      // Auto-generate tag from first 4 characters of name
+      const autoTag = teamName.replace(/\s+/g, '').slice(0, 4).toUpperCase();
+
       // Create team
       const { data: team, error: teamError } = await supabase
         .from('teams')
         .insert({
-          name: teamName,
-          tag: teamTag.toUpperCase(),
-          description: teamDescription || null,
+          name: teamName.trim(),
+          tag: autoTag,
           owner_id: user.id,
         })
         .select()
@@ -108,7 +99,7 @@ export default function Teams() {
         if (teamError.message.includes('unique')) {
           toast({
             title: 'Team exists',
-            description: 'A team with this name or tag already exists.',
+            description: 'A team with this name already exists.',
             variant: 'destructive',
           });
         } else {
@@ -127,15 +118,13 @@ export default function Teams() {
 
       toast({
         title: 'Team created!',
-        description: `${teamName} has been created successfully.`,
+        description: `${teamName} has been created. Now invite your teammates!`,
       });
 
       setCreateOpen(false);
       setTeamName('');
-      setTeamTag('');
-      setTeamDescription('');
 
-      // Navigate to team details
+      // Navigate to team details to invite members
       navigate(`/teams/${team.id}`);
     } catch (error) {
       toast({
@@ -153,14 +142,10 @@ export default function Teams() {
   };
 
   const getEligibilityBadge = (count: number) => {
-    if (count >= 2 && count <= 4) {
-      const modes = [];
-      if (count >= 2) modes.push('2v2');
-      if (count >= 3) modes.push('3v3');
-      if (count >= 4) modes.push('4v4');
-      return modes.slice(0, count - 1).join(', ');
-    }
-    return null;
+    if (count === 2) return '2v2';
+    if (count === 3) return '3v3';
+    if (count === 4) return '4v4';
+    return null; // 1 member = not eligible for team matches
   };
 
   if (authLoading) return <MainLayout><Skeleton className="h-96" /></MainLayout>;
@@ -197,32 +182,17 @@ export default function Teams() {
                     placeholder="Enter team name"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
+                    autoFocus
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tag (max 5 characters)</Label>
-                  <Input
-                    placeholder="TAG"
-                    value={teamTag}
-                    onChange={(e) => setTeamTag(e.target.value.slice(0, 5))}
-                    maxLength={5}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Description (optional)</Label>
-                  <Input
-                    placeholder="Team description"
-                    value={teamDescription}
-                    onChange={(e) => setTeamDescription(e.target.value)}
-                  />
+                  <p className="text-xs text-muted-foreground">
+                    A tag will be auto-generated from your team name
+                  </p>
                 </div>
 
                 <Button
                   className="w-full"
                   onClick={handleCreateTeam}
-                  disabled={creating || !teamName.trim() || !teamTag.trim()}
+                  disabled={creating || !teamName.trim()}
                 >
                   {creating ? 'Creating...' : 'Create Team'}
                 </Button>

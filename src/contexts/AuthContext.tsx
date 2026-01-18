@@ -117,39 +117,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  useEffect(() => {
-    let initialized = false;
-    
-    const initializeUserData = async (sessionUser: User) => {
-      let profileData = await fetchProfile(sessionUser.id);
-      
-      // If no profile exists (new OAuth user), create one
-      if (!profileData) {
-        profileData = await createProfileForOAuthUser(sessionUser);
-      }
-      
-      setProfile(profileData);
-      const walletData = await fetchWallet(sessionUser.id);
-      setWallet(walletData);
-      setLoading(false);
-    };
+  // Separate state to trigger initialization
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
 
-    // Set up auth state listener FIRST
+  // Effect 1: Auth state listener (SYNC ONLY - no async operations)
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // Synchronous state updates only
+      (event, session) => {
+        // SYNC state updates only - never await here
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Mark as initialized to prevent duplicate calls from getSession
-          if (!initialized) {
-            initialized = true;
-            // Await the initialization directly - no setTimeout
-            await initializeUserData(session.user);
-          }
+          // Trigger initialization via state change
+          setPendingUserId(session.user.id);
         } else {
-          initialized = false;
+          // Logout: clear everything immediately
+          setPendingUserId(null);
           setProfile(null);
           setWallet(null);
           setLoading(false);
@@ -157,16 +141,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session (only if onAuthStateChange hasn't fired yet)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (initialized) return; // Already handled by onAuthStateChange
-      
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        initialized = true;
-        await initializeUserData(session.user);
+        setPendingUserId(session.user.id);
       } else {
         setLoading(false);
       }
@@ -174,6 +155,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Effect 2: Initialize user data when pendingUserId changes (with try/catch/finally)
+  useEffect(() => {
+    if (!pendingUserId) return;
+
+    let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      // Safety timeout: 10 seconds max
+      if (!cancelled) {
+        console.error('Auth initialization timeout');
+        setLoading(false);
+      }
+    }, 10000);
+
+    const initializeUserData = async () => {
+      try {
+        let profileData = await fetchProfile(pendingUserId);
+        
+        // If no profile exists (new OAuth user), create one
+        if (!profileData && user) {
+          profileData = await createProfileForOAuthUser(user);
+        }
+        
+        if (!cancelled) {
+          setProfile(profileData);
+          const walletData = await fetchWallet(pendingUserId);
+          if (!cancelled) {
+            setWallet(walletData);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing user data:', error);
+      } finally {
+        clearTimeout(timeoutId);
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeUserData();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [pendingUserId, user]);
 
   // Real-time subscription for wallet updates
   useEffect(() => {

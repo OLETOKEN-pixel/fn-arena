@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Gamepad2, Filter } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Gamepad2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { MyMatchCard } from '@/components/matches/MyMatchCard';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,16 +14,19 @@ type StatusFilter = 'all' | 'active' | 'completed';
 
 export default function MyMatches() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const location = useLocation();
+  const { user, loading: authLoading } = useAuth();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
 
   useEffect(() => {
-    if (!user) {
-      navigate('/auth');
+    if (!user && !authLoading) {
+      navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
       return;
     }
+
+    if (!user) return;
 
     const fetchMyMatches = async () => {
       setLoading(true);
@@ -79,7 +81,7 @@ export default function MyMatches() {
     };
 
     fetchMyMatches();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate, location.pathname]);
 
   // Filter matches based on status
   const activeStatuses: MatchStatus[] = ['ready_check', 'in_progress', 'result_pending', 'disputed'];
@@ -102,6 +104,7 @@ export default function MyMatches() {
     return false;
   }).length;
 
+  if (authLoading) return <MainLayout><Skeleton className="h-96" /></MainLayout>;
   if (!user) return null;
 
   return (

@@ -73,12 +73,15 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              {/* Wallet balance */}
+              {/* Wallet balance with clickable coin */}
               <Link
                 to="/wallet"
-                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors group"
               >
-                <CoinIcon size="sm" />
+                <CoinIcon 
+                  size="sm" 
+                  className="transition-all duration-200 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" 
+                />
                 <span className="font-medium text-sm">
                   {wallet?.balance?.toFixed(2) ?? '0.00'}
                 </span>
@@ -158,7 +161,18 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
               </DropdownMenu>
             </>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {/* Clickable coin for non-logged users - links to auth with redirect to buy */}
+              <Link 
+                to="/auth?next=/buy" 
+                className="group"
+                aria-label="Buy Coins"
+              >
+                <CoinIcon 
+                  size="lg" 
+                  className="transition-all duration-200 group-hover:scale-110 group-hover:drop-shadow-[0_0_12px_rgba(245,158,11,0.5)]" 
+                />
+              </Link>
               <Button variant="ghost" asChild>
                 <Link to="/auth">Sign In</Link>
               </Button>

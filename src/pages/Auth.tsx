@@ -21,6 +21,9 @@ export default function Auth() {
   const { toast } = useToast();
   const { user, signIn, signUp, signInWithGoogle, loading } = useAuth();
 
+  // Get redirect URL from "next" parameter, default to "/"
+  const redirectTo = searchParams.get('next') || '/';
+
   const [mode, setMode] = useState<'signin' | 'signup'>(
     searchParams.get('mode') === 'signup' ? 'signup' : 'signin'
   );
@@ -34,9 +37,9 @@ export default function Auth() {
   // Redirect if already logged in
   useEffect(() => {
     if (user && !loading) {
-      navigate('/');
+      navigate(redirectTo);
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, redirectTo]);
 
   const validate = () => {
     const newErrors: typeof errors = {};
@@ -98,7 +101,7 @@ export default function Auth() {
             title: 'Welcome!',
             description: 'Account created successfully.',
           });
-          navigate('/');
+          navigate(redirectTo);
         }
       } else {
         const { error } = await signIn(email, password);
@@ -113,7 +116,7 @@ export default function Auth() {
             title: 'Welcome back!',
             description: 'You are now signed in.',
           });
-          navigate('/');
+          navigate(redirectTo);
         }
       }
     } finally {
@@ -130,6 +133,7 @@ export default function Auth() {
         variant: 'destructive',
       });
     }
+    // Note: Google OAuth will redirect automatically, redirectTo handled by callback
   };
 
 

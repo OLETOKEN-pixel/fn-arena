@@ -9,55 +9,36 @@ export function HeroSection() {
   const { user } = useAuth();
 
   return (
-    <section className="relative py-12 lg:py-20 overflow-hidden">
+    <section className="relative py-8 lg:py-14 overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 gradient-radial opacity-30" />
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
 
       <div className="relative max-w-4xl mx-auto text-center px-4">
-        {/* Logo */}
-        <div className="mb-6 flex justify-center">
+        {/* Logo - larger and more impactful */}
+        <div className="mb-4 flex justify-center">
           <img 
             src={logoOleboy} 
             alt="OLEBOY TOKEN" 
-            className="w-24 h-24 lg:w-32 lg:h-32 object-contain animate-float"
+            className="w-28 h-28 lg:w-36 lg:h-36 object-contain animate-float"
           />
         </div>
 
-        {/* Clickable Coin - Buy Coins CTA */}
-        <div className="mb-8 flex justify-center">
-          <Link 
-            to="/buy" 
-            className="group cursor-pointer transition-all duration-200"
-            aria-label="Buy Coins"
-          >
-            <div className="relative">
-              <CoinIcon 
-                size="hero" 
-                className="transition-all duration-200 group-hover:scale-105 group-hover:drop-shadow-[0_0_20px_rgba(245,158,11,0.6)]" 
-              />
-              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                Buy Coins
-              </span>
-            </div>
-          </Link>
-        </div>
-
         {/* Title */}
-        <h1 className="font-display text-4xl lg:text-6xl font-bold mb-4">
+        <h1 className="font-display text-4xl lg:text-6xl font-bold mb-3">
           <span className="text-foreground">OLEBOY</span>{' '}
           <span className="text-accent glow-text-gold">TOKEN</span>
         </h1>
 
         {/* Subtitle */}
-        <p className="text-lg lg:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+        <p className="text-lg lg:text-xl text-muted-foreground mb-6 max-w-2xl mx-auto">
           The ultimate FN competitive gaming platform. 
           Create matches, compete for Coins, and climb the leaderboard.
         </p>
 
         {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           {user ? (
             <>
               <Button size="lg" asChild className="w-full sm:w-auto glow-blue">
@@ -69,12 +50,6 @@ export function HeroSection() {
               <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
                 <Link to="/matches">
                   Browse Matches
-                </Link>
-              </Button>
-              <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
-                <Link to="/buy">
-                  <CoinIcon size="sm" className="mr-2" />
-                  Buy Coins
                 </Link>
               </Button>
             </>

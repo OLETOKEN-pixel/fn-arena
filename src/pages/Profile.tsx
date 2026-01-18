@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Gamepad2, MapPin, Save, AlertTriangle, CreditCard } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { LoadingPage } from '@/components/common/LoadingSpinner';
 
 export default function Profile() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, profile, loading, refreshProfile, isProfileComplete } = useAuth();
 
@@ -29,9 +30,9 @@ export default function Profile() {
 
   useEffect(() => {
     if (!user && !loading) {
-      navigate('/auth');
+      navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, location.pathname]);
 
   useEffect(() => {
     if (profile) {

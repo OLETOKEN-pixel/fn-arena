@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_action_logs: {
+        Row: {
+          action_type: string
+          admin_user_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          target_id: string | null
+          target_type: string
+        }
+        Insert: {
+          action_type: string
+          admin_user_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type: string
+        }
+        Update: {
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string | null
@@ -903,6 +933,11 @@ export type Database = {
       }
     }
     Functions: {
+      admin_adjust_balance: {
+        Args: { p_amount: number; p_reason: string; p_user_id: string }
+        Returns: Json
+      }
+      admin_global_search: { Args: { p_query: string }; Returns: Json }
       admin_resolve_dispute: {
         Args: {
           p_admin_notes?: string
@@ -949,6 +984,7 @@ export type Database = {
         Args: { p_match_id: string; p_winner_side: string }
         Returns: Json
       }
+      get_admin_issue_stats: { Args: never; Returns: Json }
       get_team_members_with_balance: {
         Args: { p_team_id: string }
         Returns: {
@@ -979,6 +1015,15 @@ export type Database = {
       lock_funds_for_match: {
         Args: { p_amount: number; p_match_id: string }
         Returns: Json
+      }
+      log_admin_action: {
+        Args: {
+          p_action_type: string
+          p_details?: Json
+          p_target_id?: string
+          p_target_type: string
+        }
+        Returns: string
       }
       process_withdrawal: {
         Args: {

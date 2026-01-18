@@ -15,6 +15,8 @@ import MatchDetails from "./pages/MatchDetails";
 import CreateMatch from "./pages/CreateMatch";
 import Profile from "./pages/Profile";
 import Teams from "./pages/Teams";
+import TeamDetails from "./pages/TeamDetails";
+import Notifications from "./pages/Notifications";
 import Wallet from "./pages/Wallet";
 import BuyCoins from "./pages/BuyCoins";
 import Admin from "./pages/Admin";
@@ -39,6 +41,8 @@ function App() {
               <Route path="/matches/create" element={<CreateMatch />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/teams" element={<Teams />} />
+              <Route path="/teams/:id" element={<TeamDetails />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/buy" element={<BuyCoins />} />
               <Route path="/admin" element={<Admin />} />

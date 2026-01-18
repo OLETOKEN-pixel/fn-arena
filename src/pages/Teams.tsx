@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Users, Plus, Search, Crown, UserPlus } from 'lucide-react';
+import { Users, Plus, Crown, CheckCircle } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Team, TeamMember, Profile } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface TeamWithMembers extends Team {
   members: (TeamMember & { profile: Profile })[];
@@ -134,8 +135,8 @@ export default function Teams() {
       setTeamTag('');
       setTeamDescription('');
 
-      // Refresh teams
-      window.location.reload();
+      // Navigate to team details
+      navigate(`/teams/${team.id}`);
     } catch (error) {
       toast({
         title: 'Error',
@@ -145,6 +146,21 @@ export default function Teams() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const getAcceptedMemberCount = (team: TeamWithMembers) => {
+    return team.members?.filter(m => m.status === 'accepted').length ?? 0;
+  };
+
+  const getEligibilityBadge = (count: number) => {
+    if (count >= 2 && count <= 4) {
+      const modes = [];
+      if (count >= 2) modes.push('2v2');
+      if (count >= 3) modes.push('3v3');
+      if (count >= 4) modes.push('4v4');
+      return modes.slice(0, count - 1).join(', ');
+    }
+    return null;
   };
 
   if (authLoading) return <MainLayout><Skeleton className="h-96" /></MainLayout>;
@@ -238,53 +254,70 @@ export default function Teams() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {teams.map((team) => (
-              <Card key={team.id} className="bg-card border-border card-hover">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">
-                        {team.tag}
+            {teams.map((team) => {
+              const memberCount = getAcceptedMemberCount(team);
+              const eligibility = getEligibilityBadge(memberCount);
+              
+              return (
+                <Link key={team.id} to={`/teams/${team.id}`}>
+                  <Card className="bg-card border-border card-hover h-full cursor-pointer transition-all hover:border-primary/50">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold">
+                            {team.tag}
+                          </div>
+                          <div>
+                            <CardTitle>{team.name}</CardTitle>
+                            <CardDescription>
+                              {memberCount}/4 members
+                            </CardDescription>
+                          </div>
+                        </div>
+                        {team.owner_id === user?.id && (
+                          <Badge variant="accent">
+                            <Crown className="w-3 h-3 mr-1" />
+                            Owner
+                          </Badge>
+                        )}
                       </div>
-                      <div>
-                        <CardTitle>{team.name}</CardTitle>
-                        <CardDescription>
-                          {team.members?.length ?? 0} members
-                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {team.description && (
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {team.description}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {team.members?.filter(m => m.status === 'accepted').slice(0, 5).map((member) => (
+                            <Avatar key={member.id} className="w-8 h-8 border-2 border-background">
+                              <AvatarImage src={member.profile?.avatar_url ?? undefined} />
+                              <AvatarFallback className="text-xs">
+                                {member.profile?.username?.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {memberCount > 5 && (
+                            <span className="text-sm text-muted-foreground">
+                              +{memberCount - 5} more
+                            </span>
+                          )}
+                        </div>
+                        
+                        {eligibility && (
+                          <Badge variant="outline" className="text-xs">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            {eligibility}
+                          </Badge>
+                        )}
                       </div>
-                    </div>
-                    {team.owner_id === user?.id && (
-                      <Badge variant="accent">
-                        <Crown className="w-3 h-3 mr-1" />
-                        Owner
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {team.description && (
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {team.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2">
-                    {team.members?.slice(0, 5).map((member) => (
-                      <Avatar key={member.id} className="w-8 h-8 border-2 border-background">
-                        <AvatarImage src={member.profile?.avatar_url ?? undefined} />
-                        <AvatarFallback className="text-xs">
-                          {member.profile?.username?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    ))}
-                    {(team.members?.length ?? 0) > 5 && (
-                      <span className="text-sm text-muted-foreground">
-                        +{(team.members?.length ?? 0) - 5} more
-                      </span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

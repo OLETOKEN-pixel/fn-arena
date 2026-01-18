@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Swords, Coins } from 'lucide-react';
+import { ArrowLeft, Swords, AlertCircle, Users } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,10 +10,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { EpicUsernameWarning } from '@/components/common/EpicUsernameWarning';
+import { TeamSelector } from '@/components/teams/TeamSelector';
+import { PaymentModeSelector } from '@/components/teams/PaymentModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useEligibleTeams } from '@/hooks/useEligibleTeams';
 import { supabase } from '@/integrations/supabase/client';
-import { REGIONS, PLATFORMS, GAME_MODES, FIRST_TO_OPTIONS, ENTRY_FEE_PRESETS, type Region, type Platform, type GameMode } from '@/types';
+import { REGIONS, PLATFORMS, GAME_MODES, FIRST_TO_OPTIONS, ENTRY_FEE_PRESETS, type Region, type Platform, type GameMode, type PaymentMode, type Team, type TeamMember, type Profile, type TeamMemberWithBalance } from '@/types';
+
+interface SelectedTeam extends Team {
+  members: (TeamMember & { profile: Profile })[];
+  memberBalances?: TeamMemberWithBalance[];
+  acceptedMemberCount: number;
+}
 
 export default function CreateMatch() {
   const navigate = useNavigate();
@@ -29,9 +38,27 @@ export default function CreateMatch() {
   const [teamSize, setTeamSize] = useState(1);
   const [firstTo, setFirstTo] = useState(3);
   const [creating, setCreating] = useState(false);
+  
+  // Team match state
+  const [selectedTeam, setSelectedTeam] = useState<SelectedTeam | null>(null);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('cover');
 
   const actualFee = customFee ? parseFloat(customFee) : entryFee;
-  const canAfford = wallet && wallet.balance >= actualFee;
+  const isTeamMatch = teamSize > 1;
+  const totalCost = isTeamMatch ? actualFee * teamSize : actualFee;
+  
+  // For 1v1, check user balance; for team with cover, check if user can afford total
+  const canAffordSolo = wallet && wallet.balance >= actualFee;
+  const canAffordCover = wallet && wallet.balance >= totalCost;
+  
+  // For split mode, check team member balances
+  const canAffordSplit = selectedTeam?.memberBalances?.every(m => m.balance >= actualFee) ?? false;
+  
+  const canAfford = isTeamMatch 
+    ? (paymentMode === 'cover' ? canAffordCover : canAffordSplit)
+    : canAffordSolo;
+    
+  const canCreate = isTeamMatch ? (selectedTeam !== null && canAfford) : canAfford;
 
   // Redirect if not logged in
   if (!user) {
@@ -61,76 +88,118 @@ export default function CreateMatch() {
       return;
     }
 
-    if (!canAfford) {
+    if (!canCreate) {
       toast({
-        title: 'Insufficient balance',
-        description: 'You need more Coins to create this match.',
+        title: 'Cannot create match',
+        description: isTeamMatch && !selectedTeam 
+          ? 'Please select a team first.'
+          : 'Insufficient balance.',
         variant: 'destructive',
       });
-      navigate('/buy');
       return;
     }
 
     setCreating(true);
 
     try {
-      // Create match
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 2); // 2 hours expiry
+      if (isTeamMatch && selectedTeam) {
+        // Create team match using RPC
+        const { data, error } = await supabase.rpc('create_team_match', {
+          p_team_id: selectedTeam.id,
+          p_entry_fee: actualFee,
+          p_region: region,
+          p_platform: platform,
+          p_mode: mode,
+          p_team_size: teamSize,
+          p_first_to: firstTo,
+          p_payment_mode: paymentMode,
+          p_is_private: isPrivate,
+        });
 
-      const { data: match, error: matchError } = await supabase
-        .from('matches')
-        .insert({
-          creator_id: user.id,
-          game: 'FN',
-          region,
-          platform,
-          mode,
-          team_size: teamSize,
-          first_to: firstTo,
-          entry_fee: actualFee,
-          is_private: isPrivate,
-          expires_at: expiresAt.toISOString(),
-        })
-        .select()
-        .single();
+        if (error) throw error;
 
-      if (matchError) throw matchError;
+        const result = data as { success: boolean; error?: string; match_id?: string } | null;
+        if (result && !result.success) {
+          throw new Error(result.error);
+        }
 
-      // Lock coins using secure server-side function (prevents race conditions & manipulation)
-      const { data: lockResult, error: lockError } = await supabase.rpc('lock_funds_for_match', {
-        p_match_id: match.id,
-        p_amount: actualFee,
-      });
+        await refreshWallet();
 
-      if (lockError) throw lockError;
-      const lockData = lockResult as { success: boolean; error?: string } | null;
-      if (lockData && !lockData.success) {
-        throw new Error(lockData.error || 'Failed to lock funds');
+        toast({
+          title: 'Match created!',
+          description: 'Your team match is now live.',
+        });
+
+        navigate(`/matches/${result?.match_id}`);
+      } else {
+        // Create 1v1 match (existing logic)
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 2);
+
+        const { data: match, error: matchError } = await supabase
+          .from('matches')
+          .insert({
+            creator_id: user.id,
+            game: 'FN',
+            region,
+            platform,
+            mode,
+            team_size: teamSize,
+            first_to: firstTo,
+            entry_fee: actualFee,
+            is_private: isPrivate,
+            expires_at: expiresAt.toISOString(),
+          })
+          .select()
+          .single();
+
+        if (matchError) throw matchError;
+
+        // Lock coins using secure server-side function
+        const { data: lockResult, error: lockError } = await supabase.rpc('lock_funds_for_match', {
+          p_match_id: match.id,
+          p_amount: actualFee,
+        });
+
+        if (lockError) throw lockError;
+        const lockData = lockResult as { success: boolean; error?: string } | null;
+        if (lockData && !lockData.success) {
+          throw new Error(lockData.error || 'Failed to lock funds');
+        }
+
+        // Add creator as participant
+        await supabase.from('match_participants').insert({
+          match_id: match.id,
+          user_id: user.id,
+          team_side: 'A',
+        });
+
+        await refreshWallet();
+
+        toast({
+          title: 'Match created!',
+          description: 'Your match is now live.',
+        });
+
+        navigate(`/matches/${match.id}`);
       }
-
-      // Add creator as participant
-      await supabase.from('match_participants').insert({
-        match_id: match.id,
-        user_id: user.id,
-      });
-
-      await refreshWallet();
-
-      toast({
-        title: 'Match created!',
-        description: 'Your match is now live.',
-      });
-
-      navigate(`/matches/${match.id}`);
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to create match. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to create match. Please try again.',
         variant: 'destructive',
       });
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Reset team selection when team size changes
+  const handleTeamSizeChange = (size: number) => {
+    setTeamSize(size);
+    setSelectedTeam(null);
+    if (size === 1) {
+      setPaymentMode('cover');
     }
   };
 
@@ -163,7 +232,7 @@ export default function CreateMatch() {
           <CardContent className="space-y-6">
             {/* Entry Fee */}
             <div className="space-y-3">
-              <Label>Entry Fee (Coins)</Label>
+              <Label>Entry Fee (Coins per player)</Label>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {ENTRY_FEE_PRESETS.map((fee) => (
                   <Button
@@ -186,13 +255,55 @@ export default function CreateMatch() {
                   step={0.5}
                 />
               </div>
-              {!canAfford && (
-                <p className="text-sm text-destructive">
-                  Insufficient balance. You need {actualFee} Coins.{' '}
-                  <Link to="/buy" className="underline">Buy Coins</Link>
-                </p>
-              )}
             </div>
+
+            {/* Team Size */}
+            <div className="space-y-2">
+              <Label>Team Size</Label>
+              <Select value={String(teamSize)} onValueChange={(v) => handleTeamSizeChange(parseInt(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1v1 (Solo)</SelectItem>
+                  <SelectItem value="2">2v2 (Duos)</SelectItem>
+                  <SelectItem value="3">3v3 (Trios)</SelectItem>
+                  <SelectItem value="4">4v4 (Squads)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Team Selection (for team matches) */}
+            {isTeamMatch && (
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Select Your Team
+                </Label>
+                <TeamSelector
+                  teamSize={teamSize}
+                  entryFee={actualFee}
+                  selectedTeamId={selectedTeam?.id ?? null}
+                  onSelectTeam={(team) => setSelectedTeam(team as SelectedTeam | null)}
+                  paymentMode={paymentMode}
+                />
+              </div>
+            )}
+
+            {/* Payment Mode (for team matches with selected team) */}
+            {isTeamMatch && selectedTeam && (
+              <div className="space-y-3">
+                <Label>Payment Mode</Label>
+                <PaymentModeSelector
+                  paymentMode={paymentMode}
+                  onChangePaymentMode={setPaymentMode}
+                  entryFee={actualFee}
+                  teamSize={teamSize}
+                  memberBalances={selectedTeam.memberBalances}
+                  userBalance={wallet?.balance ?? 0}
+                />
+              </div>
+            )}
 
             {/* Region */}
             <div className="space-y-2">
@@ -239,22 +350,6 @@ export default function CreateMatch() {
               </Select>
             </div>
 
-            {/* Team Size */}
-            <div className="space-y-2">
-              <Label>Team Size</Label>
-              <Select value={String(teamSize)} onValueChange={(v) => setTeamSize(parseInt(v))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1v1</SelectItem>
-                  <SelectItem value="2">2v2</SelectItem>
-                  <SelectItem value="3">3v3</SelectItem>
-                  <SelectItem value="4">4v4</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* First to */}
             <div className="space-y-2">
               <Label>First to (wins)</Label>
@@ -282,24 +377,50 @@ export default function CreateMatch() {
             {/* Summary */}
             <div className="p-4 rounded-lg bg-secondary space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Entry Fee:</span>
+                <span className="text-muted-foreground">Entry Fee (per player):</span>
                 <CoinDisplay amount={actualFee} />
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Prize Pool:</span>
-                <CoinDisplay amount={actualFee * teamSize * 2 * 0.95} />
+              {isTeamMatch && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Team Cost ({teamSize} players):</span>
+                  <CoinDisplay amount={totalCost} />
+                </div>
+              )}
+              {isTeamMatch && selectedTeam && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Payment:</span>
+                  <span>{paymentMode === 'cover' ? 'You pay all' : 'Split between members'}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t border-border">
+                <span className="text-muted-foreground">Total Prize Pool:</span>
+                <CoinDisplay amount={totalCost * 2 * 0.95} />
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Platform Fee (5%):</span>
-                <CoinDisplay amount={actualFee * teamSize * 2 * 0.05} />
+                <CoinDisplay amount={totalCost * 2 * 0.05} />
               </div>
             </div>
+
+            {/* Balance Warning */}
+            {!canCreate && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-destructive">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span className="text-sm">
+                  {isTeamMatch && !selectedTeam 
+                    ? 'Select a team to continue'
+                    : `Insufficient balance. ${paymentMode === 'cover' ? `You need ${totalCost} Coins.` : 'Some team members need more Coins.'}`}
+                  {' '}
+                  <Link to="/buy" className="underline font-medium">Buy Coins</Link>
+                </span>
+              </div>
+            )}
 
             <Button
               size="lg"
               className="w-full glow-blue"
               onClick={handleCreate}
-              disabled={creating || !canAfford || !isProfileComplete}
+              disabled={creating || !canCreate || !isProfileComplete}
             >
               {creating ? 'Creating...' : 'Create Match'}
             </Button>

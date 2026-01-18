@@ -183,10 +183,19 @@ export default function CreateMatch() {
 
         navigate(`/matches/${match.id}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      console.error('Match creation error:', error);
+      
+      let errorMessage = 'Failed to create match. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = String((error as { message: unknown }).message);
+      }
+      
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create match. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

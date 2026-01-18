@@ -956,6 +956,7 @@ export type Database = {
           username: string
         }[]
       }
+      has_active_match: { Args: { p_user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1013,6 +1014,7 @@ export type Database = {
         Args: { p_match_id: string; p_result: string }
         Returns: Json
       }
+      team_has_active_match: { Args: { p_team_id: string }; Returns: Json }
       withdraw_platform_earnings: {
         Args: {
           p_amount: number

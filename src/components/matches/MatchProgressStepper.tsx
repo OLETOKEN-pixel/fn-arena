@@ -17,6 +17,7 @@ function getActiveStep(status: MatchStatus): number {
   switch (status) {
     case 'open':
       return 1;
+    case 'full':      // Fallback per vecchia logica 1v1
     case 'ready_check':
       return 2;
     case 'in_progress':

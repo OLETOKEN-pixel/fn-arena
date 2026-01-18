@@ -16,7 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useEligibleTeams } from '@/hooks/useEligibleTeams';
 import { supabase } from '@/integrations/supabase/client';
-import { REGIONS, PLATFORMS, GAME_MODES, FIRST_TO_OPTIONS, ENTRY_FEE_PRESETS, type Region, type Platform, type GameMode, type PaymentMode, type Team, type TeamMember, type Profile, type TeamMemberWithBalance } from '@/types';
+import { REGIONS, PLATFORMS, GAME_MODES, FIRST_TO_OPTIONS, ENTRY_FEE_PRESETS, TEAM_SIZES, type Region, type Platform, type GameMode, type PaymentMode, type Team, type TeamMember, type Profile, type TeamMemberWithBalance } from '@/types';
 
 interface SelectedTeam extends Team {
   members: (TeamMember & { profile: Profile })[];
@@ -34,7 +34,7 @@ export default function CreateMatch() {
   const [customFee, setCustomFee] = useState('');
   const [region, setRegion] = useState<Region>('EU');
   const [platform, setPlatform] = useState<Platform>('All');
-  const [mode, setMode] = useState<GameMode>('1v1');
+  const [mode, setMode] = useState<GameMode>('Box Fight');
   const [teamSize, setTeamSize] = useState(1);
   const [firstTo, setFirstTo] = useState(3);
   const [creating, setCreating] = useState(false);
@@ -259,16 +259,15 @@ export default function CreateMatch() {
 
             {/* Team Size */}
             <div className="space-y-2">
-              <Label>Team Size</Label>
+              <Label>Match Size</Label>
               <Select value={String(teamSize)} onValueChange={(v) => handleTeamSizeChange(parseInt(v))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">1v1 (Solo)</SelectItem>
-                  <SelectItem value="2">2v2 (Duos)</SelectItem>
-                  <SelectItem value="3">3v3 (Trios)</SelectItem>
-                  <SelectItem value="4">4v4 (Squads)</SelectItem>
+                  {TEAM_SIZES.map((ts) => (
+                    <SelectItem key={ts.value} value={String(ts.value)}>{ts.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { REGIONS, PLATFORMS, GAME_MODES, type Match, type Region, type Platform, type GameMode } from '@/types';
+import { REGIONS, PLATFORMS, GAME_MODES, TEAM_SIZES, type Match, type Region, type Platform, type GameMode, type TeamSize } from '@/types';
 
 export default function Matches() {
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ export default function Matches() {
   const [regionFilter, setRegionFilter] = useState<Region | 'all'>('all');
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
   const [modeFilter, setModeFilter] = useState<GameMode | 'all'>('all');
+  const [sizeFilter, setSizeFilter] = useState<TeamSize | 'all'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'fee'>('newest');
 
   const fetchMatches = async () => {
@@ -48,6 +49,9 @@ export default function Matches() {
     }
     if (modeFilter !== 'all') {
       query = query.eq('mode', modeFilter);
+    }
+    if (sizeFilter !== 'all') {
+      query = query.eq('team_size', sizeFilter);
     }
 
     // Apply sorting
@@ -78,7 +82,7 @@ export default function Matches() {
 
   useEffect(() => {
     fetchMatches();
-  }, [regionFilter, platformFilter, modeFilter, sortBy, searchQuery]);
+  }, [regionFilter, platformFilter, modeFilter, sizeFilter, sortBy, searchQuery]);
 
   const handleJoin = async (matchId: string) => {
     if (!user || !wallet) {
@@ -99,6 +103,13 @@ export default function Matches() {
       return;
     }
 
+    // For team matches (2v2, 3v3, 4v4), redirect to match details with join flow
+    if (match.team_size > 1) {
+      navigate(`/matches/${matchId}?join=true`);
+      return;
+    }
+
+    // For 1v1 matches, check balance and join directly
     if (wallet.balance < match.entry_fee) {
       toast({
         title: 'Insufficient balance',
@@ -205,6 +216,18 @@ export default function Matches() {
               <SelectItem value="all">All Modes</SelectItem>
               {GAME_MODES.map(m => (
                 <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={String(sizeFilter)} onValueChange={(v) => setSizeFilter(v === 'all' ? 'all' : parseInt(v) as TeamSize)}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Size" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sizes</SelectItem>
+              {TEAM_SIZES.map(ts => (
+                <SelectItem key={ts.value} value={String(ts.value)}>{ts.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>

@@ -6,7 +6,16 @@ export type Region = 'EU' | 'NA-East' | 'NA-West' | 'OCE' | 'BR' | 'ASIA' | 'ME'
 
 export type Platform = 'PC' | 'Console' | 'Mobile' | 'All';
 
-export type GameMode = 'Box Fight' | 'Realistic' | 'Zone Wars' | '1v1' | '2v2' | '3v3' | '4v4';
+export type GameMode = 'Box Fight' | 'Realistic' | 'Zone Wars';
+
+export type TeamSize = 1 | 2 | 3 | 4;
+
+export const TEAM_SIZES: { value: TeamSize; label: string }[] = [
+  { value: 1, label: '1v1 (Solo)' },
+  { value: 2, label: '2v2 (Duos)' },
+  { value: 3, label: '3v3 (Trios)' },
+  { value: 4, label: '4v4 (Squads)' },
+];
 
 // New comprehensive match status
 export type MatchStatus = 
@@ -243,7 +252,7 @@ export const REGIONS: Region[] = ['EU', 'NA-East', 'NA-West', 'OCE', 'BR', 'ASIA
 
 export const PLATFORMS: Platform[] = ['PC', 'Console', 'Mobile', 'All'];
 
-export const GAME_MODES: GameMode[] = ['Box Fight', 'Realistic', 'Zone Wars', '1v1', '2v2', '3v3', '4v4'];
+export const GAME_MODES: GameMode[] = ['Box Fight', 'Realistic', 'Zone Wars'];
 
 export const FIRST_TO_OPTIONS = [1, 3, 5, 7, 10] as const;
 

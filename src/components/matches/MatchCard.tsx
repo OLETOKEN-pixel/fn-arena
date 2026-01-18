@@ -63,19 +63,23 @@ export function MatchCard({ match, onJoin, isJoining }: MatchCardProps) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 py-3 border-y border-border">
+        <div className="grid grid-cols-4 gap-2 py-3 border-y border-border">
           <div className="text-center">
-            <p className="text-xs text-muted-foreground mb-1">Entry Fee</p>
+            <p className="text-xs text-muted-foreground mb-1">Entry</p>
             <CoinDisplay amount={match.entry_fee} size="sm" />
           </div>
           <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-1">Size</p>
+            <p className="font-semibold text-sm">{match.team_size}v{match.team_size}</p>
+          </div>
+          <div className="text-center">
             <p className="text-xs text-muted-foreground mb-1">First to</p>
-            <p className="font-semibold">{match.first_to}</p>
+            <p className="font-semibold text-sm">{match.first_to}</p>
           </div>
           <div className="text-center">
             <p className="text-xs text-muted-foreground mb-1">Players</p>
             <p className={cn(
-              'font-semibold',
+              'font-semibold text-sm',
               isFull && 'text-warning'
             )}>
               {participantCount}/{maxParticipants}
@@ -121,7 +125,7 @@ export function MatchCard({ match, onJoin, isJoining }: MatchCardProps) {
             onClick={() => onJoin(match.id)}
             disabled={isJoining}
           >
-            {isJoining ? 'Joining...' : 'Join Match'}
+            {isJoining ? 'Joining...' : match.team_size > 1 ? 'Join with Team' : 'Join Match'}
           </Button>
         )}
       </CardFooter>

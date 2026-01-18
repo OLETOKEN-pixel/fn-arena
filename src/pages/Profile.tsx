@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { User, Gamepad2, MapPin, Save, AlertTriangle, CreditCard } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -18,8 +18,12 @@ import { LoadingPage } from '@/components/common/LoadingSpinner';
 export default function Profile() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, profile, loading, refreshProfile, isProfileComplete } = useAuth();
+
+  // Get redirect URL from "next" parameter (set after completing profile)
+  const redirectAfterComplete = searchParams.get('next');
 
   const [epicUsername, setEpicUsername] = useState('');
   const [preferredRegion, setPreferredRegion] = useState<Region>('EU');
@@ -72,6 +76,13 @@ export default function Profile() {
         description: 'Le modifiche sono state salvate.',
       });
       await refreshProfile();
+      
+      // If profile was incomplete and now has epic username, redirect to intended page
+      const wasIncomplete = !isProfileComplete;
+      const nowComplete = !!epicUsername;
+      if (wasIncomplete && nowComplete && redirectAfterComplete) {
+        navigate(redirectAfterComplete, { replace: true });
+      }
     }
 
     setSaving(false);

@@ -79,6 +79,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (error) {
       console.error('Error creating profile for OAuth user:', error);
+      // If duplicate key error (profile already exists), fetch existing profile
+      if (error.code === '23505') {
+        return await fetchProfile(sessionUser.id);
+      }
       return null;
     }
     
@@ -114,6 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => {
+    let initialized = false;
+    
     const initializeUserData = async (sessionUser: User) => {
       let profileData = await fetchProfile(sessionUser.id);
       
@@ -130,16 +136,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
+        // Synchronous state updates only
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer profile/wallet fetch to avoid deadlock
         if (session?.user) {
-          setTimeout(() => {
-            initializeUserData(session.user);
-          }, 0);
+          // Mark as initialized to prevent duplicate calls from getSession
+          if (!initialized) {
+            initialized = true;
+            // Await the initialization directly - no setTimeout
+            await initializeUserData(session.user);
+          }
         } else {
+          initialized = false;
           setProfile(null);
           setWallet(null);
           setLoading(false);
@@ -147,15 +157,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // THEN check for existing session (only if onAuthStateChange hasn't fired yet)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (initialized) return; // Already handled by onAuthStateChange
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        setTimeout(() => {
-          initializeUserData(session.user);
-        }, 0);
+        initialized = true;
+        await initializeUserData(session.user);
       } else {
         setLoading(false);
       }

@@ -10,7 +10,8 @@ import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { EpicUsernameWarning } from '@/components/common/EpicUsernameWarning';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
 import { ReadyUpSection } from '@/components/matches/ReadyUpSection';
-import { ResultDeclaration } from '@/components/matches/ResultDeclaration';
+import { TeamResultDeclaration } from '@/components/matches/TeamResultDeclaration';
+import { TeamParticipantsDisplay } from '@/components/matches/TeamParticipantsDisplay';
 import { TeamSelector } from '@/components/teams/TeamSelector';
 import { PaymentModeSelector } from '@/components/teams/PaymentModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
@@ -447,58 +448,17 @@ export default function MatchDetails() {
           />
         )}
 
-        {/* Result Declaration */}
+        {/* Result Declaration - Captain Only for Team Matches */}
         {showResultDeclaration && user && (
-          <ResultDeclaration
+          <TeamResultDeclaration
             match={match}
             currentUserId={user.id}
             onResultDeclared={fetchMatch}
           />
         )}
 
-        {/* Participants */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Participants ({participantCount}/{maxParticipants})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {match.participants && match.participants.length > 0 ? (
-              <div className="space-y-3">
-                {match.participants.map((p) => (
-                  <div key={p.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary">
-                    <Avatar className="w-10 h-10">
-                      <AvatarImage src={p.profile?.avatar_url ?? undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary">
-                        {p.profile?.username?.charAt(0).toUpperCase() ?? '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{p.profile?.username}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {p.profile?.epic_username ?? 'Epic username not set'}
-                      </p>
-                    </div>
-                    {p.team_side && (
-                      <span className="text-xs text-muted-foreground">
-                        Team {p.team_side}
-                      </span>
-                    )}
-                    {match.result?.winner_user_id === p.user_id && (
-                      <Trophy className="w-5 h-5 text-warning" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-8">
-                No participants yet.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+        {/* Participants - Team vs Team Display */}
+        <TeamParticipantsDisplay match={match} currentUserId={user?.id} />
       </div>
     </MainLayout>
   );

@@ -945,6 +945,10 @@ export type Database = {
       }
       delete_team: { Args: { p_team_id: string }; Returns: Json }
       expire_stale_matches: { Args: never; Returns: undefined }
+      finalize_team_match: {
+        Args: { p_match_id: string; p_winner_side: string }
+        Returns: Json
+      }
       get_team_members_with_balance: {
         Args: { p_team_id: string }
         Returns: {
@@ -1011,6 +1015,10 @@ export type Database = {
       }
       set_player_ready: { Args: { p_match_id: string }; Returns: Json }
       submit_match_result: {
+        Args: { p_match_id: string; p_result: string }
+        Returns: Json
+      }
+      submit_team_result: {
         Args: { p_match_id: string; p_result: string }
         Returns: Json
       }

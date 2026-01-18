@@ -42,7 +42,7 @@ export function useEligibleTeams(teamSize: number, entryFee?: number) {
         *,
         members:team_members(
           *,
-          profile:profiles(*)
+          profile:profiles!team_members_user_id_fkey(*)
         )
       `)
       .in('id', teamIds);

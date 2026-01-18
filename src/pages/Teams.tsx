@@ -70,7 +70,7 @@ export default function Teams() {
             *,
             members:team_members(
               *,
-              profile:profiles(*)
+              profile:profiles!team_members_user_id_fkey(*)
             )
           `)
           .in('id', teamIds);

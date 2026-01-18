@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Users, Plus, Crown, CheckCircle } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ interface TeamWithMembers extends Team {
 
 export default function Teams() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
@@ -35,9 +36,9 @@ export default function Teams() {
 
   useEffect(() => {
     if (!user && !authLoading) {
-      navigate('/auth');
+      navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, location.pathname]);
 
   const fetchTeams = async () => {
     if (!user) return;

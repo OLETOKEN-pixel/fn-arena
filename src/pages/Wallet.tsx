@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Wallet as WalletIcon, Lock, Coins, Plus, Banknote, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,7 @@ const withdrawalStatusConfig: Record<string, { icon: React.ReactNode; variant: '
 
 export default function Wallet() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, profile, wallet, loading: authLoading, refreshWallet } = useAuth();
 
@@ -41,9 +42,9 @@ export default function Wallet() {
 
   useEffect(() => {
     if (!user && !authLoading) {
-      navigate('/auth');
+      navigate(`/auth?next=${encodeURIComponent(location.pathname)}`);
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, location.pathname]);
 
   useEffect(() => {
     if (!user) return;

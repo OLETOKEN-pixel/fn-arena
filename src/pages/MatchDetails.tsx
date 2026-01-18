@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock, Share2, Gamepad2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MatchStatusBadge, RegionBadge, PlatformBadge, ModeBadge } from '@/components/ui/custom-badge';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { EpicUsernameWarning } from '@/components/common/EpicUsernameWarning';
@@ -12,6 +11,8 @@ import { LoadingPage } from '@/components/common/LoadingSpinner';
 import { ReadyUpSection } from '@/components/matches/ReadyUpSection';
 import { TeamResultDeclaration } from '@/components/matches/TeamResultDeclaration';
 import { TeamParticipantsDisplay } from '@/components/matches/TeamParticipantsDisplay';
+import { MatchProgressStepper } from '@/components/matches/MatchProgressStepper';
+import { GameRulesPanel } from '@/components/matches/GameRulesPanel';
 import { TeamSelector } from '@/components/teams/TeamSelector';
 import { PaymentModeSelector } from '@/components/teams/PaymentModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
@@ -227,9 +228,19 @@ export default function MatchDetails() {
   const canAffordSplit = selectedTeam?.memberBalances?.every(m => m.balance >= match.entry_fee) ?? false;
   const canJoinWithTeam = selectedTeam && (paymentMode === 'cover' ? canAffordCover : canAffordSplit);
 
+  const copyMatchLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      title: 'Link copied!',
+      description: 'Match link copied to clipboard',
+    });
+  };
+
+  const prizePool = match.entry_fee * maxParticipants * 0.95;
+
   return (
     <MainLayout showChat={false}>
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Back button */}
         <Link
           to={match.status === 'open' ? '/matches' : '/my-matches'}
@@ -242,76 +253,77 @@ export default function MatchDetails() {
         {/* Epic Username Warning */}
         {user && !isProfileComplete && <EpicUsernameWarning />}
 
-        {/* Match Header */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-12 h-12">
-                  <AvatarImage src={match.creator?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary">
-                    {match.creator?.username?.charAt(0).toUpperCase() ?? '?'}
-                  </AvatarFallback>
-                </Avatar>
+        {/* Premium Match Header */}
+        <Card className="bg-gradient-to-br from-card via-card to-secondary/20 border-border overflow-hidden">
+          <CardContent className="p-6">
+            {/* Top Row - Date & Status */}
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-muted-foreground">
+                Created {formatDistanceToNow(new Date(match.created_at), { addSuffix: true })}
+              </p>
+              <MatchStatusBadge status={match.status} />
+            </div>
+
+            {/* Title Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <Gamepad2 className="w-6 h-6 text-accent" />
+                </div>
                 <div>
-                  <p className="font-semibold">{match.creator?.username}</p>
-                  <p className="text-sm text-muted-foreground">Host</p>
+                  <h1 className="text-2xl font-bold font-display">
+                    {match.team_size}v{match.team_size} {match.mode}
+                  </h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary font-medium">
+                      FN
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      First to {match.first_to}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <MatchStatusBadge status={match.status} />
-                <p className="text-xs text-muted-foreground">
-                  Created {formatDistanceToNow(new Date(match.created_at), { addSuffix: true })}
-                </p>
-              </div>
+              <Button variant="outline" size="sm" onClick={copyMatchLink}>
+                <Share2 className="w-4 h-4 mr-2" />
+                Copy Link
+              </Button>
             </div>
-          </CardHeader>
 
-          <CardContent className="space-y-6">
-            {/* Game & Mode */}
-            <div className="flex flex-wrap gap-2">
-              <ModeBadge mode={match.mode} />
+            {/* Info Badges Row */}
+            <div className="flex flex-wrap items-center gap-3 mb-6">
               <RegionBadge region={match.region} />
               <PlatformBadge platform={match.platform} />
-            </div>
+              
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-sm">
+                <span className="text-muted-foreground">Entry:</span>
+                <CoinDisplay amount={match.entry_fee} size="sm" />
+              </div>
+              
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 border border-accent/20 text-sm">
+                <span className="text-accent font-semibold">Prize:</span>
+                <CoinDisplay amount={prizePool} size="sm" className="text-accent" />
+              </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="text-center p-4 rounded-lg bg-secondary">
-                <p className="text-sm text-muted-foreground mb-1">Entry Fee</p>
-                <CoinDisplay amount={match.entry_fee} size="lg" />
-              </div>
-              <div className="text-center p-4 rounded-lg bg-secondary">
-                <p className="text-sm text-muted-foreground mb-1">Match Size</p>
-                <p className="text-xl font-bold">{match.team_size}v{match.team_size}</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-secondary">
-                <p className="text-sm text-muted-foreground mb-1">Prize Pool</p>
-                <CoinDisplay amount={match.entry_fee * maxParticipants * 0.95} size="lg" />
-              </div>
-              <div className="text-center p-4 rounded-lg bg-secondary">
-                <p className="text-sm text-muted-foreground mb-1">First to</p>
-                <p className="text-xl font-bold">{match.first_to}</p>
-              </div>
-              <div className="text-center p-4 rounded-lg bg-secondary">
-                <p className="text-sm text-muted-foreground mb-1">Players</p>
-                <p className="text-xl font-bold">{participantCount}/{maxParticipants}</p>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-sm">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">{participantCount}/{maxParticipants}</span>
               </div>
             </div>
 
             {/* Status Messages */}
             {match.status === 'open' && isCreator && (
-              <div className="text-center py-4 rounded-lg bg-primary/10 text-primary">
-                <Users className="w-6 h-6 mx-auto mb-2" />
-                <p className="font-medium">Waiting for opponent...</p>
+              <div className="text-center py-4 rounded-lg bg-primary/10 border border-primary/20">
+                <Users className="w-6 h-6 mx-auto mb-2 text-primary" />
+                <p className="font-medium text-primary">Waiting for opponent...</p>
                 <p className="text-sm text-muted-foreground">Your match is live and visible to others</p>
               </div>
             )}
 
             {match.status === 'completed' && (
-              <div className="text-center py-4 rounded-lg bg-success/10 text-success">
-                <Trophy className="w-6 h-6 mx-auto mb-2" />
-                <p className="font-medium">Match Completed</p>
+              <div className="text-center py-4 rounded-lg bg-success/10 border border-success/20">
+                <Trophy className="w-6 h-6 mx-auto mb-2 text-success" />
+                <p className="font-medium text-success">Match Completed</p>
                 {match.result?.winner_user_id === user?.id ? (
                   <p className="text-sm">Congratulations! You won!</p>
                 ) : (
@@ -321,9 +333,9 @@ export default function MatchDetails() {
             )}
 
             {match.status === 'disputed' && (
-              <div className="text-center py-4 rounded-lg bg-destructive/10 text-destructive">
-                <Clock className="w-6 h-6 mx-auto mb-2" />
-                <p className="font-medium">Under Admin Review</p>
+              <div className="text-center py-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                <Clock className="w-6 h-6 mx-auto mb-2 text-destructive" />
+                <p className="font-medium text-destructive">Under Admin Review</p>
                 <p className="text-sm text-muted-foreground">
                   {match.result?.dispute_reason || 'Results conflict - awaiting resolution'}
                 </p>
@@ -331,37 +343,44 @@ export default function MatchDetails() {
             )}
 
             {/* Action Buttons */}
-            {canCancel && (
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={handleCancelMatch}
-                disabled={canceling}
-              >
-                {canceling ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <XCircle className="w-4 h-4 mr-2" />
-                )}
-                Cancel Match
-              </Button>
-            )}
+            <div className="flex flex-wrap gap-3 mt-4">
+              {canCancel && (
+                <Button
+                  variant="destructive"
+                  onClick={handleCancelMatch}
+                  disabled={canceling}
+                >
+                  {canceling ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Cancel Match
+                </Button>
+              )}
 
-            {canLeave && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleLeaveMatch}
-                disabled={leaving}
-              >
-                {leaving ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <XCircle className="w-4 h-4 mr-2" />
-                )}
-                Leave Match
-              </Button>
-            )}
+              {canLeave && (
+                <Button
+                  variant="outline"
+                  onClick={handleLeaveMatch}
+                  disabled={leaving}
+                >
+                  {leaving ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4 mr-2" />
+                  )}
+                  Leave Match
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Progress Stepper */}
+        <Card className="bg-card/50 border-border">
+          <CardContent className="py-4">
+            <MatchProgressStepper status={match.status} />
           </CardContent>
         </Card>
 
@@ -457,8 +476,14 @@ export default function MatchDetails() {
           />
         )}
 
-        {/* Participants - Team vs Team Display */}
-        <TeamParticipantsDisplay match={match} currentUserId={user?.id} />
+        {/* Main Content: Teams + Rules */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr,320px] gap-6">
+          {/* Participants - Team vs Team Display */}
+          <TeamParticipantsDisplay match={match} currentUserId={user?.id} />
+          
+          {/* Game Rules Panel */}
+          <GameRulesPanel />
+        </div>
       </div>
     </MainLayout>
   );

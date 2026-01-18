@@ -39,7 +39,7 @@ export default function TeamDetails() {
         *,
         members:team_members(
           *,
-          profile:profiles(*)
+          profile:profiles!team_members_user_id_fkey(*)
         )
       `)
       .eq('id', id)

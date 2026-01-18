@@ -51,18 +51,25 @@ export function MatchIssueCard({ match, onResolved }: MatchIssueCardProps) {
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string };
+      const result = data as { success: boolean; error?: string; already_resolved?: boolean };
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to resolve');
       }
 
-      toast({
-        title: 'Match Resolved',
-        description: action === 'REFUND_BOTH' 
-          ? 'Both players have been refunded.'
-          : `Winner assigned: ${action === 'TEAM_A_WIN' ? teamA?.profile?.username : teamB?.profile?.username}`,
-      });
+      if (result.already_resolved) {
+        toast({
+          title: 'Already Resolved',
+          description: 'This match was previously resolved. Refreshing data...',
+        });
+      } else {
+        toast({
+          title: 'Match Resolved',
+          description: action === 'REFUND_BOTH' 
+            ? 'Both players have been refunded.'
+            : `Winner assigned: ${action === 'TEAM_A_WIN' ? teamA?.profile?.username : teamB?.profile?.username}`,
+        });
+      }
 
       onResolved();
     } catch (error: any) {

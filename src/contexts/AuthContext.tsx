@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Profile, Wallet } from '@/types';
@@ -11,7 +11,7 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, username: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: (redirectAfter?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshWallet: () => Promise<void>;
@@ -29,6 +29,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isProfileComplete = Boolean(profile?.epic_username);
 
+  const generateUniqueUsername = async (baseUsername: string): Promise<string> => {
+    let username = baseUsername.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20);
+    if (!username) username = 'user';
+    
+    // Check if base username is available
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('username')
+      .ilike('username', username)
+      .maybeSingle();
+    
+    if (!existing) return username;
+    
+    // Add random suffix
+    const suffix = Math.floor(Math.random() * 9999);
+    return `${username.slice(0, 16)}${suffix}`;
+  };
+
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
@@ -41,6 +59,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
     return data as Profile | null;
+  };
+
+  const createProfileForOAuthUser = async (sessionUser: User): Promise<Profile | null> => {
+    const email = sessionUser.email || '';
+    const baseUsername = email.split('@')[0] || 'user';
+    const username = await generateUniqueUsername(baseUsername);
+    
+    const { data: newProfile, error } = await supabase
+      .from('profiles')
+      .insert({
+        user_id: sessionUser.id,
+        username,
+        email,
+        // epic_username remains null → profile is incomplete
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating profile for OAuth user:', error);
+      return null;
+    }
+    
+    return newProfile as Profile;
   };
 
   const fetchWallet = async (userId: string) => {
@@ -57,21 +99,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return data as Wallet | null;
   };
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       const profileData = await fetchProfile(user.id);
       setProfile(profileData);
     }
-  };
+  }, [user]);
 
-  const refreshWallet = async () => {
+  const refreshWallet = useCallback(async () => {
     if (user) {
       const walletData = await fetchWallet(user.id);
       setWallet(walletData);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
+    const initializeUserData = async (sessionUser: User) => {
+      let profileData = await fetchProfile(sessionUser.id);
+      
+      // If no profile exists (new OAuth user), create one
+      if (!profileData) {
+        profileData = await createProfileForOAuthUser(sessionUser);
+      }
+      
+      setProfile(profileData);
+      const walletData = await fetchWallet(sessionUser.id);
+      setWallet(walletData);
+      setLoading(false);
+    };
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -80,12 +136,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Defer profile/wallet fetch to avoid deadlock
         if (session?.user) {
-          setTimeout(async () => {
-            const profileData = await fetchProfile(session.user.id);
-            setProfile(profileData);
-            const walletData = await fetchWallet(session.user.id);
-            setWallet(walletData);
-            setLoading(false);
+          setTimeout(() => {
+            initializeUserData(session.user);
           }, 0);
         } else {
           setProfile(null);
@@ -101,12 +153,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        setTimeout(async () => {
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
-          const walletData = await fetchWallet(session.user.id);
-          setWallet(walletData);
-          setLoading(false);
+        setTimeout(() => {
+          initializeUserData(session.user);
         }, 0);
       } else {
         setLoading(false);
@@ -115,6 +163,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Real-time subscription for wallet updates
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`wallet-${user.id}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'wallets', 
+          filter: `user_id=eq.${user.id}` 
+        },
+        () => {
+          refreshWallet();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user, refreshWallet]);
 
   const signUp = async (email: string, password: string, username: string) => {
     // First, check if username is available (case-insensitive)
@@ -177,7 +250,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = async (redirectAfter?: string) => {
+    // Store redirect destination for after OAuth callback
+    if (redirectAfter) {
+      localStorage.setItem('auth_redirect', redirectAfter);
+    }
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

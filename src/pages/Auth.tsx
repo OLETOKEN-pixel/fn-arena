@@ -19,10 +19,12 @@ export default function Auth() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, signIn, signUp, signInWithGoogle, loading } = useAuth();
+  const { user, profile, signIn, signUp, signInWithGoogle, loading, isProfileComplete } = useAuth();
 
-  // Get redirect URL from "next" parameter, default to "/"
-  const redirectTo = searchParams.get('next') || '/';
+  // Get redirect URL from "next" parameter or localStorage (for OAuth callback)
+  const urlRedirect = searchParams.get('next') || '/';
+  const storedRedirect = typeof window !== 'undefined' ? localStorage.getItem('auth_redirect') : null;
+  const redirectTo = storedRedirect || urlRedirect;
 
   const [mode, setMode] = useState<'signin' | 'signup'>(
     searchParams.get('mode') === 'signup' ? 'signup' : 'signin'
@@ -36,10 +38,21 @@ export default function Auth() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user && !loading) {
-      navigate(redirectTo);
+    if (user && profile && !loading) {
+      // Clear stored redirect
+      localStorage.removeItem('auth_redirect');
+      
+      // If profile is incomplete, redirect to profile first
+      if (!isProfileComplete) {
+        // Pass the original redirect as next param to profile
+        const profileRedirect = redirectTo !== '/' ? `/profile?next=${encodeURIComponent(redirectTo)}` : '/profile';
+        navigate(profileRedirect, { replace: true });
+      } else {
+        // Profile is complete, go to intended destination
+        navigate(redirectTo, { replace: true });
+      }
     }
-  }, [user, loading, navigate, redirectTo]);
+  }, [user, profile, loading, isProfileComplete, navigate, redirectTo]);
 
   const validate = () => {
     const newErrors: typeof errors = {};
@@ -101,7 +114,7 @@ export default function Auth() {
             title: 'Welcome!',
             description: 'Account created successfully.',
           });
-          navigate(redirectTo);
+          // Navigation will be handled by useEffect when user/profile loads
         }
       } else {
         const { error } = await signIn(email, password);
@@ -116,7 +129,7 @@ export default function Auth() {
             title: 'Welcome back!',
             description: 'You are now signed in.',
           });
-          navigate(redirectTo);
+          // Navigation will be handled by useEffect when user/profile loads
         }
       }
     } finally {
@@ -125,17 +138,41 @@ export default function Auth() {
   };
 
   const handleGoogleSignIn = async () => {
-    const { error } = await signInWithGoogle();
-    if (error) {
+    setIsSubmitting(true);
+    try {
+      // Store redirect for after OAuth callback
+      const { error } = await signInWithGoogle(redirectTo);
+      if (error) {
+        console.error('Google sign-in error:', error);
+        let errorMessage = 'Failed to sign in with Google. Please try again.';
+        
+        // Provide more specific error messages
+        if (error.message?.includes('access_denied')) {
+          errorMessage = 'Access denied. Please check your Google account permissions.';
+        } else if (error.message?.includes('popup_closed')) {
+          errorMessage = 'Sign-in popup was closed. Please try again.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        toast({
+          title: 'Google Sign-In Failed',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+      }
+      // Don't set isSubmitting to false on success - we're redirecting
+    } catch (err) {
+      console.error('Google sign-in exception:', err);
       toast({
-        title: 'Google sign in failed',
-        description: error.message,
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
+      setIsSubmitting(false);
     }
-    // Note: Google OAuth will redirect automatically, redirectTo handled by callback
   };
-
 
   if (loading) {
     return (

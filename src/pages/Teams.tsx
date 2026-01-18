@@ -39,21 +39,32 @@ export default function Teams() {
     }
   }, [user, authLoading, navigate]);
 
-  useEffect(() => {
+  const fetchTeams = async () => {
     if (!user) return;
-
-    const fetchTeams = async () => {
+    
+    try {
       // Fetch teams where user is a member
-      const { data: memberData } = await supabase
+      const { data: memberData, error: memberError } = await supabase
         .from('team_members')
         .select('team_id')
         .eq('user_id', user.id)
         .eq('status', 'accepted');
 
+      if (memberError) {
+        console.error('Failed to fetch team memberships:', memberError);
+        toast({
+          title: 'Error loading teams',
+          description: memberError.message,
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
       const teamIds = memberData?.map(m => m.team_id) ?? [];
 
       if (teamIds.length > 0) {
-        const { data: teamsData } = await supabase
+        const { data: teamsData, error: teamsError } = await supabase
           .from('teams')
           .select(`
             *,
@@ -64,15 +75,30 @@ export default function Teams() {
           `)
           .in('id', teamIds);
 
-        if (teamsData) {
+        if (teamsError) {
+          console.error('Failed to fetch teams:', teamsError);
+          toast({
+            title: 'Error loading teams',
+            description: teamsError.message,
+            variant: 'destructive',
+          });
+        } else if (teamsData) {
           setTeams(teamsData as unknown as TeamWithMembers[]);
         }
+      } else {
+        setTeams([]);
       }
-
+    } catch (err) {
+      console.error('Unexpected error fetching teams:', err);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
+  useEffect(() => {
+    if (!user) return;
     fetchTeams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleCreateTeam = async () => {
@@ -106,6 +132,9 @@ export default function Teams() {
 
       setCreateOpen(false);
       setTeamName('');
+
+      // Refetch teams list so it's updated if user navigates back
+      fetchTeams();
 
       // Navigate to team details
       navigate(`/teams/${result.team_id}`);

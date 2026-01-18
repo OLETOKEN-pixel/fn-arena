@@ -30,38 +30,51 @@ export default function TeamDetails() {
   const [leaving, setLeaving] = useState(false);
   const [removingMember, setRemovingMember] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchTeam = async () => {
     if (!id) return;
-
-    const fetchTeam = async () => {
-      const { data, error } = await supabase
-        .from('teams')
-        .select(`
+    
+    const { data, error } = await supabase
+      .from('teams')
+      .select(`
+        *,
+        members:team_members(
           *,
-          members:team_members(
-            *,
-            profile:profiles(*)
-          )
-        `)
-        .eq('id', id)
-        .single();
+          profile:profiles(*)
+        )
+      `)
+      .eq('id', id)
+      .maybeSingle();
 
-      if (error || !data) {
-        toast({
-          title: 'Team not found',
-          description: 'The team you are looking for does not exist.',
-          variant: 'destructive',
-        });
-        navigate('/teams');
-        return;
-      }
+    if (error) {
+      // Show actual error message for debugging
+      console.error('Team fetch error:', error);
+      toast({
+        title: 'Error loading team',
+        description: `${error.message} (code: ${error.code})`,
+        variant: 'destructive',
+      });
+      navigate('/teams');
+      return;
+    }
+    
+    if (!data) {
+      toast({
+        title: 'Team not found',
+        description: 'The team you are looking for does not exist.',
+        variant: 'destructive',
+      });
+      navigate('/teams');
+      return;
+    }
 
-      setTeam(data as unknown as TeamWithMembers);
-      setLoading(false);
-    };
+    setTeam(data as unknown as TeamWithMembers);
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchTeam();
-  }, [id, navigate, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const isOwner = team?.owner_id === user?.id;
   const acceptedMembers = team?.members?.filter(m => m.status === 'accepted') ?? [];
@@ -153,6 +166,8 @@ export default function TeamDetails() {
       title: 'Invite sent!',
       description: 'The user will receive a notification.',
     });
+    // Refresh team to show pending invite
+    fetchTeam();
   };
 
   if (authLoading || loading) {

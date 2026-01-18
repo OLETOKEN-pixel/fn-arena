@@ -34,6 +34,7 @@ function App() {
               <Route path="/auth" element={<Auth />} />
               <Route path="/matches" element={<Matches />} />
               <Route path="/my-matches" element={<MyMatches />} />
+              <Route path="/my-matches/:id" element={<MatchDetails />} />
               <Route path="/matches/:id" element={<MatchDetails />} />
               <Route path="/matches/create" element={<CreateMatch />} />
               <Route path="/profile" element={<Profile />} />

@@ -48,10 +48,10 @@ export default function MatchDetails() {
     if (error) {
       toast({
         title: 'Error',
-        description: 'Match not found',
+        description: 'Match not found or could not be loaded.',
         variant: 'destructive',
       });
-      navigate('/matches');
+      navigate('/my-matches');
       return;
     }
 
@@ -66,7 +66,7 @@ export default function MatchDetails() {
           description: 'You are not a participant in this match.',
           variant: 'destructive',
         });
-        navigate('/matches');
+        navigate('/my-matches');
         return;
       }
     }

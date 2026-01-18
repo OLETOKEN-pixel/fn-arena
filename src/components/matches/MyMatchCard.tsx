@@ -147,7 +147,7 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
           'w-full',
           actionRequired && 'glow-blue'
         )}>
-          <Link to={`/matches/${match.id}`}>
+          <Link to={`/my-matches/${match.id}`}>
             {needsReadyUp ? 'Ready Up' : needsResult ? 'Submit Result' : 'View Details'}
           </Link>
         </Button>

@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import type { Profile, Match, Transaction, WithdrawalRequest } from '@/types';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
-import { DisputeManager } from '@/components/matches/DisputeManager';
+import { MatchIssueCard } from '@/components/matches/MatchIssueCard';
 
 interface WithdrawalWithProfile extends WithdrawalRequest {
   profiles: Profile;
@@ -388,25 +388,39 @@ export default function Admin() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <DisputeManager 
-                  matches={matches} 
-                  onResolved={async () => {
-                    const { data } = await supabase
-                      .from('matches')
-                      .select(`
-                        *, 
-                        creator:profiles!matches_creator_id_fkey(*),
-                        participants:match_participants(
-                          *,
-                          profile:profiles(*)
-                        ),
-                        result:match_results(*)
-                      `)
-                      .order('created_at', { ascending: false })
-                      .limit(50);
-                    if (data) setMatches(data as unknown as Match[]);
-                  }}
-                />
+                {matches.filter(m => m.status === 'disputed').length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No disputed matches</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {matches
+                      .filter(m => m.status === 'disputed')
+                      .map((match) => (
+                        <MatchIssueCard
+                          key={match.id}
+                          match={match}
+                          onResolved={async () => {
+                            const { data } = await supabase
+                              .from('matches')
+                              .select(`
+                                *, 
+                                creator:profiles!matches_creator_id_fkey(*),
+                                participants:match_participants(
+                                  *,
+                                  profile:profiles(*)
+                                ),
+                                result:match_results(*)
+                              `)
+                              .order('created_at', { ascending: false })
+                              .limit(50);
+                            if (data) setMatches(data as unknown as Match[]);
+                          }}
+                        />
+                      ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

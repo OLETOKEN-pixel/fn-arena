@@ -1,30 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Wallet as WalletIcon, ArrowUpRight, ArrowDownLeft, Lock, Coins, Plus, Banknote, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Wallet as WalletIcon, Lock, Coins, Plus, Banknote, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
+import { TransactionHistory } from '@/components/wallet/TransactionHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Transaction, WithdrawalRequest } from '@/types';
-import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/custom-badge';
-
-const transactionIcons: Record<string, React.ReactNode> = {
-  deposit: <ArrowDownLeft className="w-4 h-4 text-success" />,
-  lock: <Lock className="w-4 h-4 text-warning" />,
-  unlock: <Lock className="w-4 h-4 text-muted-foreground" />,
-  payout: <ArrowUpRight className="w-4 h-4 text-success" />,
-  refund: <ArrowDownLeft className="w-4 h-4 text-primary" />,
-  fee: <Coins className="w-4 h-4 text-destructive" />,
-};
 
 const withdrawalStatusConfig: Record<string, { icon: React.ReactNode; variant: 'default' | 'destructive' | 'outline' | 'warning' }> = {
   pending: { icon: <Clock className="w-3 h-3" />, variant: 'warning' },
@@ -334,78 +325,26 @@ export default function Wallet() {
                       <div>
                         <p className="font-medium">{wd.amount.toFixed(2)}€ via {wd.payment_method === 'paypal' ? 'PayPal' : 'Bonifico'}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(wd.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant={withdrawalStatusConfig[wd.status].variant} className="flex items-center gap-1">
-                      {withdrawalStatusConfig[wd.status].icon}
-                      {wd.status === 'pending' && 'In attesa'}
-                      {wd.status === 'approved' && 'Approvato'}
-                      {wd.status === 'completed' && 'Completato'}
-                      {wd.status === 'rejected' && 'Rifiutato'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Transactions */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle>Storico Transazioni</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-12" />
-                ))}
-              </div>
-            ) : transactions.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                Nessuna transazione
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {transactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center">
-                        {transactionIcons[tx.type]}
-                      </div>
-                      <div>
-                        <p className="font-medium capitalize">{tx.type}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {tx.description ?? tx.type}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={cn(
-                        'font-semibold',
-                        ['deposit', 'payout', 'refund', 'unlock'].includes(tx.type) 
-                          ? 'text-success' 
-                          : 'text-foreground'
-                      )}>
-                        {['deposit', 'payout', 'refund', 'unlock'].includes(tx.type) ? '+' : '-'}
-                        {tx.amount.toFixed(2)} Coins
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(tx.created_at).toLocaleDateString()}
+                        {new Date(wd.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <Badge variant={withdrawalStatusConfig[wd.status].variant} className="flex items-center gap-1">
+                    {withdrawalStatusConfig[wd.status].icon}
+                    {wd.status === 'pending' && 'In attesa'}
+                    {wd.status === 'approved' && 'Approvato'}
+                    {wd.status === 'completed' && 'Completato'}
+                    {wd.status === 'rejected' && 'Rifiutato'}
+                  </Badge>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Transactions - Grouped by Match */}
+      <TransactionHistory transactions={transactions} loading={loading} />
       </div>
     </MainLayout>
   );

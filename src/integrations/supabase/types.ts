@@ -943,6 +943,7 @@ export type Database = {
         Args: { p_i_won: boolean; p_match_id: string }
         Returns: Json
       }
+      delete_team: { Args: { p_team_id: string }; Returns: Json }
       get_team_members_with_balance: {
         Args: { p_team_id: string }
         Returns: {

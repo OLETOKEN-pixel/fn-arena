@@ -28,6 +28,7 @@ export default function TeamDetails() {
   const [team, setTeam] = useState<TeamWithMembers | null>(null);
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [removingMember, setRemovingMember] = useState<string | null>(null);
 
   const fetchTeam = async () => {
@@ -120,6 +121,42 @@ export default function TeamDetails() {
       });
     } finally {
       setLeaving(false);
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!team) return;
+    
+    if (!confirm(`Sei sicuro di voler eliminare il team "${team.name}"? Tutti i membri verranno rimossi. Questa azione è irreversibile.`)) {
+      return;
+    }
+    
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.rpc('delete_team', {
+        p_team_id: team.id,
+      });
+
+      if (error) throw error;
+      
+      const result = data as { success: boolean; error?: string } | null;
+      if (result && !result.success) {
+        throw new Error(result.error);
+      }
+
+      toast({
+        title: 'Team eliminato',
+        description: `Il team ${team.name} è stato eliminato.`,
+      });
+      navigate('/teams');
+    } catch (error) {
+      toast({
+        title: 'Errore',
+        description: error instanceof Error ? error.message : 'Impossibile eliminare il team',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -249,6 +286,16 @@ export default function TeamDetails() {
 
             {/* Actions */}
             <div className="flex gap-2 pt-2">
+              {isOwner && (
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteTeam}
+                  disabled={deleting}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {deleting ? 'Eliminando...' : 'Elimina Team'}
+                </Button>
+              )}
               {!isOwner && (
                 <Button
                   variant="destructive"

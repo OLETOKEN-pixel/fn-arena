@@ -7,6 +7,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const logStep = (step: string, details?: unknown) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
+};
+
+// Production domain fallback
+const PRODUCTION_DOMAIN = "https://oleboytoken.lovable.app";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -14,7 +22,31 @@ serve(async (req) => {
   }
 
   try {
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    logStep("Function started");
+
+    // SAFETY CHECK: Verify Stripe key is configured
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) {
+      logStep("CRITICAL: STRIPE_SECRET_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "Payment system not configured. Contact support. [ERR_NO_STRIPE_KEY]" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Detect mode (LIVE vs TEST)
+    const isLiveMode = stripeKey.startsWith("sk_live_");
+    logStep(`Mode: ${isLiveMode ? "LIVE" : "TEST"}`, { keyPrefix: stripeKey.substring(0, 8) });
+
+    // In production, warn if using test keys (but allow for now)
+    const origin = req.headers.get("origin") || PRODUCTION_DOMAIN;
+    const isProductionOrigin = origin.includes("oleboytoken.lovable.app");
+    
+    if (isProductionOrigin && !isLiveMode) {
+      logStep("WARNING: Production origin detected but using TEST Stripe key");
+    }
+
+    const stripe = new Stripe(stripeKey, {
       apiVersion: "2023-10-16",
     });
 
@@ -25,7 +57,7 @@ serve(async (req) => {
     // Get the authorization header to identify the user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      console.log("No authorization header provided");
+      logStep("No authorization header provided");
       return new Response(
         JSON.stringify({ error: "No authorization header" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -37,26 +69,27 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      console.log("Auth error:", authError);
+      logStep("Auth error", authError);
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("User authenticated:", user.id);
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
     // Get the amount from the request body
     const { amount } = await req.json();
     
     if (!amount || amount < 1) {
+      logStep("Invalid amount", { amount });
       return new Response(
         JSON.stringify({ error: "Invalid amount. Minimum is 1 Coin (€1)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Creating checkout session for amount:", amount);
+    logStep("Creating checkout session", { amount, origin });
 
     // Get or create Stripe customer
     let customerId: string | undefined;
@@ -68,7 +101,7 @@ serve(async (req) => {
 
     if (existingCustomers.data.length > 0) {
       customerId = existingCustomers.data[0].id;
-      console.log("Found existing customer:", customerId);
+      logStep("Found existing customer", { customerId });
     } else {
       const newCustomer = await stripe.customers.create({
         email: user.email,
@@ -77,11 +110,8 @@ serve(async (req) => {
         },
       });
       customerId = newCustomer.id;
-      console.log("Created new customer:", customerId);
+      logStep("Created new customer", { customerId });
     }
-
-    // Get the origin for success/cancel URLs
-    const origin = req.headers.get("origin") || "https://lovable.dev";
 
     // Create a Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -101,7 +131,7 @@ serve(async (req) => {
         },
       ],
       mode: "payment",
-      success_url: `${origin}/wallet?success=true&coins=${amount}`,
+      success_url: `${origin}/payment/success?provider=stripe&success=true&coins=${amount}`,
       cancel_url: `${origin}/buy?canceled=true`,
       metadata: {
         user_id: user.id,
@@ -109,7 +139,7 @@ serve(async (req) => {
       },
     });
 
-    console.log("Checkout session created:", session.id);
+    logStep("Checkout session created", { sessionId: session.id, mode: isLiveMode ? "LIVE" : "TEST" });
 
     return new Response(
       JSON.stringify({ url: session.url, sessionId: session.id }),
@@ -118,7 +148,7 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error creating checkout session:", errorMessage);
+    logStep("ERROR", { message: errorMessage });
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

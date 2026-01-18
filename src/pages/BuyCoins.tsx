@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Coins, Sparkles, Check } from 'lucide-react';
+import { ArrowLeft, Sparkles, Check, CreditCard } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
+import { CoinIcon } from '@/components/common/CoinIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { COIN_PACKAGES, type CoinPackage } from '@/types';
 import { cn } from '@/lib/utils';
+
+type PaymentMethod = 'stripe' | 'paypal';
 
 export default function BuyCoins() {
   const navigate = useNavigate();
@@ -21,6 +24,7 @@ export default function BuyCoins() {
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('stripe');
 
   const handleSelectPackage = (pkg: CoinPackage) => {
     setSelectedPackage(pkg);
@@ -53,19 +57,31 @@ export default function BuyCoins() {
     setProcessing(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { amount: finalAmount },
-      });
+      if (paymentMethod === 'stripe') {
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          body: { amount: finalAmount },
+        });
 
-      if (error) {
-        throw error;
-      }
+        if (error) throw error;
 
-      if (data?.url) {
-        // Redirect to Stripe checkout
-        window.location.href = data.url;
+        if (data?.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error('No checkout URL received');
+        }
       } else {
-        throw new Error('No checkout URL received');
+        // PayPal checkout
+        const { data, error } = await supabase.functions.invoke('create-paypal-order', {
+          body: { amount: finalAmount },
+        });
+
+        if (error) throw error;
+
+        if (data?.approvalUrl) {
+          window.location.href = data.approvalUrl;
+        } else {
+          throw new Error('No PayPal approval URL received');
+        }
       }
     } catch (error) {
       console.error('Checkout error:', error);
@@ -117,11 +133,8 @@ export default function BuyCoins() {
                 </div>
               )}
               <CardContent className="pt-6 text-center">
-                <div className="mb-4">
-                  <Coins className={cn(
-                    'w-10 h-10 mx-auto',
-                    selectedPackage?.id === pkg.id ? 'text-accent' : 'text-muted-foreground'
-                  )} />
+                <div className="mb-4 flex justify-center">
+                  <CoinIcon size={selectedPackage?.id === pkg.id ? 'xl' : 'lg'} />
                 </div>
                 <p className="text-2xl font-bold mb-1">
                   {pkg.coins} Coins
@@ -171,6 +184,60 @@ export default function BuyCoins() {
           </CardContent>
         </Card>
 
+        {/* Payment Method Selection */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-lg">Payment Method</CardTitle>
+            <CardDescription>Choose how you want to pay</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('stripe')}
+                className={cn(
+                  'flex items-center gap-3 p-4 rounded-lg border-2 transition-all duration-200',
+                  paymentMethod === 'stripe'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <CreditCard className="w-8 h-8 text-primary" />
+                <div className="text-left">
+                  <p className="font-semibold">Credit Card</p>
+                  <p className="text-xs text-muted-foreground">Visa, Mastercard, etc.</p>
+                </div>
+                {paymentMethod === 'stripe' && (
+                  <Check className="w-5 h-5 text-primary ml-auto" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('paypal')}
+                className={cn(
+                  'flex items-center gap-3 p-4 rounded-lg border-2 transition-all duration-200',
+                  paymentMethod === 'paypal'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border hover:border-primary/50'
+                )}
+              >
+                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none">
+                  <path d="M7.02 21L7.5 18H5.5L8.5 3H15.5C17.14 3 18.47 3.5 19.29 4.41C20.11 5.33 20.36 6.56 20.01 8.01C19.59 9.73 18.59 11.06 17.18 11.88C15.8 12.68 14.03 13.08 12.03 13.08H10.03L9.03 18.08L8.5 21H7.02Z" fill="#003087"/>
+                  <path d="M8.5 18L9 15H11C12.63 15 14.12 14.69 15.29 14.05C16.47 13.4 17.29 12.4 17.67 11.13C18.05 9.87 17.83 8.73 17.11 7.87C16.39 7 15.27 6.54 13.87 6.54H10.87L8.5 18Z" fill="#009CDE"/>
+                </svg>
+                <div className="text-left">
+                  <p className="font-semibold">PayPal</p>
+                  <p className="text-xs text-muted-foreground">Pay with PayPal balance</p>
+                </div>
+                {paymentMethod === 'paypal' && (
+                  <Check className="w-5 h-5 text-primary ml-auto" />
+                )}
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Checkout */}
         <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20">
           <CardContent className="py-6">
@@ -195,12 +262,12 @@ export default function BuyCoins() {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 mr-2" />
-                  {user ? 'Proceed to Checkout' : 'Sign In to Buy'}
+                  {user ? `Pay with ${paymentMethod === 'stripe' ? 'Card' : 'PayPal'}` : 'Sign In to Buy'}
                 </>
               )}
             </Button>
             <p className="text-xs text-center text-muted-foreground mt-4">
-              Secure payment powered by Stripe
+              Secure payment powered by {paymentMethod === 'stripe' ? 'Stripe' : 'PayPal'}
             </p>
           </CardContent>
         </Card>

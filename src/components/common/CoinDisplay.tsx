@@ -1,4 +1,4 @@
-import { Coins } from 'lucide-react';
+import { CoinIcon } from './CoinIcon';
 import { cn } from '@/lib/utils';
 
 interface CoinDisplayProps {
@@ -8,6 +8,12 @@ interface CoinDisplayProps {
   className?: string;
 }
 
+const iconSizeMap = {
+  sm: 'xs' as const,
+  md: 'sm' as const,
+  lg: 'md' as const,
+};
+
 export function CoinDisplay({ 
   amount, 
   size = 'md', 
@@ -16,19 +22,13 @@ export function CoinDisplay({
 }: CoinDisplayProps) {
   return (
     <span className={cn(
-      'inline-flex items-center gap-1 font-semibold text-accent',
+      'inline-flex items-center gap-1.5 font-semibold text-accent',
       size === 'sm' && 'text-sm',
       size === 'md' && 'text-base',
       size === 'lg' && 'text-xl',
       className
     )}>
-      {showIcon && (
-        <Coins className={cn(
-          size === 'sm' && 'w-3.5 h-3.5',
-          size === 'md' && 'w-4 h-4',
-          size === 'lg' && 'w-5 h-5'
-        )} />
-      )}
+      {showIcon && <CoinIcon size={iconSizeMap[size]} />}
       <span>{amount.toFixed(2)}</span>
     </span>
   );

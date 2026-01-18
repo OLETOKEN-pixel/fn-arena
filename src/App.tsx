@@ -19,6 +19,7 @@ import TeamDetails from "./pages/TeamDetails";
 import Notifications from "./pages/Notifications";
 import Wallet from "./pages/Wallet";
 import BuyCoins from "./pages/BuyCoins";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import Admin from "./pages/Admin";
 import AdminMatchDetail from "./pages/AdminMatchDetail";
 import AdminUserDetail from "./pages/AdminUserDetail";
@@ -47,6 +48,7 @@ function App() {
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/buy" element={<BuyCoins />} />
+              <Route path="/payment/success" element={<PaymentSuccess />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/admin/matches/:id" element={<AdminMatchDetail />} />
               <Route path="/admin/users/:id" element={<AdminUserDetail />} />

@@ -22,6 +22,7 @@ export function RecentMatches() {
           participants:match_participants(*)
         `)
         .eq('status', 'open')
+        .gt('expires_at', new Date().toISOString()) // Only non-expired matches
         .order('created_at', { ascending: false })
         .limit(6);
 

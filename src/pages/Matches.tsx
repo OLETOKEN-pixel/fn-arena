@@ -38,7 +38,8 @@ export default function Matches() {
         creator:profiles!matches_creator_id_fkey(*),
         participants:match_participants(*)
       `)
-      .eq('status', 'open'); // Only show OPEN matches
+      .eq('status', 'open')
+      .gt('expires_at', new Date().toISOString()); // Only show non-expired OPEN matches
 
     // Apply filters
     if (regionFilter !== 'all') {

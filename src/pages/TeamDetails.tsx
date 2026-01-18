@@ -71,10 +71,10 @@ export default function TeamDetails() {
 
   const getEligibilityText = () => {
     if (memberCount === 0) return 'No members';
-    if (memberCount === 1) return 'Only 1v1 (solo)';
+    if (memberCount === 1) return 'Invite 1 more for 2v2';
     if (memberCount === 2) return 'Eligible for 2v2';
     if (memberCount === 3) return 'Eligible for 3v3';
-    if (memberCount === 4) return 'Eligible for 2v2, 3v3, 4v4';
+    if (memberCount === 4) return 'Eligible for 4v4';
     return '';
   };
 
@@ -214,9 +214,6 @@ export default function TeamDetails() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {team.description && (
-              <p className="text-muted-foreground">{team.description}</p>
-            )}
 
             {/* Member Progress */}
             <div className="space-y-2">

@@ -11,6 +11,9 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CREATE-PAYPAL-ORDER] ${step}${detailsStr}`);
 };
 
+// Production domain fallback
+const PRODUCTION_DOMAIN = "https://oleboytoken.lovable.app";
+
 const getPayPalBaseUrl = () => {
   const mode = Deno.env.get("PAYPAL_MODE") || "sandbox";
   return mode === "live" 
@@ -56,6 +59,32 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // SAFETY CHECK: Verify PayPal credentials are configured
+    const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
+    const clientSecret = Deno.env.get("PAYPAL_CLIENT_SECRET");
+    const paypalMode = Deno.env.get("PAYPAL_MODE") || "sandbox";
+
+    if (!clientId || !clientSecret) {
+      logStep("CRITICAL: PayPal credentials not configured");
+      return new Response(
+        JSON.stringify({ error: "Payment system not configured. Contact support. [ERR_NO_PAYPAL_CREDS]" }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Detect mode (LIVE vs SANDBOX)
+    const isLiveMode = paypalMode === "live";
+    const baseUrl = getPayPalBaseUrl();
+    logStep(`Mode: ${isLiveMode ? "LIVE" : "SANDBOX"}`, { baseUrl });
+
+    // Production origin check
+    const origin = req.headers.get("origin") || PRODUCTION_DOMAIN;
+    const isProductionOrigin = origin.includes("oleboytoken.lovable.app");
+    
+    if (isProductionOrigin && !isLiveMode) {
+      logStep("WARNING: Production origin detected but using SANDBOX PayPal mode");
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -81,24 +110,22 @@ serve(async (req) => {
       );
     }
 
-    logStep("User authenticated", { userId: user.id });
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
     const { amount } = await req.json();
     
     if (!amount || amount < 1) {
+      logStep("Invalid amount", { amount });
       return new Response(
         JSON.stringify({ error: "Invalid amount. Minimum is 1 Coin (€1)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    logStep("Creating PayPal order for amount", { amount });
+    logStep("Creating PayPal order", { amount, origin, mode: isLiveMode ? "LIVE" : "SANDBOX" });
 
     const accessToken = await getPayPalAccessToken();
     logStep("Got PayPal access token");
-
-    const origin = req.headers.get("origin") || "https://lovable.dev";
-    const baseUrl = getPayPalBaseUrl();
 
     const orderPayload = {
       intent: "CAPTURE",
@@ -137,7 +164,7 @@ serve(async (req) => {
     }
 
     const orderData = await orderResponse.json();
-    logStep("PayPal order created", { orderId: orderData.id });
+    logStep("PayPal order created", { orderId: orderData.id, mode: isLiveMode ? "LIVE" : "SANDBOX" });
 
     // Find approval URL
     const approvalUrl = orderData.links?.find((link: { rel: string }) => link.rel === "approve")?.href;

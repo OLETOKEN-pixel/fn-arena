@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Swords, DollarSign, AlertTriangle, Banknote, CheckCircle, XCircle, TrendingUp, Wallet } from 'lucide-react';
+import { Shield, Users, Swords, DollarSign, AlertTriangle, Banknote, CheckCircle, XCircle, TrendingUp, Wallet, CreditCard } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import { IssueCenter } from '@/components/admin/IssueCenter';
 import { MatchesTable } from '@/components/admin/MatchesTable';
 import { UsersTable } from '@/components/admin/UsersTable';
 import { TransactionsTable } from '@/components/admin/TransactionsTable';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format } from 'date-fns';
 
 interface WithdrawalWithProfile extends WithdrawalRequest {
   profiles: Profile;
@@ -160,6 +162,12 @@ export default function Admin() {
   const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending');
   const disputedCount = matches.filter(m => m.status === 'disputed').length;
 
+  // Payment logs - filter deposit transactions from Stripe/PayPal
+  const paymentLogs = transactions.filter(t => {
+    const tx = t as Transaction & { provider?: string; paypal_order_id?: string };
+    return t.type === 'deposit' && (tx.provider === 'stripe' || tx.provider === 'paypal' || t.stripe_session_id || tx.paypal_order_id);
+  });
+
   if (authLoading || isAdmin === null) return <MainLayout><LoadingPage /></MainLayout>;
   if (isAdmin !== true) return null;
 
@@ -214,6 +222,10 @@ export default function Admin() {
             <TabsTrigger value="matches">Match</TabsTrigger>
             <TabsTrigger value="users">Utenti</TabsTrigger>
             <TabsTrigger value="transactions">Transazioni</TabsTrigger>
+            <TabsTrigger value="payments" className="relative">
+              <CreditCard className="w-4 h-4 mr-1" />
+              Payment Logs
+            </TabsTrigger>
             <TabsTrigger value="withdrawals" className="relative">
               Prelievi
               {pendingWithdrawals.length > 0 && (
@@ -247,6 +259,96 @@ export default function Admin() {
             <Card className="bg-card border-border">
               <CardContent className="pt-4">
                 <TransactionsTable transactions={transactions} loading={loading} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Payment Logs Tab */}
+          <TabsContent value="payments">
+            <Card className="bg-card border-border">
+              <CardHeader className="py-3">
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-accent" />
+                  Payment Logs (Stripe/PayPal)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? <Skeleton className="h-48" /> : paymentLogs.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">Nessun pagamento registrato</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Provider</TableHead>
+                          <TableHead>Coins</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>External ID</TableHead>
+                          <TableHead>User ID</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paymentLogs.slice(0, 50).map((tx) => {
+                          const extTx = tx as Transaction & { provider?: string; paypal_order_id?: string };
+                          const externalId = tx.stripe_session_id || extTx.paypal_order_id || '-';
+                          const provider = extTx.provider || (tx.stripe_session_id ? 'stripe' : extTx.paypal_order_id ? 'paypal' : 'unknown');
+                          
+                          return (
+                            <TableRow key={tx.id}>
+                              <TableCell className="text-sm">
+                                {format(new Date(tx.created_at || ''), 'dd/MM/yy HH:mm')}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={provider === 'stripe' ? 'default' : 'outline'} className="uppercase text-xs">
+                                  {provider}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-bold text-accent">
+                                +{tx.amount}
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={tx.status === 'completed' ? 'success' : tx.status === 'pending' ? 'warning' : 'destructive'}
+                                >
+                                  {tx.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-mono text-xs max-w-[200px] truncate" title={externalId}>
+                                {externalId.length > 25 ? `${externalId.substring(0, 25)}...` : externalId}
+                              </TableCell>
+                              <TableCell className="font-mono text-xs max-w-[100px] truncate" title={tx.user_id}>
+                                {tx.user_id.substring(0, 8)}...
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+                
+                {/* Summary stats */}
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-secondary p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Totale Pagamenti</p>
+                    <p className="text-xl font-bold">{paymentLogs.length}</p>
+                  </div>
+                  <div className="bg-secondary p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Completati</p>
+                    <p className="text-xl font-bold text-green-500">{paymentLogs.filter(t => t.status === 'completed').length}</p>
+                  </div>
+                  <div className="bg-secondary p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Pending</p>
+                    <p className="text-xl font-bold text-yellow-500">{paymentLogs.filter(t => t.status === 'pending').length}</p>
+                  </div>
+                  <div className="bg-secondary p-3 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Coins Accreditati</p>
+                    <p className="text-xl font-bold text-accent">
+                      {paymentLogs.filter(t => t.status === 'completed').reduce((sum, t) => sum + t.amount, 0)}
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

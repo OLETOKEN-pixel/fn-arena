@@ -52,10 +52,10 @@ export default function MatchDetails() {
       .from('matches')
       .select(`
         *,
-        creator:profiles!matches_creator_id_fkey(*),
+        creator:profiles!matches_creator_id_fkey(user_id, username, avatar_url, epic_username),
         participants:match_participants(
           *,
-          profile:profiles(*)
+          profile:profiles(user_id, username, avatar_url, epic_username)
         ),
         result:match_results(*)
       `)

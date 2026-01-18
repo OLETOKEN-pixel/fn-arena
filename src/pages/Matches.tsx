@@ -35,7 +35,7 @@ export default function Matches() {
       .from('matches')
       .select(`
         *,
-        creator:profiles!matches_creator_id_fkey(*),
+        creator:profiles!matches_creator_id_fkey(user_id, username, avatar_url, epic_username),
         participants:match_participants(*)
       `)
       .eq('status', 'open')

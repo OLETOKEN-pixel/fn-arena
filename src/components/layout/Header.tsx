@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, LogIn, LogOut, Menu, X, Coins } from 'lucide-react';
+import { Search, Bell, LogIn, LogOut, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
-import { cn } from '@/lib/utils';
+import { CoinIcon } from '@/components/common/CoinIcon';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -78,7 +78,7 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
                 to="/wallet"
                 className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
               >
-                <Coins className="w-4 h-4 text-accent" />
+                <CoinIcon size="sm" />
                 <span className="font-medium text-sm">
                   {wallet?.balance?.toFixed(2) ?? '0.00'}
                 </span>

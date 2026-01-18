@@ -681,6 +681,9 @@ export type Database = {
           description: string | null
           id: string
           match_id: string | null
+          paypal_capture_id: string | null
+          paypal_order_id: string | null
+          provider: string | null
           status: string | null
           stripe_session_id: string | null
           type: string
@@ -692,6 +695,9 @@ export type Database = {
           description?: string | null
           id?: string
           match_id?: string | null
+          paypal_capture_id?: string | null
+          paypal_order_id?: string | null
+          provider?: string | null
           status?: string | null
           stripe_session_id?: string | null
           type: string
@@ -703,6 +709,9 @@ export type Database = {
           description?: string | null
           id?: string
           match_id?: string | null
+          paypal_capture_id?: string | null
+          paypal_order_id?: string | null
+          provider?: string | null
           status?: string | null
           stripe_session_id?: string | null
           type?: string

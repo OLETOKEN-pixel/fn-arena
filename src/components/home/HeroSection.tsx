@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Swords, Coins, Trophy } from 'lucide-react';
+import { Swords, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { CoinIcon } from '@/components/common/CoinIcon';
 import logoOleboy from '@/assets/logo-oleboy.png';
 
 export function HeroSection() {
@@ -16,12 +17,31 @@ export function HeroSection() {
 
       <div className="relative max-w-4xl mx-auto text-center px-4">
         {/* Logo */}
-        <div className="mb-8 flex justify-center">
+        <div className="mb-6 flex justify-center">
           <img 
             src={logoOleboy} 
             alt="OLEBOY TOKEN" 
             className="w-24 h-24 lg:w-32 lg:h-32 object-contain animate-float"
           />
+        </div>
+
+        {/* Clickable Coin - Buy Coins CTA */}
+        <div className="mb-8 flex justify-center">
+          <Link 
+            to="/buy" 
+            className="group cursor-pointer transition-all duration-200"
+            aria-label="Buy Coins"
+          >
+            <div className="relative">
+              <CoinIcon 
+                size="hero" 
+                className="transition-all duration-200 group-hover:scale-105 group-hover:drop-shadow-[0_0_20px_rgba(245,158,11,0.6)]" 
+              />
+              <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                Buy Coins
+              </span>
+            </div>
+          </Link>
         </div>
 
         {/* Title */}
@@ -53,7 +73,7 @@ export function HeroSection() {
               </Button>
               <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
                 <Link to="/buy">
-                  <Coins className="w-5 h-5 mr-2" />
+                  <CoinIcon size="sm" className="mr-2" />
                   Buy Coins
                 </Link>
               </Button>
@@ -82,7 +102,7 @@ export function HeroSection() {
             <p className="text-xs text-muted-foreground">Matches Played</p>
           </div>
           <div className="p-4 rounded-lg bg-card border border-border">
-            <Coins className="w-6 h-6 text-accent mx-auto mb-2" />
+            <CoinIcon size="md" className="mx-auto mb-2" />
             <p className="text-2xl font-bold">€50K+</p>
             <p className="text-xs text-muted-foreground">Prizes Won</p>
           </div>

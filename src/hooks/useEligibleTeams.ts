@@ -42,7 +42,7 @@ export function useEligibleTeams(teamSize: number, entryFee?: number) {
         *,
         members:team_members(
           *,
-          profile:profiles!team_members_user_id_fkey(*)
+          profile:profiles!team_members_user_id_fkey(user_id, username, avatar_url, epic_username)
         )
       `)
       .in('id', teamIds);

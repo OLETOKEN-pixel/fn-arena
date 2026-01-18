@@ -36,15 +36,15 @@ export function MatchProgressStepper({ status }: MatchProgressStepperProps) {
   const activeStep = getActiveStep(status);
 
   return (
-    <div className="w-full py-4">
+    <div className="w-full py-2">
       <div className="relative flex items-center justify-between">
         {/* Progress Line Background */}
-        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-secondary rounded-full mx-8" />
+        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-secondary rounded-full mx-6" />
         
         {/* Progress Line Active */}
         <div 
-          className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-accent to-accent/80 rounded-full mx-8 transition-all duration-500"
-          style={{ width: `calc(${((activeStep - 1) / (steps.length - 1)) * 100}% - 4rem)` }}
+          className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-r from-accent to-accent/80 rounded-full mx-6 transition-all duration-500"
+          style={{ width: `calc(${((activeStep - 1) / (steps.length - 1)) * 100}% - 3rem)` }}
         />
 
         {/* Steps */}
@@ -59,33 +59,30 @@ export function MatchProgressStepper({ status }: MatchProgressStepperProps) {
               {/* Step Circle */}
               <div
                 className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 border-2",
+                  "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 border-2",
                   isCompleted && "bg-accent border-accent text-accent-foreground",
                   isActive && "bg-accent/20 border-accent text-accent glow-gold",
                   isPending && "bg-secondary border-border text-muted-foreground"
                 )}
               >
                 {isCompleted ? (
-                  <Check className="w-5 h-5" />
+                  <Check className="w-4 h-4" />
                 ) : (
-                  <Icon className={cn("w-5 h-5", isActive && "animate-pulse")} />
+                  <Icon className={cn("w-4 h-4", isActive && "animate-pulse")} />
                 )}
               </div>
 
               {/* Label */}
-              <div className="mt-3 text-center">
+              <div className="mt-1 text-center">
                 <p
                   className={cn(
-                    "text-sm font-semibold transition-colors",
+                    "text-xs font-semibold transition-colors",
                     isCompleted && "text-accent",
                     isActive && "text-accent glow-text-gold",
                     isPending && "text-muted-foreground"
                   )}
                 >
                   {step.label}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block max-w-[100px]">
-                  {step.description}
                 </p>
               </div>
             </div>

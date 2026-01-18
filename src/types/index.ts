@@ -37,6 +37,10 @@ export type TeamSide = 'A' | 'B';
 
 export type ResultChoice = 'WIN' | 'LOSS';
 
+export type PaymentMode = 'cover' | 'split';
+
+export type NotificationType = 'team_invite' | 'invite_accepted' | 'invite_declined' | 'removed_from_team' | 'member_left' | 'match_result';
+
 export interface Profile {
   id: string;
   user_id: string;
@@ -116,6 +120,25 @@ export interface TeamMember {
   profile?: Profile;
 }
 
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  title: string;
+  message: string | null;
+  payload: {
+    team_id?: string;
+    team_name?: string;
+    team_tag?: string;
+    invited_by_user_id?: string;
+    invited_by_username?: string;
+    match_id?: string;
+    [key: string]: unknown;
+  };
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface Match {
   id: string;
   creator_id: string;
@@ -133,9 +156,15 @@ export interface Match {
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
+  team_a_id?: string | null;
+  team_b_id?: string | null;
+  payment_mode_host?: PaymentMode;
+  payment_mode_joiner?: PaymentMode;
   creator?: Profile;
   participants?: MatchParticipant[];
   result?: MatchResult;
+  team_a?: Team;
+  team_b?: Team;
 }
 
 export interface MatchParticipant {
@@ -197,6 +226,16 @@ export interface CoinPackage {
   price: number;
   popular?: boolean;
   bonus?: number;
+}
+
+// Team with balance info for payment checks
+export interface TeamMemberWithBalance {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  role: string;
+  balance: number;
+  has_sufficient_balance: boolean;
 }
 
 // Constants

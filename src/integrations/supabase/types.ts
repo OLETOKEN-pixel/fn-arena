@@ -279,11 +279,15 @@ export type Database = {
           id: string
           is_private: boolean | null
           mode: string
+          payment_mode_host: string | null
+          payment_mode_joiner: string | null
           platform: string
           private_code: string | null
           region: string
           started_at: string | null
           status: string | null
+          team_a_id: string | null
+          team_b_id: string | null
           team_size: number | null
         }
         Insert: {
@@ -297,11 +301,15 @@ export type Database = {
           id?: string
           is_private?: boolean | null
           mode: string
+          payment_mode_host?: string | null
+          payment_mode_joiner?: string | null
           platform: string
           private_code?: string | null
           region: string
           started_at?: string | null
           status?: string | null
+          team_a_id?: string | null
+          team_b_id?: string | null
           team_size?: number | null
         }
         Update: {
@@ -315,11 +323,15 @@ export type Database = {
           id?: string
           is_private?: boolean | null
           mode?: string
+          payment_mode_host?: string | null
+          payment_mode_joiner?: string | null
           platform?: string
           private_code?: string | null
           region?: string
           started_at?: string | null
           status?: string | null
+          team_a_id?: string | null
+          team_b_id?: string | null
           team_size?: number | null
         }
         Relationships: [
@@ -344,7 +356,54 @@ export type Database = {
             referencedRelation: "profiles_public"
             referencedColumns: ["user_id"]
           },
+          {
+            foreignKeyName: "matches_team_a_id_fkey"
+            columns: ["team_a_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_team_b_id_fkey"
+            columns: ["team_b_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          payload: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          payload?: Json | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          payload?: Json | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       platform_earnings: {
         Row: {
@@ -865,9 +924,34 @@ export type Database = {
         Args: { p_match_id: string; p_winner_user_id: string }
         Returns: Json
       }
+      create_team_match: {
+        Args: {
+          p_entry_fee: number
+          p_first_to: number
+          p_is_private?: boolean
+          p_mode: string
+          p_payment_mode: string
+          p_platform: string
+          p_region: string
+          p_team_id: string
+          p_team_size: number
+        }
+        Returns: Json
+      }
       declare_match_result: {
         Args: { p_i_won: boolean; p_match_id: string }
         Returns: Json
+      }
+      get_team_members_with_balance: {
+        Args: { p_team_id: string }
+        Returns: {
+          avatar_url: string
+          balance: number
+          has_sufficient_balance: boolean
+          role: string
+          user_id: string
+          username: string
+        }[]
       }
       has_role: {
         Args: {
@@ -878,7 +962,12 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       join_match_v2: { Args: { p_match_id: string }; Returns: Json }
+      join_team_match: {
+        Args: { p_match_id: string; p_payment_mode: string; p_team_id: string }
+        Returns: Json
+      }
       leave_match: { Args: { p_match_id: string }; Returns: Json }
+      leave_team: { Args: { p_team_id: string }; Returns: Json }
       lock_funds_for_match: {
         Args: { p_amount: number; p_match_id: string }
         Returns: Json
@@ -893,6 +982,27 @@ export type Database = {
       }
       record_platform_fee: {
         Args: { p_fee_amount: number; p_match_id: string }
+        Returns: Json
+      }
+      remove_team_member: {
+        Args: { p_team_id: string; p_user_id: string }
+        Returns: Json
+      }
+      respond_to_invite: {
+        Args: { p_action: string; p_team_id: string }
+        Returns: Json
+      }
+      search_users_for_invite: {
+        Args: { p_search_term: string; p_team_id: string }
+        Returns: {
+          avatar_url: string
+          epic_username: string
+          user_id: string
+          username: string
+        }[]
+      }
+      send_team_invite: {
+        Args: { p_invitee_user_id: string; p_team_id: string }
         Returns: Json
       }
       set_player_ready: { Args: { p_match_id: string }; Returns: Json }

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MatchStatusBadge, RegionBadge, PlatformBadge, ModeBadge } from '@/components/ui/custom-badge';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
@@ -11,14 +11,23 @@ import { EpicUsernameWarning } from '@/components/common/EpicUsernameWarning';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
 import { ReadyUpSection } from '@/components/matches/ReadyUpSection';
 import { ResultDeclaration } from '@/components/matches/ResultDeclaration';
+import { TeamSelector } from '@/components/teams/TeamSelector';
+import { PaymentModeSelector } from '@/components/teams/PaymentModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import type { Match } from '@/types';
+import type { Match, Team, TeamMember, Profile, TeamMemberWithBalance, PaymentMode } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
+
+interface SelectedTeam extends Team {
+  members: (TeamMember & { profile: Profile })[];
+  memberBalances?: TeamMemberWithBalance[];
+  acceptedMemberCount: number;
+}
 
 export default function MatchDetails() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, profile, wallet, isProfileComplete, refreshWallet } = useAuth();
@@ -27,6 +36,12 @@ export default function MatchDetails() {
   const [loading, setLoading] = useState(true);
   const [canceling, setCanceling] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  
+  // Team join state
+  const isJoinMode = searchParams.get('join') === 'true';
+  const [selectedTeam, setSelectedTeam] = useState<SelectedTeam | null>(null);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>('cover');
+  const [joining, setJoining] = useState(false);
 
   const fetchMatch = async () => {
     if (!id) return;
@@ -149,9 +164,47 @@ export default function MatchDetails() {
     }
   };
 
+  const handleJoinWithTeam = async () => {
+    if (!match || !selectedTeam) return;
+    
+    setJoining(true);
+    
+    try {
+      const { data, error } = await supabase.rpc('join_team_match', {
+        p_match_id: match.id,
+        p_team_id: selectedTeam.id,
+        p_payment_mode: paymentMode,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string };
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to join');
+      }
+
+      toast({
+        title: 'Team Joined!',
+        description: 'Your team has joined the match. Get ready!',
+      });
+
+      await refreshWallet();
+      // Remove join param and refresh
+      navigate(`/matches/${match.id}`, { replace: true });
+      fetchMatch();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to join match',
+        variant: 'destructive',
+      });
+    } finally {
+      setJoining(false);
+    }
+  };
+
   if (loading) return <MainLayout><LoadingPage /></MainLayout>;
   if (!match) return null;
-
   const participantCount = match.participants?.length ?? 0;
   const maxParticipants = match.team_size * 2;
   const isCreator = user?.id === match.creator_id;
@@ -163,6 +216,15 @@ export default function MatchDetails() {
   
   const showReadyUp = match.status === 'ready_check' && isParticipant;
   const showResultDeclaration = isParticipant && (match.status === 'in_progress' || match.status === 'result_pending');
+  
+  // Show team join UI for team matches when in join mode
+  const showTeamJoin = isJoinMode && match.status === 'open' && match.team_size > 1 && !isParticipant && user;
+  
+  // Calculate costs for team join
+  const totalTeamCost = match.entry_fee * match.team_size;
+  const canAffordCover = wallet && wallet.balance >= totalTeamCost;
+  const canAffordSplit = selectedTeam?.memberBalances?.every(m => m.balance >= match.entry_fee) ?? false;
+  const canJoinWithTeam = selectedTeam && (paymentMode === 'cover' ? canAffordCover : canAffordSplit);
 
   return (
     <MainLayout showChat={false}>
@@ -213,10 +275,14 @@ export default function MatchDetails() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center p-4 rounded-lg bg-secondary">
                 <p className="text-sm text-muted-foreground mb-1">Entry Fee</p>
                 <CoinDisplay amount={match.entry_fee} size="lg" />
+              </div>
+              <div className="text-center p-4 rounded-lg bg-secondary">
+                <p className="text-sm text-muted-foreground mb-1">Match Size</p>
+                <p className="text-xl font-bold">{match.team_size}v{match.team_size}</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-secondary">
                 <p className="text-sm text-muted-foreground mb-1">Prize Pool</p>
@@ -297,6 +363,80 @@ export default function MatchDetails() {
             )}
           </CardContent>
         </Card>
+
+        {/* Team Join Section */}
+        {showTeamJoin && (
+          <Card className="bg-card border-border border-primary/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                Join with Your Team
+              </CardTitle>
+              <CardDescription>
+                Select a team with exactly {match.team_size} members to join this {match.team_size}v{match.team_size} match
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TeamSelector
+                teamSize={match.team_size}
+                entryFee={match.entry_fee}
+                selectedTeamId={selectedTeam?.id ?? null}
+                onSelectTeam={(team) => setSelectedTeam(team as SelectedTeam | null)}
+                paymentMode={paymentMode}
+              />
+
+              {selectedTeam && (
+                <PaymentModeSelector
+                  paymentMode={paymentMode}
+                  onChangePaymentMode={setPaymentMode}
+                  entryFee={match.entry_fee}
+                  teamSize={match.team_size}
+                  memberBalances={selectedTeam.memberBalances}
+                  userBalance={wallet?.balance ?? 0}
+                />
+              )}
+
+              <div className="p-4 rounded-lg bg-secondary space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Entry Fee (per player):</span>
+                  <CoinDisplay amount={match.entry_fee} />
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Team Cost ({match.team_size} players):</span>
+                  <CoinDisplay amount={totalTeamCost} />
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Payment:</span>
+                  <span>{paymentMode === 'cover' ? 'You pay all' : 'Split between members'}</span>
+                </div>
+              </div>
+
+              <Button
+                size="lg"
+                className="w-full glow-blue"
+                onClick={handleJoinWithTeam}
+                disabled={joining || !canJoinWithTeam}
+              >
+                {joining ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Joining...
+                  </>
+                ) : (
+                  'Join with this Team'
+                )}
+              </Button>
+
+              {selectedTeam && !canJoinWithTeam && (
+                <p className="text-sm text-destructive text-center">
+                  {paymentMode === 'cover' 
+                    ? `Insufficient balance. You need ${totalTeamCost} Coins.`
+                    : 'Some team members have insufficient balance.'}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Ready Up Section */}
         {showReadyUp && user && (

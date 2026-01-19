@@ -35,9 +35,10 @@ export function HighlightCard({
   onDelete,
 }: HighlightCardProps) {
   const [imageError, setImageError] = useState(false);
+  // Use hqdefault as primary (always available), fallback to mqdefault
   const thumbnailUrl = imageError
-    ? `https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`
-    : `https://img.youtube.com/vi/${youtubeVideoId}/maxresdefault.jpg`;
+    ? `https://img.youtube.com/vi/${youtubeVideoId}/mqdefault.jpg`
+    : `https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`;
   
   const canManage = currentUserId === author.userId;
   const canDelete = canManage || isAdmin;

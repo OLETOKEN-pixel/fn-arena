@@ -81,6 +81,13 @@ export type Database = {
             foreignKeyName: "chat_messages_deleted_by_fkey"
             columns: ["deleted_by"]
             isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chat_messages_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -96,6 +103,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -148,6 +162,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fk_highlights_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -267,6 +288,13 @@ export type Database = {
             foreignKeyName: "match_participants_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "match_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -310,6 +338,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fk_match_proofs_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -400,6 +435,13 @@ export type Database = {
             foreignKeyName: "match_results_resolved_by_fkey"
             columns: ["resolved_by"]
             isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "match_results_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -422,6 +464,13 @@ export type Database = {
             columns: ["winner_user_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "match_results_winner_user_id_fkey"
+            columns: ["winner_user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -513,6 +562,13 @@ export type Database = {
             columns: ["creator_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "matches_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -722,6 +778,13 @@ export type Database = {
             foreignKeyName: "team_members_invited_by_fkey"
             columns: ["invited_by"]
             isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "team_members_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -744,6 +807,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -799,6 +869,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "teams_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -890,6 +967,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -990,6 +1074,13 @@ export type Database = {
             foreignKeyName: "wallets_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "leaderboard_weekly"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "wallets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -1051,6 +1142,13 @@ export type Database = {
             foreignKeyName: "withdrawal_requests_processed_by_fkey"
             columns: ["processed_by"]
             isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -1066,6 +1164,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "leaderboard"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "withdrawal_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_weekly"
             referencedColumns: ["user_id"]
           },
           {
@@ -1095,6 +1200,15 @@ export type Database = {
           user_id: string | null
           username: string | null
           wins: number | null
+        }
+        Relationships: []
+      }
+      leaderboard_weekly: {
+        Row: {
+          avatar_url: string | null
+          user_id: string | null
+          username: string | null
+          weekly_earned: number | null
         }
         Relationships: []
       }
@@ -1138,6 +1252,7 @@ export type Database = {
         Returns: Json
       }
       admin_global_search: { Args: { p_query: string }; Returns: Json }
+      admin_prepare_delete_user: { Args: { p_user_id: string }; Returns: Json }
       admin_resolve_dispute: {
         Args: {
           p_admin_notes?: string
@@ -1152,6 +1267,10 @@ export type Database = {
       }
       cancel_match_v2: { Args: { p_match_id: string }; Returns: Json }
       change_username_vip: { Args: { p_new_username: string }; Returns: Json }
+      check_epic_username_available: {
+        Args: { p_epic_username: string; p_user_id?: string }
+        Returns: boolean
+      }
       check_username_available: {
         Args: { p_username: string }
         Returns: boolean
@@ -1187,6 +1306,7 @@ export type Database = {
         Returns: Json
       }
       get_admin_issue_stats: { Args: never; Returns: Json }
+      get_player_stats: { Args: { p_user_id: string }; Returns: Json }
       get_team_members_with_balance: {
         Args: { p_team_id: string }
         Returns: {

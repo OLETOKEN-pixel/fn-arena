@@ -13,6 +13,7 @@ import { TeamResultDeclaration } from '@/components/matches/TeamResultDeclaratio
 import { TeamParticipantsDisplay } from '@/components/matches/TeamParticipantsDisplay';
 import { MatchProgressStepper } from '@/components/matches/MatchProgressStepper';
 import { GameRulesPanel } from '@/components/matches/GameRulesPanel';
+import { ProofSection } from '@/components/matches/ProofSection';
 import { TeamSelector } from '@/components/teams/TeamSelector';
 import { PaymentModeSelector } from '@/components/teams/PaymentModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
@@ -455,6 +456,16 @@ export default function MatchDetails() {
             match={match}
             currentUserId={user.id}
             onResultDeclared={fetchMatch}
+          />
+        )}
+
+        {/* Proof Screenshots Section */}
+        {user && isParticipant && (
+          <ProofSection
+            matchId={match.id}
+            currentUserId={user.id}
+            isAdmin={profile?.role === 'admin'}
+            isParticipant={isParticipant}
           />
         )}
 

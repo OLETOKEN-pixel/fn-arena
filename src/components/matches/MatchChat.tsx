@@ -179,51 +179,42 @@ export function MatchChat({
   if (!isParticipant && !isAdmin) return null;
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-card via-card to-secondary/10 rounded-xl border border-border/50 overflow-hidden shadow-lg">
-      {/* Header - Premium Style */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-secondary/30">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/30">
-            <MessageSquare className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <span className="font-semibold text-base">Match Chat</span>
-            <p className="text-xs text-muted-foreground">
-              {messages.length} messages
-            </p>
-          </div>
+    <div className="flex flex-col h-full bg-card rounded-lg border border-border/50 overflow-hidden">
+      {/* Header - Compact */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 bg-secondary/30">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-primary" />
+          <span className="font-medium text-sm">Chat</span>
+          <span className="text-xs text-muted-foreground">({messages.length})</span>
         </div>
         {isReadOnly && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-muted-foreground border border-border/30">
-            <Lock className="w-3.5 h-3.5" />
-            <span className="text-xs font-medium">Read-only</span>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/50 text-muted-foreground">
+            <Lock className="w-3 h-3" />
+            <span className="text-[10px]">Closed</span>
           </div>
         )}
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-2" ref={scrollRef}>
         {loading ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center mb-4">
-              <MessagesSquare className="w-8 h-8 text-muted-foreground/50" />
-            </div>
-            <p className="text-base font-medium text-muted-foreground">No messages yet</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">Start the conversation!</p>
+          <div className="flex flex-col items-center justify-center h-full text-center py-6">
+            <MessagesSquare className="w-8 h-8 text-muted-foreground/40 mb-2" />
+            <p className="text-sm text-muted-foreground">No messages</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {messages.map((msg) => {
               const isOwnMessage = msg.user_id === currentUserId;
               
               if (msg.is_system) {
                 return (
                   <div key={msg.id} className="flex justify-center">
-                    <span className="text-xs bg-secondary/50 px-3 py-1.5 rounded-full text-muted-foreground border border-border/30">
+                    <span className="text-[10px] bg-secondary/50 px-2 py-1 rounded-full text-muted-foreground">
                       {msg.message}
                     </span>
                   </div>
@@ -234,42 +225,39 @@ export function MatchChat({
                 <div
                   key={msg.id}
                   className={cn(
-                    'flex gap-3',
+                    'flex gap-2',
                     isOwnMessage && 'flex-row-reverse'
                   )}
                 >
                   <Avatar className={cn(
-                    "w-9 h-9 flex-shrink-0 border-2",
-                    isOwnMessage ? "border-accent/50" : "border-border"
+                    "w-6 h-6 flex-shrink-0",
+                    isOwnMessage ? "border border-accent/50" : "border border-border"
                   )}>
                     <AvatarImage src={msg.avatar_url || undefined} />
-                    <AvatarFallback className={cn(
-                      "text-xs font-bold",
-                      isOwnMessage ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"
-                    )}>
+                    <AvatarFallback className="text-[10px] font-bold">
                       {msg.username?.charAt(0).toUpperCase() || '?'}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className={cn(
-                    'flex flex-col max-w-[75%]',
+                    'flex flex-col max-w-[80%]',
                     isOwnMessage && 'items-end'
                   )}>
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-1.5 mb-0.5">
                       <span className={cn(
-                        'text-sm font-semibold',
+                        'text-xs font-medium',
                         isOwnMessage ? 'text-accent' : 'text-foreground'
                       )}>
                         {msg.username}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground">
                         {format(new Date(msg.created_at), 'HH:mm')}
                       </span>
                     </div>
                     <div className={cn(
-                      'rounded-2xl px-4 py-2.5 text-sm break-words shadow-sm',
+                      'rounded-lg px-2.5 py-1.5 text-xs break-words',
                       isOwnMessage 
-                        ? 'bg-gradient-to-r from-accent to-accent/90 text-accent-foreground rounded-tr-sm' 
+                        ? 'bg-accent text-accent-foreground rounded-tr-sm' 
                         : 'bg-secondary/70 text-foreground border border-border/30 rounded-tl-sm'
                     )}>
                       {msg.message}
@@ -282,49 +270,38 @@ export function MatchChat({
         )}
       </ScrollArea>
 
-      {/* Input Area */}
+      {/* Input Area - Compact */}
       {canSendMessage ? (
-        <div className="p-4 border-t border-border/30 bg-secondary/20">
-          <div className="flex gap-3">
+        <div className="p-2 border-t border-border/30 bg-secondary/20">
+          <div className="flex gap-2">
             <Input
-              placeholder="Type a message..."
+              placeholder="Message..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={sending}
               maxLength={500}
-              className="flex-1 h-11 text-base bg-background/50 border-border/50 focus:border-primary"
+              className="flex-1 h-8 text-sm bg-background/50 border-border/50"
             />
             <Button
               size="icon"
-              className="h-11 w-11 bg-primary hover:bg-primary/90"
+              className="h-8 w-8 bg-primary hover:bg-primary/90"
               onClick={handleSendMessage}
               disabled={sending || !newMessage.trim()}
             >
               {sending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
-                <Send className="w-5 h-5" />
+                <Send className="w-3.5 h-3.5" />
               )}
             </Button>
           </div>
-          <div className="flex justify-between items-center mt-2 px-1">
-            <span className="text-[11px] text-muted-foreground">
-              Press Enter to send
-            </span>
-            <span className={cn(
-              'text-[11px] font-medium',
-              newMessage.length > 450 ? 'text-destructive' : 'text-muted-foreground'
-            )}>
-              {newMessage.length}/500
-            </span>
-          </div>
         </div>
       ) : isReadOnly ? (
-        <div className="p-4 border-t border-border/30 bg-secondary/20 text-center">
-          <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-            <Lock className="w-4 h-4" />
-            Chat closed - Match has ended
+        <div className="p-2 border-t border-border/30 bg-secondary/20 text-center">
+          <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
+            <Lock className="w-3 h-3" />
+            Chat closed
           </p>
         </div>
       ) : null}

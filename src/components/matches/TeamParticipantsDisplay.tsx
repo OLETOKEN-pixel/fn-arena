@@ -52,80 +52,79 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
       <div 
         key={p.id} 
         className={cn(
-          "flex items-center gap-4 p-4 rounded-xl transition-all border",
+          "flex items-center gap-2 p-2 rounded-lg transition-all border",
           isCurrentUser 
-            ? "ring-2 ring-accent/50 bg-accent/10 border-accent/30" 
-            : "bg-secondary/40 border-border/30 hover:bg-secondary/60"
+            ? "ring-1 ring-accent/50 bg-accent/10 border-accent/30" 
+            : "bg-secondary/40 border-border/30"
         )}
       >
-        {/* Avatar with Captain Badge - Larger */}
+        {/* Avatar with Captain Badge - Compact */}
         <div className="relative flex-shrink-0">
           <Avatar className={cn(
-            "w-14 h-14 border-2",
+            "w-9 h-9 border",
             teamSide === 'A' ? "border-accent/50" : "border-primary/50"
           )}>
             <AvatarImage src={p.profile?.avatar_url ?? undefined} />
             <AvatarFallback className={cn(
-              "text-lg font-bold",
+              "text-sm font-bold",
               teamSide === 'A' ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"
             )}>
               {p.profile?.username?.charAt(0).toUpperCase() ?? '?'}
             </AvatarFallback>
           </Avatar>
           {isCaptain && (
-            <div className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-br from-accent to-accent/80 rounded-full flex items-center justify-center shadow-lg shadow-accent/30">
-              <Crown className="w-3.5 h-3.5 text-accent-foreground" />
+            <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent rounded-full flex items-center justify-center">
+              <Crown className="w-2.5 h-2.5 text-accent-foreground" />
             </div>
           )}
         </div>
         
-        {/* Player Info */}
+        {/* Player Info - Compact */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <p className={cn(
-              "font-bold text-base truncate",
+              "font-semibold text-sm truncate",
               isCurrentUser && "text-accent"
             )}>
               {p.profile?.username}
             </p>
             {isCurrentUser && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent font-bold uppercase tracking-wide">YOU</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-bold">YOU</span>
             )}
           </div>
           
-          {/* Epic Username with Copy */}
+          {/* Epic Username */}
           {epicUsername ? (
             <button 
               onClick={() => copyEpicUsername(epicUsername)}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group mt-1"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors group"
             >
-              <span className="truncate">{epicUsername}</span>
-              <Copy className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="truncate max-w-[100px]">{epicUsername}</span>
+              <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           ) : (
-            <p className="text-sm text-destructive/80 mt-1">Epic username not set</p>
+            <p className="text-xs text-destructive/80">No Epic username</p>
           )}
         </div>
         
-        {/* Status Indicators */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Status Indicators - Compact */}
+        <div className="flex-shrink-0">
           {showReadyStatus && (
             p.ready ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-success/20 text-success border border-success/30">
-                <CheckCircle2 className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase">Ready</span>
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/20 text-success border border-success/30">
+                <CheckCircle2 className="w-3 h-3" />
+                <span className="text-[10px] font-bold">Ready</span>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-muted-foreground border border-border">
-                <Clock className="w-4 h-4 animate-pulse" />
-                <span className="text-xs font-medium">Waiting</span>
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+                <Clock className="w-3 h-3 animate-pulse" />
               </div>
             )
           )}
           
           {showResultStatus && p.result_choice && (
             <div className={cn(
-              "flex items-center gap-1.5 text-xs font-bold uppercase px-3 py-1.5 rounded-full border",
+              "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border",
               p.result_choice === 'WIN' 
                 ? "bg-success/20 text-success border-success/30" 
                 : "bg-destructive/20 text-destructive border-destructive/30"
@@ -135,9 +134,8 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
           )}
           
           {isCompleted && isWinner && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/20 border border-accent/30">
-              <Trophy className="w-4 h-4 text-accent" />
-              <span className="text-xs font-bold text-accent uppercase">Winner</span>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/20 border border-accent/30">
+              <Trophy className="w-3 h-3 text-accent" />
             </div>
           )}
         </div>
@@ -145,51 +143,49 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
     );
   };
 
-  // For 1v1 matches, show centered layout
+  // For 1v1 matches
   if (!isTeamMatch) {
-    const allParticipants = match.participants ?? [];
-    const player1 = allParticipants.find(p => p.team_side === 'A');
-    const player2 = allParticipants.find(p => p.team_side === 'B');
+    const player1 = match.participants?.find(p => p.team_side === 'A');
+    const player2 = match.participants?.find(p => p.team_side === 'B');
 
     return (
-      <Card className="overflow-hidden border-border/50 bg-gradient-to-br from-card via-card to-secondary/10">
+      <Card className="overflow-hidden border-border/50 bg-card">
         <CardContent className="p-0">
-          <div className="grid grid-cols-[1fr,auto,1fr] items-stretch min-h-[200px]">
-            {/* Player 1 - Team A */}
-            <div className="p-6 bg-gradient-to-br from-accent/10 via-accent/5 to-transparent">
-              <div className="text-xs font-bold text-accent uppercase tracking-widest mb-4 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-accent" />
+          <div className="grid grid-cols-[1fr,auto,1fr] items-stretch">
+            {/* Player 1 */}
+            <div className="p-3 bg-gradient-to-br from-accent/5 to-transparent">
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-2 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
                 Host
               </div>
               {player1 ? (
                 renderParticipant(player1, true, 'A')
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
-                  <Users className="w-10 h-10 mb-3 opacity-40" />
-                  <span className="text-sm font-medium">Waiting...</span>
+                <div className="flex items-center justify-center py-6 text-muted-foreground border border-dashed border-border/50 rounded-lg">
+                  <Users className="w-5 h-5 mr-2 opacity-40" />
+                  <span className="text-xs">Waiting...</span>
                 </div>
               )}
             </div>
 
-            {/* VS Divider - Premium */}
-            <div className="flex items-center justify-center px-6 bg-gradient-to-b from-secondary/50 via-secondary/30 to-secondary/50">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent via-accent/80 to-primary flex items-center justify-center shadow-2xl shadow-accent/30 glow-gold">
-                <Swords className="w-8 h-8 text-accent-foreground" />
+            {/* VS Divider */}
+            <div className="flex items-center justify-center px-3 bg-secondary/30">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+                <Swords className="w-4 h-4 text-white" />
               </div>
             </div>
 
-            {/* Player 2 - Team B */}
-            <div className="p-6 bg-gradient-to-bl from-primary/10 via-primary/5 to-transparent">
-              <div className="text-xs font-bold text-primary uppercase tracking-widest mb-4 flex items-center gap-2 justify-end">
+            {/* Player 2 */}
+            <div className="p-3 bg-gradient-to-bl from-primary/5 to-transparent">
+              <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-1 justify-end">
                 Challenger
-                <div className="w-2 h-2 rounded-full bg-primary" />
+                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
               </div>
               {player2 ? (
                 renderParticipant(player2, true, 'B')
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
-                  <Users className="w-10 h-10 mb-3 opacity-40" />
-                  <span className="text-sm font-medium">Waiting for opponent...</span>
+                <div className="flex items-center justify-center py-6 text-muted-foreground border border-dashed border-border/50 rounded-lg">
+                  <span className="text-xs">Waiting for opponent...</span>
                 </div>
               )}
             </div>
@@ -199,37 +195,30 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
     );
   }
 
-  // For team matches, show enhanced two-column layout
+  // For team matches
   return (
-    <Card className="overflow-hidden border-border/50 bg-gradient-to-br from-card via-card to-secondary/10">
+    <Card className="overflow-hidden border-border/50 bg-card">
       <CardContent className="p-0">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr,auto,1fr] items-stretch">
-          {/* Team A Column */}
-          <div className="p-6 bg-gradient-to-br from-accent/10 via-accent/5 to-transparent">
-            {/* Team Header */}
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <div className="text-xs font-bold text-accent uppercase tracking-widest mb-1 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-accent" />
-                  Host Team
-                </div>
-                <h3 className="text-xl font-bold">Team A</h3>
+          {/* Team A */}
+          <div className="p-3 bg-gradient-to-br from-accent/5 to-transparent">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] font-bold text-accent uppercase tracking-wider flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                Host Team
               </div>
-              <div>
-                <span className="text-xs px-3 py-1.5 rounded-full bg-accent/20 text-accent font-bold uppercase tracking-wide border border-accent/30">
-                  {match.payment_mode_host === 'cover' ? 'Cover All' : 'Split Pay'}
-                </span>
-              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-medium">
+                {match.payment_mode_host === 'cover' ? 'Cover' : 'Split'}
+              </span>
             </div>
             
-            {/* Team A Players */}
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               {sortedTeamA.length > 0 ? (
                 sortedTeamA.map((p) => renderParticipant(p, p.user_id === teamACaptainId, 'A'))
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
-                  <Users className="w-10 h-10 mb-3 opacity-40" />
-                  <span className="text-sm font-medium">Waiting for team...</span>
+                <div className="flex items-center justify-center py-4 text-muted-foreground border border-dashed border-border/50 rounded-lg">
+                  <Users className="w-4 h-4 mr-2 opacity-40" />
+                  <span className="text-xs">Waiting...</span>
                 </div>
               )}
               
@@ -237,55 +226,47 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
               {Array.from({ length: match.team_size - sortedTeamA.length }).map((_, i) => (
                 <div 
                   key={`empty-a-${i}`}
-                  className="flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-dashed border-border/40 text-muted-foreground/50"
+                  className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border/40 text-muted-foreground/50"
                 >
-                  <Users className="w-5 h-5" />
-                  <span className="text-sm font-medium">Empty slot</span>
+                  <Users className="w-3 h-3" />
+                  <span className="text-xs">Empty</span>
                 </div>
               ))}
             </div>
           </div>
           
           {/* VS Divider - Desktop */}
-          <div className="hidden lg:flex items-center justify-center px-6 bg-gradient-to-b from-secondary/50 via-secondary/30 to-secondary/50">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent via-accent/80 to-primary flex items-center justify-center shadow-2xl shadow-accent/30 glow-gold">
-              <Swords className="w-8 h-8 text-accent-foreground" />
+          <div className="hidden lg:flex items-center justify-center px-3 bg-secondary/30">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+              <Swords className="w-4 h-4 text-white" />
             </div>
           </div>
 
-          {/* Mobile VS Divider */}
-          <div className="flex lg:hidden items-center justify-center py-6 bg-secondary/30">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-accent via-accent/80 to-primary flex items-center justify-center shadow-xl">
-              <Swords className="w-6 h-6 text-accent-foreground" />
+          {/* Mobile VS */}
+          <div className="flex lg:hidden items-center justify-center py-2 bg-secondary/30">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+              <Swords className="w-3 h-3 text-white" />
             </div>
           </div>
           
-          {/* Team B Column */}
-          <div className="p-6 bg-gradient-to-bl from-primary/10 via-primary/5 to-transparent">
-            {/* Team Header */}
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <div className="text-xs font-bold text-primary uppercase tracking-widest mb-1 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                  Challenger Team
-                </div>
-                <h3 className="text-xl font-bold">Team B</h3>
+          {/* Team B */}
+          <div className="p-3 bg-gradient-to-bl from-primary/5 to-transparent">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                Challenger
               </div>
-              <div>
-                <span className="text-xs px-3 py-1.5 rounded-full bg-primary/20 text-primary font-bold uppercase tracking-wide border border-primary/30">
-                  {match.payment_mode_joiner === 'cover' ? 'Cover All' : 'Split Pay'}
-                </span>
-              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">
+                {match.payment_mode_joiner === 'cover' ? 'Cover' : 'Split'}
+              </span>
             </div>
             
-            {/* Team B Players */}
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               {sortedTeamB.length > 0 ? (
                 sortedTeamB.map((p) => renderParticipant(p, p.user_id === teamBCaptainId, 'B'))
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground border-2 border-dashed border-border/50 rounded-xl">
-                  <Users className="w-10 h-10 mb-3 opacity-40" />
-                  <span className="text-sm font-medium">Waiting for opponent...</span>
+                <div className="flex items-center justify-center py-4 text-muted-foreground border border-dashed border-border/50 rounded-lg">
+                  <span className="text-xs">Waiting for opponent...</span>
                 </div>
               )}
               
@@ -293,48 +274,14 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
               {Array.from({ length: match.team_size - sortedTeamB.length }).map((_, i) => (
                 <div 
                   key={`empty-b-${i}`}
-                  className="flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-dashed border-border/40 text-muted-foreground/50"
+                  className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border/40 text-muted-foreground/50"
                 >
-                  <Users className="w-5 h-5" />
-                  <span className="text-sm font-medium">Empty slot</span>
+                  <Users className="w-3 h-3" />
+                  <span className="text-xs">Empty</span>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-        
-        {/* Legend */}
-        <div className="flex flex-wrap items-center justify-center gap-6 py-4 px-6 border-t border-border/30 bg-secondary/20">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gradient-to-br from-accent to-accent/80 rounded-full flex items-center justify-center shadow-md">
-              <Crown className="w-3.5 h-3.5 text-accent-foreground" />
-            </div>
-            <span className="text-sm text-muted-foreground">Captain</span>
-          </div>
-          {showReadyStatus && (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-success/20 rounded-full flex items-center justify-center border border-success/30">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                </div>
-                <span className="text-sm text-muted-foreground">Ready</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center border border-border">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                </div>
-                <span className="text-sm text-muted-foreground">Waiting</span>
-              </div>
-            </>
-          )}
-          {isCompleted && (
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-accent/20 rounded-full flex items-center justify-center border border-accent/30">
-                <Trophy className="w-3.5 h-3.5 text-accent" />
-              </div>
-              <span className="text-sm text-muted-foreground">Winner</span>
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>

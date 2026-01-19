@@ -2,7 +2,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { HeroSection } from '@/components/home/HeroSection';
 import { FeatureCards } from '@/components/home/FeatureCards';
 import { RecentMatches } from '@/components/home/RecentMatches';
-import { Leaderboard } from '@/components/home/Leaderboard';
+import { LeaderboardWeekly } from '@/components/home/LeaderboardWeekly';
 
 export default function Index() {
   return (
@@ -15,7 +15,7 @@ export default function Index() {
           <FeatureCards />
         </div>
         <div className="lg:col-span-1">
-          <Leaderboard />
+          <LeaderboardWeekly />
         </div>
       </div>
     </MainLayout>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Ban, CheckCircle, ChevronUp, ChevronDown, Download } from 'lucide-react';
+import { ExternalLink, Ban, CheckCircle, ChevronUp, ChevronDown, Download, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/custom-badge';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DeleteUserDialog } from './DeleteUserDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Profile } from '@/types';
@@ -36,6 +37,9 @@ export function UsersTable({ users, loading, onUserUpdated }: UsersTableProps) {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  
+  // Delete dialog
+  const [deleteUser, setDeleteUser] = useState<{ id: string; username: string } | null>(null);
 
   // Filter and sort users
   const filteredUsers = useMemo(() => {
@@ -308,17 +312,29 @@ export function UsersTable({ users, loading, onUserUpdated }: UsersTableProps) {
                         <ExternalLink className="w-4 h-4" />
                       </Button>
                       {user.role !== 'admin' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => handleBanUser(e, user.user_id, user.is_banned)}
-                        >
-                          {user.is_banned ? (
-                            <CheckCircle className="w-4 h-4 text-success" />
-                          ) : (
-                            <Ban className="w-4 h-4 text-destructive" />
-                          )}
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleBanUser(e, user.user_id, user.is_banned)}
+                          >
+                            {user.is_banned ? (
+                              <CheckCircle className="w-4 h-4 text-success" />
+                            ) : (
+                              <Ban className="w-4 h-4 text-destructive" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteUser({ id: user.user_id, username: user.username });
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </TableCell>
@@ -365,6 +381,17 @@ export function UsersTable({ users, loading, onUserUpdated }: UsersTableProps) {
             </PaginationItem>
           </PaginationContent>
         </Pagination>
+      )}
+
+      {/* Delete User Dialog */}
+      {deleteUser && (
+        <DeleteUserDialog
+          open={!!deleteUser}
+          onOpenChange={(open) => !open && setDeleteUser(null)}
+          userId={deleteUser.id}
+          username={deleteUser.username}
+          onDeleted={onUserUpdated}
+        />
       )}
     </div>
   );

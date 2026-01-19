@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Upload, X, Loader2, Trash2, ZoomIn, AlertCircle } from 'lucide-react';
+import { Camera, Upload, X, Loader2, Trash2, ZoomIn, ImageIcon, Images } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -37,7 +37,6 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
   const fetchProofs = useCallback(async () => {
     try {
-      // First get proofs
       const { data: proofsData, error: proofsError } = await supabase
         .from('match_proofs')
         .select('*')
@@ -51,16 +50,13 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
         return;
       }
 
-      // Get unique user IDs
       const userIds = [...new Set(proofsData.map(p => p.user_id))];
       
-      // Fetch profiles for those users
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('user_id, username, avatar_url')
         .in('user_id', userIds);
 
-      // Map profiles to proofs
       const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
       
       const enrichedProofs: Proof[] = proofsData.map(proof => ({
@@ -80,7 +76,6 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
   useEffect(() => {
     fetchProofs();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel(`proofs-${matchId}`)
       .on(
@@ -105,7 +100,6 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
     
     const file = files[0];
     
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
         title: 'Invalid file type',
@@ -115,7 +109,6 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: 'File too large',
@@ -130,19 +123,16 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
       const fileExt = file.name.split('.').pop();
       const fileName = `${matchId}/${currentUserId}/${Date.now()}.${fileExt}`;
 
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
         .from('proofs')
         .upload(fileName, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from('proofs')
         .getPublicUrl(fileName);
 
-      // Create proof record
       const { error: insertError } = await supabase
         .from('match_proofs')
         .insert({
@@ -173,7 +163,6 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
   const handleDelete = async (proof: Proof) => {
     try {
-      // Extract path from URL
       const urlParts = proof.image_url.split('/proofs/');
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
@@ -224,21 +213,36 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
   return (
     <>
-      <Card className="border-border bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Camera className="w-4 h-4 text-primary" />
-            Proof Screenshots
+      <Card className="border-border/50 bg-gradient-to-br from-card via-card to-secondary/10 overflow-hidden">
+        <CardHeader className="pb-4 border-b border-border/30">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/30">
+                <Camera className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <span className="text-lg">Proof Screenshots</span>
+                <p className="text-xs font-normal text-muted-foreground mt-0.5">
+                  Upload game result screenshots
+                </p>
+              </div>
+            </div>
+            {proofs.length > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-muted-foreground">
+                <Images className="w-4 h-4" />
+                <span className="text-sm font-medium">{proofs.length}</span>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Upload area */}
+        <CardContent className="pt-5 space-y-5">
+          {/* Upload area - Larger */}
           {isParticipant && (
             <div
-              className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+              className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
                 dragActive 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border hover:border-primary/50'
+                  ? 'border-primary bg-primary/10 scale-[1.02]' 
+                  : 'border-border/50 hover:border-primary/50 hover:bg-secondary/30'
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -253,40 +257,45 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
                 disabled={uploading}
               />
               {uploading ? (
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Uploading...</p>
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                  <p className="text-base text-muted-foreground">Uploading...</p>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <Upload className="w-8 h-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Drag & drop or click to upload screenshot
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Max 5MB • JPG, PNG
-                  </p>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-base font-medium text-foreground">
+                      Drag & drop or click to upload
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Max 5MB • JPG, PNG, WebP
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Proofs gallery */}
+          {/* Proofs gallery - Larger Grid */}
           {loading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : proofs.length === 0 ? (
-            <div className="text-center py-4 text-muted-foreground text-sm">
-              <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              No proof screenshots uploaded yet
+            <div className="text-center py-8 text-muted-foreground rounded-xl bg-secondary/20 border border-dashed border-border/50">
+              <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p className="text-base font-medium">No screenshots yet</p>
+              <p className="text-sm mt-1">Upload proof of your game results</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {proofs.map((proof) => (
                 <div
                   key={proof.id}
-                  className="group relative aspect-video rounded-lg overflow-hidden border border-border bg-muted"
+                  className="group relative aspect-video rounded-xl overflow-hidden border border-border/50 bg-muted shadow-md hover:shadow-xl transition-all hover:scale-[1.02]"
                 >
                   <img
                     src={proof.image_url}
@@ -296,38 +305,40 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
                   />
                   
                   {/* Overlay */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      className="h-8 w-8"
-                      onClick={() => setSelectedProof(proof)}
-                    >
-                      <ZoomIn className="w-4 h-4" />
-                    </Button>
-                    {(proof.user_id === currentUserId || isAdmin) && (
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        className="h-8 w-8"
-                        onClick={() => handleDelete(proof)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Author badge */}
-                  <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-black/70 rounded px-1.5 py-0.5">
-                    <Avatar className="w-4 h-4">
-                      <AvatarImage src={proof.avatar_url || undefined} />
-                      <AvatarFallback className="text-[8px]">
-                        {proof.username?.charAt(0) || '?'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-[10px] text-white">
-                      {proof.username}
-                    </span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="w-6 h-6 border border-white/20">
+                          <AvatarImage src={proof.avatar_url || undefined} />
+                          <AvatarFallback className="text-[10px] bg-primary/20">
+                            {proof.username?.charAt(0) || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs text-white font-medium truncate max-w-[80px]">
+                          {proof.username}
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 bg-white/10 hover:bg-white/20 text-white"
+                          onClick={() => setSelectedProof(proof)}
+                        >
+                          <ZoomIn className="w-4 h-4" />
+                        </Button>
+                        {(proof.user_id === currentUserId || isAdmin) && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 bg-destructive/20 hover:bg-destructive/40 text-white"
+                            onClick={() => handleDelete(proof)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -338,13 +349,13 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
       {/* Lightbox modal */}
       <Dialog open={!!selectedProof} onOpenChange={() => setSelectedProof(null)}>
-        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden bg-black border-none">
+        <DialogContent className="sm:max-w-5xl p-0 overflow-hidden bg-black/95 border-border/50">
           {selectedProof && (
             <div className="relative">
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
                 onClick={() => setSelectedProof(null)}
               >
                 <X className="w-5 h-5" />
@@ -356,30 +367,32 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
                 className="w-full max-h-[80vh] object-contain"
               />
               
-              <div className="p-4 bg-card flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Avatar className="w-6 h-6">
+              <div className="p-5 bg-card flex items-center justify-between border-t border-border/30">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-8 h-8 border border-border">
                     <AvatarImage src={selectedProof.avatar_url || undefined} />
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className="text-sm">
                       {selectedProof.username?.charAt(0) || '?'}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm">{selectedProof.username}</span>
-                  <span className="text-sm text-muted-foreground">
-                    • {formatDistanceToNow(new Date(selectedProof.created_at), { addSuffix: true })}
-                  </span>
+                  <div>
+                    <span className="font-medium">{selectedProof.username}</span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      • {formatDistanceToNow(new Date(selectedProof.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
                 </div>
                 
                 {(selectedProof.user_id === currentUserId || isAdmin) && (
                   <Button
-                    size="sm"
                     variant="destructive"
                     onClick={() => {
                       handleDelete(selectedProof);
                       setSelectedProof(null);
                     }}
+                    className="gap-2"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
+                    <Trash2 className="w-4 h-4" />
                     Delete
                   </Button>
                 )}

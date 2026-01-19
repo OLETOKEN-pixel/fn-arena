@@ -142,8 +142,9 @@
   }
 
   .glow-gold {
-    box-shadow: 0 0 20px hsl(var(--gold) / 0.3),
-                0 0 40px hsl(var(--gold) / 0.1);
+    box-shadow: 0 0 25px hsl(var(--gold) / 0.4),
+                0 0 50px hsl(var(--gold) / 0.15),
+                inset 0 0 10px hsl(var(--gold) / 0.1);
   }
 
   .glow-text-blue {
@@ -152,11 +153,11 @@
   }
 
   .glow-text-gold {
-    text-shadow: 0 0 10px hsl(var(--gold) / 0.5),
-                 0 0 20px hsl(var(--gold) / 0.3);
+    text-shadow: 0 0 15px hsl(var(--gold) / 0.6),
+                 0 0 30px hsl(var(--gold) / 0.3);
   }
 
-  /* Card hover effect */
+  /* Premium card hover effect */
   .card-hover {
     @apply transition-all duration-300 ease-out;
   }
@@ -165,6 +166,17 @@
     @apply -translate-y-1;
     box-shadow: 0 10px 40px hsl(var(--electric-blue) / 0.15),
                 0 0 0 1px hsl(var(--electric-blue) / 0.2);
+  }
+
+  /* Premium card glow */
+  .card-glow-gold {
+    box-shadow: 0 0 0 1px hsl(var(--gold) / 0.2),
+                0 4px 20px hsl(var(--gold) / 0.1);
+  }
+
+  .card-glow-blue {
+    box-shadow: 0 0 0 1px hsl(var(--electric-blue) / 0.2),
+                0 4px 20px hsl(var(--electric-blue) / 0.1);
   }
 
   /* Gradient backgrounds */
@@ -177,6 +189,13 @@
       hsl(var(--background)) 0%, 
       hsl(var(--carbon)) 50%, 
       hsl(var(--background)) 100%);
+  }
+
+  .gradient-premium {
+    background: linear-gradient(135deg, 
+      hsl(var(--card)) 0%, 
+      hsl(var(--secondary) / 0.5) 50%, 
+      hsl(var(--card)) 100%);
   }
 
   /* Badge styles */
@@ -197,6 +216,14 @@
   .glass {
     @apply backdrop-blur-md;
     background: hsl(var(--card) / 0.8);
+  }
+
+  .glass-premium {
+    @apply backdrop-blur-xl;
+    background: linear-gradient(135deg, 
+      hsl(var(--card) / 0.9) 0%, 
+      hsl(var(--card) / 0.7) 100%);
+    border: 1px solid hsl(var(--border) / 0.5);
   }
 
   /* Animated border */
@@ -222,6 +249,16 @@
   @keyframes pulse-live {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
+  }
+
+  /* Premium button hover */
+  .btn-premium {
+    @apply transition-all duration-200;
+  }
+
+  .btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px hsl(var(--primary) / 0.3);
   }
 
   /* Skeleton loading */

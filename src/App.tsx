@@ -24,6 +24,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import Admin from "./pages/Admin";
 import AdminMatchDetail from "./pages/AdminMatchDetail";
 import AdminUserDetail from "./pages/AdminUserDetail";
+import Highlights from "./pages/Highlights";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/matches/:id" element={<AdminMatchDetail />} />
                 <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+                <Route path="/highlights" element={<Highlights />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLoadingGuard>

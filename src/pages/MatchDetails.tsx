@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock, Share2, Gamepad2 } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock, Share2, Gamepad2, Globe, Monitor, Crosshair, Timer, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MatchStatusBadge, RegionBadge, PlatformBadge } from '@/components/ui/custom-badge';
@@ -246,38 +246,81 @@ export default function MatchDetails() {
   const showChat = (isParticipant || isAdmin) && match.status !== 'open';
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Top Bar - Fixed */}
-      <div className="flex-shrink-0 border-b border-border bg-card/50 backdrop-blur-sm px-4 py-2">
-        <div className="max-w-[1800px] mx-auto flex items-center justify-between">
-          <Link
-            to={match.status === 'open' ? '/matches' : '/my-matches'}
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">{match.status === 'open' ? 'Back to Matches' : 'Back to My Matches'}</span>
-          </Link>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* ===== PREMIUM HEADER BAR ===== */}
+      <div className="flex-shrink-0 border-b border-border/50 bg-gradient-to-r from-card via-card/95 to-card backdrop-blur-sm">
+        <div className="max-w-[1920px] mx-auto px-4 lg:px-6 py-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left - Back Button */}
+            <Link
+              to={match.status === 'open' ? '/matches' : '/my-matches'}
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors group"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              <span className="hidden sm:inline text-sm font-medium">
+                {match.status === 'open' ? 'Matches' : 'My Matches'}
+              </span>
+            </Link>
 
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                <Gamepad2 className="w-4 h-4 text-accent" />
+            {/* Center - Match Title & Info */}
+            <div className="flex items-center gap-4 flex-1 justify-center">
+              <div className="flex items-center gap-3 bg-secondary/50 px-4 py-2 rounded-xl border border-border/50">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center border border-accent/30">
+                  <Gamepad2 className="w-5 h-5 text-accent" />
+                </div>
+                <div className="text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-lg">
+                      {match.team_size}v{match.team_size}
+                    </span>
+                    <span className="text-muted-foreground">{match.mode}</span>
+                    <MatchStatusBadge status={match.status} />
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Globe className="w-3 h-3" /> {match.region}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Monitor className="w-3 h-3" /> {match.platform}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Crosshair className="w-3 h-3" /> FT{match.first_to}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm">
-                    {match.team_size}v{match.team_size} {match.mode}
-                  </span>
-                  <MatchStatusBadge status={match.status} />
+
+              {/* Entry & Prize */}
+              <div className="hidden md:flex items-center gap-3">
+                <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-secondary/30 border border-border/30">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Entry</span>
+                  <CoinDisplay amount={match.entry_fee} size="sm" />
+                </div>
+                <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/30">
+                  <span className="text-[10px] uppercase tracking-wider text-accent">Prize Pool</span>
+                  <CoinDisplay amount={prizePool} size="sm" className="text-accent font-bold" />
                 </div>
               </div>
             </div>
-          </div>
 
-          <Button variant="outline" size="sm" onClick={copyMatchLink}>
-            <Share2 className="w-4 h-4 sm:mr-1" />
-            <span className="hidden sm:inline">Copy Link</span>
-          </Button>
+            {/* Right - Copy Link */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={copyMatchLink}
+              className="border-border/50 hover:border-accent/50 hover:bg-accent/5"
+            >
+              <Share2 className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Share</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== FULL WIDTH PROGRESS STEPPER ===== */}
+      <div className="flex-shrink-0 bg-gradient-to-b from-card/50 to-transparent border-b border-border/30">
+        <div className="max-w-[1200px] mx-auto px-6 py-4">
+          <MatchProgressStepper status={match.status} />
         </div>
       </div>
 
@@ -288,112 +331,53 @@ export default function MatchDetails() {
         </div>
       )}
 
-      {/* Main Content - 3 Column Fixed Layout */}
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full max-w-[1800px] mx-auto p-4">
-          <div className="h-full grid grid-cols-1 lg:grid-cols-[1fr,minmax(320px,400px),minmax(280px,320px)] gap-4">
+      {/* ===== MAIN CONTENT - 70/30 PREMIUM LAYOUT ===== */}
+      <div className="flex-1">
+        <div className="max-w-[1920px] mx-auto px-4 lg:px-6 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,380px] gap-6">
             
-            {/* LEFT COLUMN - Match Info + Teams */}
-            <div className="flex flex-col gap-3 overflow-y-auto pr-2 scrollbar-thin">
-              {/* Match Header Card - Compact */}
-              <Card className="flex-shrink-0 bg-gradient-to-br from-card via-card to-secondary/20 border-border">
-                <CardContent className="p-3">
-                  {/* Info Badges Row */}
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <RegionBadge region={match.region} />
-                    <PlatformBadge platform={match.platform} />
-                    
-                    <div className="flex items-center gap-1 px-2 py-1 rounded bg-secondary text-xs">
-                      <span className="text-muted-foreground">Entry:</span>
-                      <CoinDisplay amount={match.entry_fee} size="sm" />
-                    </div>
-                    
-                    <div className="flex items-center gap-1 px-2 py-1 rounded bg-accent/10 border border-accent/20 text-xs">
-                      <span className="text-accent font-semibold">Prize:</span>
-                      <CoinDisplay amount={prizePool} size="sm" className="text-accent" />
-                    </div>
+            {/* ===== LEFT COLUMN (70%) - Main Content ===== */}
+            <div className="space-y-6">
+              
+              {/* Status Messages - Full Width */}
+              {match.status === 'open' && isCreator && (
+                <div className="flex items-center justify-center gap-3 py-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/20">
+                  <div className="w-3 h-3 rounded-full bg-primary animate-pulse" />
+                  <p className="text-base font-medium text-primary">Waiting for opponent to join...</p>
+                </div>
+              )}
 
-                    <div className="flex items-center gap-1 px-2 py-1 rounded bg-secondary text-xs">
-                      <Users className="w-3 h-3 text-muted-foreground" />
-                      <span className="font-medium">{participantCount}/{maxParticipants}</span>
-                    </div>
+              {match.status === 'completed' && (
+                <div className="flex items-center justify-center gap-3 py-4 rounded-xl bg-gradient-to-r from-success/10 via-success/5 to-success/10 border border-success/20">
+                  <Trophy className="w-5 h-5 text-success" />
+                  <p className="text-base font-medium text-success">
+                    {match.result?.winner_user_id === user?.id ? '🎉 Congratulations! You won!' : 'Match Completed'}
+                  </p>
+                </div>
+              )}
 
-                    <span className="text-xs text-muted-foreground">
-                      FT{match.first_to} • {formatDistanceToNow(new Date(match.created_at), { addSuffix: true })}
-                    </span>
-                  </div>
-
-                  {/* Progress Stepper */}
-                  <MatchProgressStepper status={match.status} />
-
-                  {/* Status Messages */}
-                  {match.status === 'open' && isCreator && (
-                    <div className="flex items-center justify-center gap-2 py-2 mt-2 rounded bg-primary/10 border border-primary/20">
-                      <Users className="w-4 h-4 text-primary" />
-                      <p className="text-sm font-medium text-primary">Waiting for opponent...</p>
-                    </div>
-                  )}
-
-                  {match.status === 'completed' && (
-                    <div className="flex items-center justify-center gap-2 py-2 mt-2 rounded bg-success/10 border border-success/20">
-                      <Trophy className="w-4 h-4 text-success" />
-                      <p className="text-sm font-medium text-success">
-                        {match.result?.winner_user_id === user?.id ? 'You won!' : 'Match Completed'}
-                      </p>
-                    </div>
-                  )}
-
-                  {match.status === 'disputed' && (
-                    <div className="flex items-center justify-center gap-2 py-2 mt-2 rounded bg-destructive/10 border border-destructive/20">
-                      <Clock className="w-4 h-4 text-destructive" />
-                      <p className="text-sm font-medium text-destructive">Under Admin Review</p>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  {(canCancel || canLeave) && (
-                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
-                      {canCancel && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={handleCancelMatch}
-                          disabled={canceling}
-                        >
-                          {canceling ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <XCircle className="w-4 h-4 mr-1" />}
-                          Cancel Match
-                        </Button>
-                      )}
-
-                      {canLeave && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleLeaveMatch}
-                          disabled={leaving}
-                        >
-                          {leaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <XCircle className="w-4 h-4 mr-1" />}
-                          Leave Match
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {match.status === 'disputed' && (
+                <div className="flex items-center justify-center gap-3 py-4 rounded-xl bg-gradient-to-r from-destructive/10 via-destructive/5 to-destructive/10 border border-destructive/20">
+                  <Clock className="w-5 h-5 text-destructive animate-pulse" />
+                  <p className="text-base font-medium text-destructive">Under Admin Review - Please wait</p>
+                </div>
+              )}
 
               {/* Team Join Section */}
               {showTeamJoin && (
-                <Card className="flex-shrink-0 bg-card border-border border-primary/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Users className="w-5 h-5 text-primary" />
+                <Card className="border-primary/30 bg-gradient-to-br from-card via-card to-primary/5">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-3 text-xl">
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-primary" />
+                      </div>
                       Join with Your Team
                     </CardTitle>
-                    <CardDescription className="text-xs">
-                      Select a team with {match.team_size} members
+                    <CardDescription>
+                      Select a team with {match.team_size} accepted members to join this match
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-4">
                     <TeamSelector
                       teamSize={match.team_size}
                       entryFee={match.entry_fee}
@@ -413,69 +397,46 @@ export default function MatchDetails() {
                       />
                     )}
 
-                    <div className="p-3 rounded-lg bg-secondary space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Team Cost:</span>
-                        <CoinDisplay amount={totalTeamCost} size="sm" />
+                    <div className="p-4 rounded-xl bg-secondary/50 border border-border/50 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Team Cost</span>
+                        <CoinDisplay amount={totalTeamCost} size="md" />
                       </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Payment:</span>
-                        <span>{paymentMode === 'cover' ? 'You pay all' : 'Split'}</span>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Payment Mode</span>
+                        <span className="font-medium">{paymentMode === 'cover' ? 'You pay all' : 'Split between members'}</span>
                       </div>
                     </div>
 
                     <Button
-                      size="sm"
-                      className="w-full"
+                      size="lg"
+                      className="w-full h-12 text-base font-semibold"
                       onClick={handleJoinWithTeam}
                       disabled={joining || !canJoinWithTeam}
                     >
                       {joining ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                           Joining...
                         </>
                       ) : (
-                        'Join with Team'
+                        'Join Match with Team'
                       )}
                     </Button>
 
                     {selectedTeam && !canJoinWithTeam && (
-                      <p className="text-xs text-destructive text-center">
-                        Insufficient balance
+                      <p className="text-sm text-destructive text-center">
+                        Insufficient balance for selected payment mode
                       </p>
                     )}
                   </CardContent>
                 </Card>
               )}
 
-              {/* Participants Display */}
-              <div className="flex-shrink-0">
-                <TeamParticipantsDisplay match={match} currentUserId={user?.id} />
-              </div>
-            </div>
+              {/* ===== TEAMS VS CARD - Large & Premium ===== */}
+              <TeamParticipantsDisplay match={match} currentUserId={user?.id} />
 
-            {/* MIDDLE COLUMN - Actions (Ready Up / Result / Proof) */}
-            <div className="flex flex-col gap-3 overflow-y-auto scrollbar-thin">
-              {/* Ready Up Section */}
-              {showReadyUp && user && (
-                <ReadyUpSection
-                  match={match}
-                  currentUserId={user.id}
-                  onReadyChange={fetchMatch}
-                />
-              )}
-
-              {/* Result Declaration */}
-              {showResultDeclaration && user && (
-                <TeamResultDeclaration
-                  match={match}
-                  currentUserId={user.id}
-                  onResultDeclared={fetchMatch}
-                />
-              )}
-
-              {/* Proof Screenshots Section */}
+              {/* ===== PROOF SCREENSHOTS - Large Section ===== */}
               {user && isParticipant && (
                 <ProofSection
                   matchId={match.id}
@@ -485,22 +446,103 @@ export default function MatchDetails() {
                 />
               )}
 
-              {/* Game Rules - Compact */}
+              {/* ===== GAME RULES - Collapsible ===== */}
               <GameRulesPanel />
+
+              {/* Action Buttons - Cancel/Leave */}
+              {(canCancel || canLeave) && (
+                <div className="flex flex-wrap gap-3 p-4 rounded-xl bg-secondary/30 border border-border/30">
+                  {canCancel && (
+                    <Button
+                      variant="destructive"
+                      onClick={handleCancelMatch}
+                      disabled={canceling}
+                      className="gap-2"
+                    >
+                      {canceling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                      Cancel Match
+                    </Button>
+                  )}
+
+                  {canLeave && (
+                    <Button
+                      variant="outline"
+                      onClick={handleLeaveMatch}
+                      disabled={leaving}
+                      className="gap-2"
+                    >
+                      {leaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                      Leave Match
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* RIGHT COLUMN - Chat */}
-            {showChat && user && (
-              <div className="h-full min-h-0">
-                <MatchChat
-                  matchId={match.id}
-                  matchStatus={match.status}
+            {/* ===== RIGHT COLUMN (30%) - Sidebar ===== */}
+            <div className="space-y-6 lg:sticky lg:top-6 lg:self-start">
+              
+              {/* Ready Up Section */}
+              {showReadyUp && user && (
+                <ReadyUpSection
+                  match={match}
                   currentUserId={user.id}
-                  isAdmin={isAdmin}
-                  isParticipant={isParticipant}
+                  onReadyChange={fetchMatch}
                 />
-              </div>
-            )}
+              )}
+
+              {/* Result Declaration - Large & Premium */}
+              {showResultDeclaration && user && (
+                <TeamResultDeclaration
+                  match={match}
+                  currentUserId={user.id}
+                  onResultDeclared={fetchMatch}
+                />
+              )}
+
+              {/* Match Chat - Full Height */}
+              {showChat && user && (
+                <div className="h-[500px] lg:h-[calc(100vh-300px)] min-h-[400px] max-h-[700px]">
+                  <MatchChat
+                    matchId={match.id}
+                    matchStatus={match.status}
+                    currentUserId={user.id}
+                    isAdmin={isAdmin}
+                    isParticipant={isParticipant}
+                  />
+                </div>
+              )}
+
+              {/* Match Info Card - When no chat */}
+              {!showChat && (
+                <Card className="bg-gradient-to-br from-card via-card to-secondary/20 border-border/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Timer className="w-4 h-4 text-accent" />
+                      Match Info
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-border/30">
+                      <span className="text-sm text-muted-foreground">Players</span>
+                      <span className="font-medium">{participantCount}/{maxParticipants}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-border/30">
+                      <span className="text-sm text-muted-foreground">Entry Fee</span>
+                      <CoinDisplay amount={match.entry_fee} size="sm" />
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b border-border/30">
+                      <span className="text-sm text-muted-foreground">Prize Pool</span>
+                      <CoinDisplay amount={prizePool} size="sm" className="text-accent" />
+                    </div>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-sm text-muted-foreground">Created</span>
+                      <span className="text-sm">{formatDistanceToNow(new Date(match.created_at), { addSuffix: true })}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Trophy, X, Loader2, AlertTriangle, CheckCircle2, Clock, Users, Sparkles } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -109,146 +109,120 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
   }
 
   return (
-    <Card className="border-accent/30 bg-gradient-to-br from-card via-card to-accent/5 overflow-hidden">
-      <CardHeader className="pb-4 border-b border-border/30">
-        <CardTitle className="flex items-center gap-3 text-lg">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent/30 to-accent/10 flex items-center justify-center border border-accent/30">
-            <Trophy className="w-5 h-5 text-accent" />
+    <Card className="border-accent/30 bg-card overflow-hidden">
+      <CardContent className="p-3 space-y-3">
+        {/* Header - Compact */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center">
+            <Trophy className="w-3.5 h-3.5 text-accent" />
           </div>
           <div>
-            <span>Dichiara Risultato</span>
+            <span className="text-sm font-semibold">Dichiara Risultato</span>
             {isTeamMatch && (
-              <p className="text-xs font-normal text-muted-foreground mt-0.5">
-                Solo il capitano può dichiarare
-              </p>
-            )}
-          </div>
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="pt-5 space-y-5">
-        {/* Team Status Cards - Premium Style */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Team A Status */}
-          <div className={cn(
-            'p-4 rounded-xl text-center border transition-all',
-            teamAResult 
-              ? 'bg-success/10 border-success/30' 
-              : 'bg-secondary/50 border-border/50'
-          )}>
-            <p className="text-xs font-bold uppercase tracking-wider mb-2 text-muted-foreground">
-              Team A {userTeamSide === 'A' && <span className="text-accent">(Tu)</span>}
-            </p>
-            {teamAResult ? (
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-success" />
-                <span className="font-bold text-success">
-                  {teamAResult === 'WIN' ? 'Vittoria' : 'Sconfitta'}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <Clock className="w-5 h-5 text-warning animate-pulse" />
-                <span className="font-medium text-warning">In attesa...</span>
-              </div>
-            )}
-          </div>
-
-          {/* Team B Status */}
-          <div className={cn(
-            'p-4 rounded-xl text-center border transition-all',
-            teamBResult 
-              ? 'bg-success/10 border-success/30' 
-              : 'bg-secondary/50 border-border/50'
-          )}>
-            <p className="text-xs font-bold uppercase tracking-wider mb-2 text-muted-foreground">
-              Team B {userTeamSide === 'B' && <span className="text-primary">(Tu)</span>}
-            </p>
-            {teamBResult ? (
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-success" />
-                <span className="font-bold text-success">
-                  {teamBResult === 'WIN' ? 'Vittoria' : 'Sconfitta'}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <Clock className="w-5 h-5 text-muted-foreground animate-pulse" />
-                <span className="font-medium text-muted-foreground">In attesa...</span>
-              </div>
+              <p className="text-[10px] text-muted-foreground">Solo il capitano</p>
             )}
           </div>
         </div>
 
-        {/* Action Buttons or Status */}
+        {/* Team Status - Compact */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className={cn(
+            'p-2 rounded-lg text-center border',
+            teamAResult ? 'bg-success/10 border-success/30' : 'bg-secondary/50 border-border/50'
+          )}>
+            <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
+              Team A {userTeamSide === 'A' && <span className="text-accent">(Tu)</span>}
+            </p>
+            {teamAResult ? (
+              <div className="flex items-center justify-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-success" />
+                <span className="text-xs font-bold text-success">
+                  {teamAResult === 'WIN' ? 'Vittoria' : 'Sconfitta'}
+                </span>
+              </div>
+            ) : (
+              <Clock className="w-4 h-4 text-muted-foreground animate-pulse mx-auto" />
+            )}
+          </div>
+
+          <div className={cn(
+            'p-2 rounded-lg text-center border',
+            teamBResult ? 'bg-success/10 border-success/30' : 'bg-secondary/50 border-border/50'
+          )}>
+            <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
+              Team B {userTeamSide === 'B' && <span className="text-primary">(Tu)</span>}
+            </p>
+            {teamBResult ? (
+              <div className="flex items-center justify-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-success" />
+                <span className="text-xs font-bold text-success">
+                  {teamBResult === 'WIN' ? 'Vittoria' : 'Sconfitta'}
+                </span>
+              </div>
+            ) : (
+              <Clock className="w-4 h-4 text-muted-foreground animate-pulse mx-auto" />
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
         {!hasSubmitted ? (
           isCaptain ? (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
-                  size="lg"
-                  className="h-16 bg-gradient-to-r from-success to-success/80 hover:from-success/90 hover:to-success/70 text-success-foreground font-bold text-base shadow-lg shadow-success/20 transition-all hover:shadow-xl hover:shadow-success/30 hover:scale-[1.02]"
+                  size="sm"
+                  className="h-10 bg-success hover:bg-success/90 text-success-foreground font-bold text-xs"
                   onClick={() => handleSubmitResult('WIN')}
                   disabled={submitting}
                 >
                   {submitting ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      ABBIAMO VINTO
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      VINTO
                     </>
                   )}
                 </Button>
 
                 <Button
-                  size="lg"
-                  className="h-16 bg-gradient-to-r from-destructive to-destructive/80 hover:from-destructive/90 hover:to-destructive/70 text-destructive-foreground font-bold text-base shadow-lg shadow-destructive/20 transition-all hover:shadow-xl hover:shadow-destructive/30 hover:scale-[1.02]"
+                  size="sm"
+                  className="h-10 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold text-xs"
                   onClick={() => handleSubmitResult('LOSS')}
                   disabled={submitting}
                 >
                   {submitting ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
-                      <X className="w-5 h-5 mr-2" />
-                      ABBIAMO PERSO
+                      <X className="w-3 h-3 mr-1" />
+                      PERSO
                     </>
                   )}
                 </Button>
               </div>
 
-              {/* Warning - Softer Style */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200">
-                <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
-                <div className="text-sm">
-                  <p className="font-semibold text-amber-300">Attenzione</p>
-                  <p className="text-amber-200/80 mt-0.5">
-                    Dichiarazioni false possono comportare ban e perdita di coins.
-                  </p>
-                </div>
+              {/* Warning - Compact */}
+              <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-200">
+                  Dichiarazioni false = ban e perdita coins
+                </p>
               </div>
             </>
           ) : (
-            <div className="text-center py-6 rounded-xl bg-secondary/30 border border-border/30">
-              <Users className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-              <p className="font-semibold text-lg">In attesa del capitano</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Solo il capitano del team può dichiarare il risultato.
-              </p>
+            <div className="text-center py-3 rounded-lg bg-secondary/30">
+              <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-xs font-medium">In attesa del capitano</p>
             </div>
           )
         ) : (
-          <div className="text-center py-6 rounded-xl bg-primary/10 border border-primary/20">
-            <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/20 flex items-center justify-center">
-              <Clock className="w-6 h-6 text-primary animate-pulse" />
-            </div>
-            <p className="font-semibold text-lg text-primary">Risultato Inviato</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {opponentTeamResult === null 
-                ? 'In attesa che il team avversario dichiari il risultato...'
-                : 'Elaborazione risultati in corso...'
-              }
+          <div className="text-center py-3 rounded-lg bg-primary/10">
+            <Clock className="w-5 h-5 mx-auto mb-1 text-primary animate-pulse" />
+            <p className="text-xs font-medium text-primary">Risultato Inviato</p>
+            <p className="text-[10px] text-muted-foreground">
+              {opponentTeamResult === null ? 'Attesa team avversario...' : 'Elaborazione...'}
             </p>
           </div>
         )}

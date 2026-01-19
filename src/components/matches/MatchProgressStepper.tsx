@@ -7,17 +7,17 @@ interface MatchProgressStepperProps {
 }
 
 const steps = [
-  { id: 1, label: 'Waiting', description: 'Waiting for opponent', icon: Users },
-  { id: 2, label: 'Ready Up', description: 'All players ready up', icon: Clock },
-  { id: 3, label: 'In Progress', description: 'Match in progress', icon: Swords },
-  { id: 4, label: 'Completed', description: 'Match completed', icon: Trophy },
+  { id: 1, label: 'Waiting', icon: Users },
+  { id: 2, label: 'Ready', icon: Clock },
+  { id: 3, label: 'Playing', icon: Swords },
+  { id: 4, label: 'Done', icon: Trophy },
 ];
 
 function getActiveStep(status: MatchStatus): number {
   switch (status) {
     case 'open':
       return 1;
-    case 'full':      // Fallback per vecchia logica 1v1
+    case 'full':
     case 'ready_check':
       return 2;
     case 'in_progress':
@@ -40,12 +40,12 @@ export function MatchProgressStepper({ status }: MatchProgressStepperProps) {
     <div className="w-full">
       <div className="relative flex items-center justify-between">
         {/* Progress Line Background */}
-        <div className="absolute left-0 right-0 top-6 h-1 bg-secondary rounded-full mx-12 lg:mx-16" />
+        <div className="absolute left-0 right-0 top-4 h-0.5 bg-secondary rounded-full mx-8" />
         
-        {/* Progress Line Active - Gradient */}
+        {/* Progress Line Active */}
         <div 
-          className="absolute left-0 top-6 h-1 bg-gradient-to-r from-accent via-accent to-accent/60 rounded-full mx-12 lg:mx-16 transition-all duration-700 ease-out"
-          style={{ width: `calc(${((activeStep - 1) / (steps.length - 1)) * 100}% - 6rem)` }}
+          className="absolute left-0 top-4 h-0.5 bg-accent rounded-full mx-8 transition-all duration-500"
+          style={{ width: `calc(${((activeStep - 1) / (steps.length - 1)) * 100}% - 4rem)` }}
         />
 
         {/* Steps */}
@@ -57,44 +57,36 @@ export function MatchProgressStepper({ status }: MatchProgressStepperProps) {
 
           return (
             <div key={step.id} className="relative z-10 flex flex-col items-center flex-1">
-              {/* Step Circle - Larger */}
+              {/* Step Circle - Compact */}
               <div
                 className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 border-2",
-                  isCompleted && "bg-accent border-accent text-accent-foreground shadow-lg shadow-accent/30",
-                  isActive && "bg-gradient-to-br from-accent/30 to-accent/10 border-accent text-accent glow-gold scale-110",
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all border",
+                  isCompleted && "bg-accent border-accent text-accent-foreground",
+                  isActive && "bg-accent/20 border-accent text-accent scale-110",
                   isPending && "bg-secondary border-border text-muted-foreground"
                 )}
               >
                 {isCompleted ? (
-                  <Check className="w-5 h-5" />
+                  <Check className="w-3.5 h-3.5" />
                 ) : (
                   <Icon className={cn(
-                    "w-5 h-5 transition-transform",
+                    "w-3.5 h-3.5",
                     isActive && "animate-pulse"
                   )} />
                 )}
               </div>
 
-              {/* Label & Description */}
-              <div className="mt-3 text-center">
-                <p
-                  className={cn(
-                    "text-sm font-bold transition-colors",
-                    isCompleted && "text-accent",
-                    isActive && "text-accent glow-text-gold",
-                    isPending && "text-muted-foreground"
-                  )}
-                >
-                  {step.label}
-                </p>
-                <p className={cn(
-                  "text-xs mt-0.5 hidden sm:block",
-                  isActive ? "text-foreground/80" : "text-muted-foreground/60"
-                )}>
-                  {step.description}
-                </p>
-              </div>
+              {/* Label */}
+              <p
+                className={cn(
+                  "text-[10px] font-medium mt-1.5",
+                  isCompleted && "text-accent",
+                  isActive && "text-accent",
+                  isPending && "text-muted-foreground"
+                )}
+              >
+                {step.label}
+              </p>
             </div>
           );
         })}

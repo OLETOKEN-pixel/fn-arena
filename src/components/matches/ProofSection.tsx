@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Camera, Upload, X, Loader2, Trash2, ZoomIn, ImageIcon, Images } from 'lucide-react';
+import { Camera, Upload, X, Loader2, Trash2, ZoomIn, ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -213,36 +213,39 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
   return (
     <>
-      <Card className="border-border/50 bg-gradient-to-br from-card via-card to-secondary/10 overflow-hidden">
-        <CardHeader className="pb-4 border-b border-border/30">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center border border-primary/30">
-                <Camera className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <span className="text-lg">Proof Screenshots</span>
-                <p className="text-xs font-normal text-muted-foreground mt-0.5">
-                  Upload game result screenshots
-                </p>
-              </div>
+      <Card className="border-border/50 bg-card">
+        <CardContent className="p-3">
+          {/* Compact Header with Upload */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Camera className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Proof Screenshots</span>
+              <span className="text-xs text-muted-foreground">({proofs.length})</span>
             </div>
-            {proofs.length > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/50 text-muted-foreground">
-                <Images className="w-4 h-4" />
-                <span className="text-sm font-medium">{proofs.length}</span>
+            {isParticipant && (
+              <div className="relative">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={(e) => handleUpload(e.target.files)}
+                  disabled={uploading}
+                />
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={uploading}>
+                  {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                  Upload
+                </Button>
               </div>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-5 space-y-5">
-          {/* Upload area - Larger */}
-          {isParticipant && (
+          </div>
+
+          {/* Compact Drop Zone (only when dragging or no proofs) */}
+          {isParticipant && (proofs.length === 0 || dragActive) && (
             <div
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+              className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-all mb-2 ${
                 dragActive 
-                  ? 'border-primary bg-primary/10 scale-[1.02]' 
-                  : 'border-border/50 hover:border-primary/50 hover:bg-secondary/30'
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-border/50 hover:border-primary/50'
               }`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -256,90 +259,55 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
                 onChange={(e) => handleUpload(e.target.files)}
                 disabled={uploading}
               />
-              {uploading ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                  <p className="text-base text-muted-foreground">Uploading...</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center">
-                    <Upload className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-base font-medium text-foreground">
-                      Drag & drop or click to upload
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Max 5MB • JPG, PNG, WebP
-                    </p>
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Upload className="w-4 h-4" />
+                <span className="text-sm">Drop image or click to upload</span>
+              </div>
             </div>
           )}
 
-          {/* Proofs gallery - Larger Grid */}
+          {/* Proofs Gallery - Horizontal Scroll with small thumbnails */}
           {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : proofs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground rounded-xl bg-secondary/20 border border-dashed border-border/50">
-              <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-40" />
-              <p className="text-base font-medium">No screenshots yet</p>
-              <p className="text-sm mt-1">Upload proof of your game results</p>
+            <div className="text-center py-3 text-muted-foreground">
+              <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-40" />
+              <p className="text-xs">No screenshots yet</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {proofs.map((proof) => (
                 <div
                   key={proof.id}
-                  className="group relative aspect-video rounded-xl overflow-hidden border border-border/50 bg-muted shadow-md hover:shadow-xl transition-all hover:scale-[1.02]"
+                  className="group relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-border/50 bg-muted cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                  onClick={() => setSelectedProof(proof)}
                 >
                   <img
                     src={proof.image_url}
-                    alt="Proof screenshot"
-                    className="w-full h-full object-cover cursor-pointer"
-                    onClick={() => setSelectedProof(proof)}
+                    alt="Proof"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/placeholder.svg';
+                    }}
                   />
-                  
-                  {/* Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="w-6 h-6 border border-white/20">
-                          <AvatarImage src={proof.avatar_url || undefined} />
-                          <AvatarFallback className="text-[10px] bg-primary/20">
-                            {proof.username?.charAt(0) || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-xs text-white font-medium truncate max-w-[80px]">
-                          {proof.username}
-                        </span>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 bg-white/10 hover:bg-white/20 text-white"
-                          onClick={() => setSelectedProof(proof)}
-                        >
-                          <ZoomIn className="w-4 h-4" />
-                        </Button>
-                        {(proof.user_id === currentUserId || isAdmin) && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 bg-destructive/20 hover:bg-destructive/40 text-white"
-                            onClick={() => handleDelete(proof)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                  {/* Overlay on hover */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <ZoomIn className="w-4 h-4 text-white" />
                   </div>
+                  {/* Delete button */}
+                  {(proof.user_id === currentUserId || isAdmin) && (
+                    <button
+                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-destructive/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(proof);
+                      }}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -349,50 +317,52 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
       {/* Lightbox modal */}
       <Dialog open={!!selectedProof} onOpenChange={() => setSelectedProof(null)}>
-        <DialogContent className="sm:max-w-5xl p-0 overflow-hidden bg-black/95 border-border/50">
+        <DialogContent className="sm:max-w-4xl p-0 overflow-hidden bg-black/95 border-border/50">
           {selectedProof && (
             <div className="relative">
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full h-8 w-8"
                 onClick={() => setSelectedProof(null)}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </Button>
               
               <img
                 src={selectedProof.image_url}
                 alt="Proof screenshot"
-                className="w-full max-h-[80vh] object-contain"
+                className="w-full max-h-[70vh] object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/placeholder.svg';
+                }}
               />
               
-              <div className="p-5 bg-card flex items-center justify-between border-t border-border/30">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-8 h-8 border border-border">
+              <div className="p-3 bg-card flex items-center justify-between border-t border-border/30">
+                <div className="flex items-center gap-2">
+                  <Avatar className="w-6 h-6 border border-border">
                     <AvatarImage src={selectedProof.avatar_url || undefined} />
-                    <AvatarFallback className="text-sm">
+                    <AvatarFallback className="text-xs">
                       {selectedProof.username?.charAt(0) || '?'}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <span className="font-medium">{selectedProof.username}</span>
-                    <span className="text-sm text-muted-foreground ml-2">
-                      • {formatDistanceToNow(new Date(selectedProof.created_at), { addSuffix: true })}
-                    </span>
-                  </div>
+                  <span className="text-sm font-medium">{selectedProof.username}</span>
+                  <span className="text-xs text-muted-foreground">
+                    • {formatDistanceToNow(new Date(selectedProof.created_at), { addSuffix: true })}
+                  </span>
                 </div>
                 
                 {(selectedProof.user_id === currentUserId || isAdmin) && (
                   <Button
                     variant="destructive"
+                    size="sm"
                     onClick={() => {
                       handleDelete(selectedProof);
                       setSelectedProof(null);
                     }}
-                    className="gap-2"
+                    className="gap-1.5 h-7"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3 h-3" />
                     Delete
                   </Button>
                 )}

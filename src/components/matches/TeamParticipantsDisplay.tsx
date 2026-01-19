@@ -52,16 +52,16 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
       <div 
         key={p.id} 
         className={cn(
-          "flex items-center gap-2 p-2 rounded-lg transition-all border",
+          "flex items-center gap-2.5 p-2.5 rounded-lg transition-all border",
           isCurrentUser 
             ? "ring-1 ring-accent/50 bg-accent/10 border-accent/30" 
             : "bg-secondary/40 border-border/30"
         )}
       >
-        {/* Avatar with Captain Badge - Compact */}
+        {/* Avatar with Captain Badge */}
         <div className="relative flex-shrink-0">
           <Avatar className={cn(
-            "w-9 h-9 border",
+            "w-10 h-10 border",
             teamSide === 'A' ? "border-accent/50" : "border-primary/50"
           )}>
             <AvatarImage src={p.profile?.avatar_url ?? undefined} />
@@ -73,15 +73,15 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
             </AvatarFallback>
           </Avatar>
           {isCaptain && (
-            <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-accent rounded-full flex items-center justify-center">
-              <Crown className="w-2.5 h-2.5 text-accent-foreground" />
+            <div className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-accent rounded-full flex items-center justify-center">
+              <Crown className="w-3 h-3 text-accent-foreground" />
             </div>
           )}
         </div>
         
-        {/* Player Info - Compact */}
+        {/* Player Info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <p className={cn(
               "font-semibold text-sm truncate",
               isCurrentUser && "text-accent"
@@ -153,7 +153,7 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
         <CardContent className="p-0">
           <div className="grid grid-cols-[1fr,auto,1fr] items-stretch">
             {/* Player 1 */}
-            <div className="p-3 bg-gradient-to-br from-accent/5 to-transparent">
+            <div className="p-4 bg-gradient-to-br from-accent/5 to-transparent">
               <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-2 flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-accent" />
                 Host
@@ -176,7 +176,7 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
             </div>
 
             {/* Player 2 */}
-            <div className="p-3 bg-gradient-to-bl from-primary/5 to-transparent">
+            <div className="p-4 bg-gradient-to-bl from-primary/5 to-transparent">
               <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-1 justify-end">
                 Challenger
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />
@@ -201,7 +201,7 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
       <CardContent className="p-0">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr,auto,1fr] items-stretch">
           {/* Team A */}
-          <div className="p-3 bg-gradient-to-br from-accent/5 to-transparent">
+          <div className="p-4 bg-gradient-to-br from-accent/5 to-transparent">
             <div className="flex items-center justify-between mb-2">
               <div className="text-[10px] font-bold text-accent uppercase tracking-wider flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-accent" />
@@ -250,7 +250,7 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
           </div>
           
           {/* Team B */}
-          <div className="p-3 bg-gradient-to-bl from-primary/5 to-transparent">
+          <div className="p-4 bg-gradient-to-bl from-primary/5 to-transparent">
             <div className="flex items-center justify-between mb-2">
               <div className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />

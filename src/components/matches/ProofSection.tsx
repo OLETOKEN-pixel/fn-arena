@@ -213,13 +213,19 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
   return (
     <>
-      <Card className="border-border/50 bg-card">
-        <CardContent className="p-3">
-          {/* Compact Header with Upload */}
-          <div className="flex items-center justify-between mb-2">
+      <Card 
+        className="border-border/50 bg-card"
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
+        <CardContent className="p-4">
+          {/* Header with Upload */}
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Camera className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">Proof Screenshots</span>
+              <Camera className="w-5 h-5 text-primary" />
+              <span className="text-sm font-semibold">Proof Screenshots</span>
               <span className="text-xs text-muted-foreground">({proofs.length})</span>
             </div>
             {isParticipant && (
@@ -231,57 +237,43 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
                   onChange={(e) => handleUpload(e.target.files)}
                   disabled={uploading}
                 />
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={uploading}>
-                  {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" disabled={uploading}>
+                  {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                   Upload
                 </Button>
               </div>
             )}
           </div>
 
-          {/* Compact Drop Zone (only when dragging or no proofs) */}
-          {isParticipant && (proofs.length === 0 || dragActive) && (
+          {/* Drop Zone - ONLY when dragging */}
+          {isParticipant && dragActive && (
             <div
-              className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-all mb-2 ${
-                dragActive 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border/50 hover:border-primary/50'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
+              className="relative border-2 border-dashed rounded-lg p-6 text-center transition-all mb-3 border-primary bg-primary/10"
             >
-              <Input
-                type="file"
-                accept="image/*"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                onChange={(e) => handleUpload(e.target.files)}
-                disabled={uploading}
-              />
-              <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                <Upload className="w-4 h-4" />
-                <span className="text-sm">Drop image or click to upload</span>
+              <div className="flex items-center justify-center gap-2 text-primary">
+                <Upload className="w-5 h-5" />
+                <span className="text-sm font-medium">Drop image here</span>
               </div>
             </div>
           )}
 
-          {/* Proofs Gallery - Horizontal Scroll with small thumbnails */}
+          {/* Proofs Gallery - Horizontal Scroll with larger thumbnails */}
           {loading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : proofs.length === 0 ? (
-            <div className="text-center py-3 text-muted-foreground">
-              <ImageIcon className="w-8 h-8 mx-auto mb-1 opacity-40" />
-              <p className="text-xs">No screenshots yet</p>
+            <div className="text-center py-4 text-muted-foreground">
+              <ImageIcon className="w-10 h-10 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">No screenshots yet</p>
+              <p className="text-xs mt-1">Drag & drop or click Upload</p>
             </div>
           ) : (
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2.5 overflow-x-auto pb-1">
               {proofs.map((proof) => (
                 <div
                   key={proof.id}
-                  className="group relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-border/50 bg-muted cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                  className="group relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border border-border/50 bg-muted cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                   onClick={() => setSelectedProof(proof)}
                 >
                   <img
@@ -294,18 +286,18 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
                   />
                   {/* Overlay on hover */}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <ZoomIn className="w-4 h-4 text-white" />
+                    <ZoomIn className="w-5 h-5 text-white" />
                   </div>
                   {/* Delete button */}
                   {(proof.user_id === currentUserId || isAdmin) && (
                     <button
-                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-destructive/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(proof);
                       }}
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>

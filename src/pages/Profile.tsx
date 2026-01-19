@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { User, Gamepad2, MapPin, Save, AlertTriangle, CreditCard, Link2 } from 'lucide-react';
+import { User, Gamepad2, MapPin, Save, AlertTriangle, CreditCard, Link2, Crown, Lock } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,11 +12,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useVipStatus } from '@/hooks/useVipStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { REGIONS, PLATFORMS, type Region, type Platform } from '@/types';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
+import { VipModal } from '@/components/vip/VipModal';
 
-// Provider icons as simple SVG components
 function GoogleIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -42,17 +43,20 @@ export default function Profile() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user, profile, loading, refreshProfile, isProfileComplete } = useAuth();
+  const { isVip, changeUsername } = useVipStatus();
 
-  // Get redirect URL from "next" parameter (set after completing profile)
   const redirectAfterComplete = searchParams.get('next');
 
   const [epicUsername, setEpicUsername] = useState('');
+  const [username, setUsername] = useState('');
   const [preferredRegion, setPreferredRegion] = useState<Region>('EU');
   const [preferredPlatform, setPreferredPlatform] = useState<Platform>('PC');
   const [paypalEmail, setPaypalEmail] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [showVipModal, setShowVipModal] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
 
-  // Get linked providers from user identities
   const linkedProviders = user?.identities?.map(i => i.provider) || [];
   const googleIdentity = user?.identities?.find(i => i.provider === 'google');
   const googleEmail = googleIdentity?.identity_data?.email as string | undefined;
@@ -66,6 +70,7 @@ export default function Profile() {
   useEffect(() => {
     if (profile) {
       setEpicUsername(profile.epic_username ?? '');
+      setUsername(profile.username ?? '');
       setPreferredRegion(profile.preferred_region as Region);
       setPreferredPlatform(profile.preferred_platform as Platform);
       setPaypalEmail(profile.paypal_email ?? '');
@@ -74,7 +79,6 @@ export default function Profile() {
 
   const handleSave = async () => {
     if (!user) return;
-
     setSaving(true);
 
     const { error } = await supabase
@@ -88,43 +92,47 @@ export default function Profile() {
       .eq('user_id', user.id);
 
     if (error) {
-      toast({
-        title: 'Errore',
-        description: 'Impossibile aggiornare il profilo.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Errore', description: 'Impossibile aggiornare il profilo.', variant: 'destructive' });
     } else {
-      toast({
-        title: 'Profilo aggiornato',
-        description: 'Le modifiche sono state salvate.',
-      });
+      toast({ title: 'Profilo aggiornato', description: 'Le modifiche sono state salvate.' });
       await refreshProfile();
-      
-      // If profile was incomplete and now has epic username, redirect to intended page
-      const wasIncomplete = !isProfileComplete;
-      const nowComplete = !!epicUsername;
-      if (wasIncomplete && nowComplete && redirectAfterComplete) {
+      if (!isProfileComplete && !!epicUsername && redirectAfterComplete) {
         navigate(redirectAfterComplete, { replace: true });
       }
     }
-
     setSaving(false);
+  };
+
+  const handleSaveUsername = async () => {
+    if (!user || !isVip) return;
+    if (username.length < 3 || username.length > 20) {
+      setUsernameError('Username must be 3-20 characters');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setUsernameError('Only letters, numbers, and underscores allowed');
+      return;
+    }
+    setUsernameError('');
+    setSavingUsername(true);
+
+    const result = await changeUsername(username);
+    if (result.success) {
+      toast({ title: 'Username Changed', description: 'Your new username is now active.' });
+      await refreshProfile();
+    } else {
+      setUsernameError(result.error || 'Failed to change username');
+    }
+    setSavingUsername(false);
   };
 
   const handleLinkGoogle = async () => {
     const { error } = await supabase.auth.linkIdentity({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/profile`,
-      },
+      options: { redirectTo: `${window.location.origin}/profile` },
     });
-    
     if (error) {
-      toast({
-        title: 'Errore',
-        description: 'Impossibile collegare account Google.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Errore', description: 'Impossibile collegare account Google.', variant: 'destructive' });
     }
   };
 
@@ -136,16 +144,51 @@ export default function Profile() {
       <div className="max-w-2xl mx-auto space-y-6">
         <h1 className="font-display text-3xl font-bold">Profilo</h1>
 
-        {/* Epic Username Warning */}
         {!isProfileComplete && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Completa il Profilo</AlertTitle>
-            <AlertDescription>
-              Aggiungi il tuo Epic Games Username per creare o unirti ai match.
-            </AlertDescription>
+            <AlertDescription>Aggiungi il tuo Epic Games Username per creare o unirti ai match.</AlertDescription>
           </Alert>
         )}
+
+        {/* Username Card (VIP Feature) */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-amber-400" />
+              Username
+              {isVip && <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">VIP</Badge>}
+            </CardTitle>
+            <CardDescription>
+              {isVip ? 'You can change your username anytime' : 'Become VIP to change your username'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setUsernameError(''); }}
+                disabled={!isVip}
+                placeholder="Your username"
+                className={usernameError ? 'border-destructive' : ''}
+              />
+              {isVip ? (
+                <Button onClick={handleSaveUsername} disabled={savingUsername || username === profile.username}>
+                  {savingUsername ? 'Saving...' : 'Save'}
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => setShowVipModal(true)}>
+                  <Lock className="w-4 h-4 mr-1" /> Unlock
+                </Button>
+              )}
+            </div>
+            {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
+            {!isVip && (
+              <p className="text-xs text-muted-foreground">🔒 Diventa VIP per cambiare username gratis</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Profile Card */}
         <Card className="bg-card border-border">
@@ -163,158 +206,87 @@ export default function Profile() {
               </div>
             </div>
           </CardHeader>
-
           <CardContent className="space-y-6">
-            {/* Epic Username */}
             <div className="space-y-2">
               <Label htmlFor="epic" className="flex items-center gap-2">
                 <Gamepad2 className="w-4 h-4" />
                 Epic Games Username
                 <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="epic"
-                placeholder="Il tuo username Epic Games"
-                value={epicUsername}
-                onChange={(e) => setEpicUsername(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Richiesto per giocare. Assicurati che corrisponda al tuo account FN.
-              </p>
+              <Input id="epic" placeholder="Il tuo username Epic Games" value={epicUsername} onChange={(e) => setEpicUsername(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Richiesto per giocare.</p>
             </div>
 
-            {/* Preferred Region */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                Regione Preferita
-              </Label>
+              <Label className="flex items-center gap-2"><MapPin className="w-4 h-4" />Regione Preferita</Label>
               <Select value={preferredRegion} onValueChange={(v) => setPreferredRegion(v as Region)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {REGIONS.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{REGIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
-            {/* Preferred Platform */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                Piattaforma Preferita
-              </Label>
+              <Label className="flex items-center gap-2"><User className="w-4 h-4" />Piattaforma Preferita</Label>
               <Select value={preferredPlatform} onValueChange={(v) => setPreferredPlatform(v as Platform)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PLATFORMS.map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
             <Button onClick={handleSave} disabled={saving} className="w-full">
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Salvataggio...' : 'Salva Modifiche'}
+              <Save className="w-4 h-4 mr-2" />{saving ? 'Salvataggio...' : 'Salva Modifiche'}
             </Button>
           </CardContent>
         </Card>
 
-        {/* Linked Accounts Card */}
+        {/* Linked Accounts */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link2 className="w-5 h-5" />
-              Account Collegati
-            </CardTitle>
-            <CardDescription>
-              Gestisci i tuoi metodi di accesso
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2"><Link2 className="w-5 h-5" />Account Collegati</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* Google */}
             <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                  <GoogleIcon className="w-6 h-6" />
-                </div>
+                <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center"><GoogleIcon className="w-6 h-6" /></div>
                 <div>
                   <p className="font-medium">Google</p>
-                  {linkedProviders.includes('google') ? (
-                    <p className="text-xs text-muted-foreground">{googleEmail}</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Non collegato</p>
-                  )}
+                  <p className="text-xs text-muted-foreground">{linkedProviders.includes('google') ? googleEmail : 'Non collegato'}</p>
                 </div>
               </div>
               {linkedProviders.includes('google') ? (
-                <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                  Collegato
-                </Badge>
+                <Badge variant="outline" className="text-green-500 border-green-500/30">Collegato</Badge>
               ) : (
-                <Button size="sm" variant="outline" onClick={handleLinkGoogle}>
-                  Collega
-                </Button>
+                <Button size="sm" variant="outline" onClick={handleLinkGoogle}>Collega</Button>
               )}
             </div>
-
-            {/* Discord - Not available */}
             <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30 opacity-60">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#5865F2] flex items-center justify-center">
-                  <DiscordIcon className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-medium">Discord</p>
-                  <p className="text-xs text-muted-foreground">Non disponibile</p>
-                </div>
+                <div className="w-10 h-10 rounded-full bg-[#5865F2] flex items-center justify-center"><DiscordIcon className="w-6 h-6" /></div>
+                <div><p className="font-medium">Discord</p><p className="text-xs text-muted-foreground">Non disponibile</p></div>
               </div>
-              <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
-                Coming Soon
-              </Badge>
+              <Badge variant="outline" className="text-muted-foreground">Coming Soon</Badge>
             </div>
           </CardContent>
         </Card>
 
-        {/* Payment Details Card */}
+        {/* Payment */}
         <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Dati di Pagamento
-            </CardTitle>
-            <CardDescription>
-              Necessari per ricevere i prelievi
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2"><CreditCard className="w-5 h-5" />Dati di Pagamento</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="paypal">Email PayPal</Label>
-              <Input
-                id="paypal"
-                type="email"
-                placeholder="email@paypal.com"
-                value={paypalEmail}
-                onChange={(e) => setPaypalEmail(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Unico metodo di pagamento per i prelievi.
-              </p>
+              <Input id="paypal" type="email" placeholder="email@paypal.com" value={paypalEmail} onChange={(e) => setPaypalEmail(e.target.value)} />
             </div>
-
             <Button onClick={handleSave} disabled={saving} variant="outline" className="w-full">
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Salvataggio...' : 'Salva Dati Pagamento'}
+              <Save className="w-4 h-4 mr-2" />{saving ? 'Salvataggio...' : 'Salva Dati Pagamento'}
             </Button>
           </CardContent>
         </Card>
       </div>
+
+      <VipModal open={showVipModal} onOpenChange={setShowVipModal} />
     </MainLayout>
   );
 }

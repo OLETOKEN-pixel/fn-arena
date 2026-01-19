@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { Users, Swords } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MatchStatusBadge, RegionBadge, PlatformBadge, ModeBadge } from '@/components/ui/custom-badge';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { CountdownTimer } from '@/components/common/CountdownTimer';
@@ -29,30 +28,18 @@ export function MatchCard({ match, onJoin, isJoining }: MatchCardProps) {
       "card-hover bg-card border-border overflow-hidden",
       isLive && "ring-2 ring-success/50"
     )}>
-      {/* Header */}
+      {/* Header - Status only (no creator info to maintain match anonymity) */}
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Avatar className="w-8 h-8">
-            <AvatarImage src={match.creator?.avatar_url ?? undefined} />
-            <AvatarFallback className="text-xs bg-primary/20 text-primary">
-              {match.creator?.username?.charAt(0).toUpperCase() ?? '?'}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="text-sm font-medium">{match.creator?.username ?? 'Unknown'}</p>
-            <p className="text-xs text-muted-foreground">Host</p>
-          </div>
+        <div className="flex items-center gap-2">
+          <Swords className="w-5 h-5 text-primary" />
+          <span className="font-display font-bold">FN Match</span>
         </div>
         <MatchStatusBadge status={match.status} />
       </div>
 
       <CardContent className="p-4 space-y-4">
-        {/* Game & Mode */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Swords className="w-5 h-5 text-primary" />
-            <span className="font-display font-bold text-lg">FN</span>
-          </div>
+        {/* Mode Badge */}
+        <div className="flex items-center justify-center">
           <ModeBadge mode={match.mode} />
         </div>
 

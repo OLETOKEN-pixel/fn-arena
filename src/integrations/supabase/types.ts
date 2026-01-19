@@ -817,6 +817,30 @@ export type Database = {
           },
         ]
       }
+      tips: {
+        Row: {
+          amount: number
+          created_at: string
+          from_user_id: string
+          id: string
+          to_user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          from_user_id: string
+          id?: string
+          to_user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          to_user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -901,6 +925,30 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vip_subscriptions: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          started_at?: string
           user_id?: string
         }
         Relationships: []
@@ -1103,10 +1151,12 @@ export type Database = {
         Returns: Json
       }
       cancel_match_v2: { Args: { p_match_id: string }; Returns: Json }
+      change_username_vip: { Args: { p_new_username: string }; Returns: Json }
       check_username_available: {
         Args: { p_username: string }
         Returns: boolean
       }
+      check_vip_status: { Args: { p_user_id?: string }; Returns: Json }
       complete_match_payout: {
         Args: { p_match_id: string; p_winner_user_id: string }
         Returns: Json
@@ -1185,6 +1235,7 @@ export type Database = {
         }
         Returns: Json
       }
+      purchase_vip: { Args: never; Returns: Json }
       record_platform_fee: {
         Args: { p_fee_amount: number; p_match_id: string }
         Returns: Json
@@ -1208,6 +1259,10 @@ export type Database = {
       }
       send_team_invite: {
         Args: { p_invitee_user_id: string; p_team_id: string }
+        Returns: Json
+      }
+      send_tip: {
+        Args: { p_amount: number; p_to_user_id: string }
         Returns: Json
       }
       set_player_ready: { Args: { p_match_id: string }; Returns: Json }

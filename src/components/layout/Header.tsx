@@ -14,6 +14,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { CoinIcon } from '@/components/common/CoinIcon';
+import { VipBanner } from '@/components/vip/VipBanner';
+import { VipModal } from '@/components/vip/VipModal';
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -25,6 +27,7 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showVipModal, setShowVipModal] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +76,9 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
         <div className="flex items-center gap-3">
           {user ? (
             <>
+              {/* VIP Banner */}
+              <VipBanner onClick={() => setShowVipModal(true)} />
+
               {/* Wallet balance with clickable coin */}
               <Link
                 to="/wallet"
@@ -186,6 +192,9 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
           )}
         </div>
       </div>
+
+      {/* VIP Modal */}
+      <VipModal open={showVipModal} onOpenChange={setShowVipModal} />
     </header>
   );
 }

@@ -180,17 +180,17 @@ export function MatchChat({
 
   return (
     <div className="flex flex-col h-full bg-card rounded-lg border border-border/50 overflow-hidden">
-      {/* Header - Compact */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border/30 bg-secondary/30">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/30 bg-secondary/30">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-primary" />
-          <span className="font-medium text-sm">Chat</span>
+          <MessageSquare className="w-5 h-5 text-primary" />
+          <span className="font-semibold text-sm">Chat</span>
           <span className="text-xs text-muted-foreground">({messages.length})</span>
         </div>
         {isReadOnly && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary/50 text-muted-foreground">
-            <Lock className="w-3 h-3" />
-            <span className="text-[10px]">Closed</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/50 text-muted-foreground">
+            <Lock className="w-3.5 h-3.5" />
+            <span className="text-xs">Closed</span>
           </div>
         )}
       </div>
@@ -270,9 +270,9 @@ export function MatchChat({
         )}
       </ScrollArea>
 
-      {/* Input Area - Compact */}
+      {/* Input Area */}
       {canSendMessage ? (
-        <div className="p-2 border-t border-border/30 bg-secondary/20">
+        <div className="p-3 border-t border-border/30 bg-secondary/20">
           <div className="flex gap-2">
             <Input
               placeholder="Message..."
@@ -281,18 +281,18 @@ export function MatchChat({
               onKeyDown={handleKeyDown}
               disabled={sending}
               maxLength={500}
-              className="flex-1 h-8 text-sm bg-background/50 border-border/50"
+              className="flex-1 h-9 text-sm bg-background/50 border-border/50"
             />
             <Button
               size="icon"
-              className="h-8 w-8 bg-primary hover:bg-primary/90"
+              className="h-9 w-9 bg-primary hover:bg-primary/90"
               onClick={handleSendMessage}
               disabled={sending || !newMessage.trim()}
             >
               {sending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Send className="w-3.5 h-3.5" />
+                <Send className="w-4 h-4" />
               )}
             </Button>
           </div>

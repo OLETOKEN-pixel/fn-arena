@@ -312,11 +312,11 @@ export default function MatchDetails() {
 
       {/* ===== MAIN CONTENT - FIXED HEIGHT LAYOUT ===== */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <div className="max-w-[1600px] mx-auto px-3 py-3 h-full">
-          <div className="flex flex-col lg:flex-row gap-3 h-full">
+        <div className="max-w-[1600px] mx-auto px-4 py-4 h-full">
+          <div className="flex flex-col lg:flex-row gap-4 h-full">
             
             {/* ===== LEFT COLUMN - Main Content ===== */}
-            <div className="flex-1 flex flex-col gap-3 min-w-0">
+            <div className="flex-1 flex flex-col gap-4 min-w-0">
               
               {/* Status Messages - Compact */}
               {match.status === 'open' && isCreator && (
@@ -433,7 +433,7 @@ export default function MatchDetails() {
             </div>
 
             {/* ===== RIGHT COLUMN - Sidebar ===== */}
-            <div className="w-full lg:w-[340px] flex flex-col gap-3 flex-shrink-0">
+            <div className="w-full lg:w-[360px] flex flex-col gap-4 flex-shrink-0">
               
               {/* Ready Up Section */}
               {showReadyUp && user && (

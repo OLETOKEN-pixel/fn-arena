@@ -110,57 +110,57 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
 
   return (
     <Card className="border-accent/30 bg-card overflow-hidden">
-      <CardContent className="p-3 space-y-3">
-        {/* Header - Compact */}
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center">
-            <Trophy className="w-3.5 h-3.5 text-accent" />
+      <CardContent className="p-4 space-y-4">
+        {/* Header */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+            <Trophy className="w-4 h-4 text-accent" />
           </div>
           <div>
             <span className="text-sm font-semibold">Dichiara Risultato</span>
             {isTeamMatch && (
-              <p className="text-[10px] text-muted-foreground">Solo il capitano</p>
+              <p className="text-xs text-muted-foreground">Solo il capitano</p>
             )}
           </div>
         </div>
 
-        {/* Team Status - Compact */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Team Status */}
+        <div className="grid grid-cols-2 gap-3">
           <div className={cn(
-            'p-2 rounded-lg text-center border',
+            'p-3 rounded-lg text-center border',
             teamAResult ? 'bg-success/10 border-success/30' : 'bg-secondary/50 border-border/50'
           )}>
-            <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
+            <p className="text-xs font-bold uppercase text-muted-foreground mb-1.5">
               Team A {userTeamSide === 'A' && <span className="text-accent">(Tu)</span>}
             </p>
             {teamAResult ? (
-              <div className="flex items-center justify-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-                <span className="text-xs font-bold text-success">
+              <div className="flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-success" />
+                <span className="text-sm font-bold text-success">
                   {teamAResult === 'WIN' ? 'Vittoria' : 'Sconfitta'}
                 </span>
               </div>
             ) : (
-              <Clock className="w-4 h-4 text-muted-foreground animate-pulse mx-auto" />
+              <Clock className="w-5 h-5 text-muted-foreground animate-pulse mx-auto" />
             )}
           </div>
 
           <div className={cn(
-            'p-2 rounded-lg text-center border',
+            'p-3 rounded-lg text-center border',
             teamBResult ? 'bg-success/10 border-success/30' : 'bg-secondary/50 border-border/50'
           )}>
-            <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">
+            <p className="text-xs font-bold uppercase text-muted-foreground mb-1.5">
               Team B {userTeamSide === 'B' && <span className="text-primary">(Tu)</span>}
             </p>
             {teamBResult ? (
-              <div className="flex items-center justify-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-success" />
-                <span className="text-xs font-bold text-success">
+              <div className="flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-success" />
+                <span className="text-sm font-bold text-success">
                   {teamBResult === 'WIN' ? 'Vittoria' : 'Sconfitta'}
                 </span>
               </div>
             ) : (
-              <Clock className="w-4 h-4 text-muted-foreground animate-pulse mx-auto" />
+              <Clock className="w-5 h-5 text-muted-foreground animate-pulse mx-auto" />
             )}
           </div>
         </div>

@@ -39,8 +39,10 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
   const isCompleted = match.status === 'completed' || match.status === 'admin_resolved';
 
   // Anonymity logic: hide opponent identities until all are ready
+  // Identities are revealed ONLY when match has started (in_progress or later) OR everyone is ready
+  const matchStartedOrLater = ['in_progress', 'result_pending', 'completed', 'disputed', 'admin_resolved'].includes(match.status);
   const allReady = match.participants?.every(p => p.ready) ?? false;
-  const showIdentities = match.status !== 'ready_check' || allReady;
+  const showIdentities = matchStartedOrLater || allReady;
 
   const copyEpicUsername = (username: string) => {
     navigator.clipboard.writeText(username);

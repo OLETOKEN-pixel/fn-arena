@@ -1424,6 +1424,10 @@ export type Database = {
         Args: { p_amount: number; p_reason: string; p_user_id: string }
         Returns: Json
       }
+      admin_backfill_challenge_progress: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       admin_global_search: { Args: { p_query: string }; Returns: Json }
       admin_prepare_delete_user: { Args: { p_user_id: string }; Returns: Json }
       admin_resolve_dispute: {

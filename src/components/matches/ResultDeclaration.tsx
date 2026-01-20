@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Trophy, X, Loader2, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Match } from '@/types';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ResultDeclarationProps {
   match: Match;
@@ -17,6 +17,7 @@ interface ResultDeclarationProps {
 export function ResultDeclaration({ match, currentUserId, onResultDeclared }: ResultDeclarationProps) {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
   const participant = match.participants?.find(p => p.user_id === currentUserId);
   const opponent = match.participants?.find(p => p.user_id !== currentUserId);
@@ -51,6 +52,9 @@ export function ResultDeclaration({ match, currentUserId, onResultDeclared }: Re
             ? 'You won! Winnings have been added to your wallet.'
             : 'Better luck next time!',
         });
+        
+        // Invalidate challenges query for real-time progress update
+        queryClient.invalidateQueries({ queryKey: ['challenges'] });
       } else if (response.status === 'disputed') {
         toast({
           title: 'Dispute Opened',

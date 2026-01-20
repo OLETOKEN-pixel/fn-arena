@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Match } from '@/types';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ReadyUpSectionProps {
   match: Match;
@@ -18,6 +19,7 @@ interface ReadyUpSectionProps {
 export function ReadyUpSection({ match, currentUserId, onReadyChange }: ReadyUpSectionProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const participant = match.participants?.find(p => p.user_id === currentUserId);
   const isReady = participant?.ready ?? false;
@@ -57,6 +59,9 @@ export function ReadyUpSection({ match, currentUserId, onReadyChange }: ReadyUpS
         });
       }
 
+      // Invalidate challenges query for real-time progress update (ready_up_fast)
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
+      
       onReadyChange();
     } catch (error: any) {
       toast({

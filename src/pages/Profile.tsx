@@ -269,6 +269,49 @@ export default function Profile() {
           </CardContent>
         </Card>
 
+        {/* Game Accounts */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Gamepad2 className="w-5 h-5" />Game Accounts</CardTitle>
+            <CardDescription>Connect your gaming accounts for automatic ID sync</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center">
+                  <Gamepad2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-medium">Epic Games</p>
+                  <p className="text-xs text-muted-foreground">
+                    {epicUsername ? epicUsername : 'Not connected'}
+                  </p>
+                </div>
+              </div>
+              {epicUsername ? (
+                <Badge variant="outline" className="text-green-500 border-green-500/30">Connected</Badge>
+              ) : (
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => {
+                    const epicInput = document.getElementById('epic');
+                    if (epicInput) {
+                      epicInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      epicInput.focus();
+                    }
+                  }}
+                >
+                  Connect
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              💡 For now, enter your Epic Games username manually above. OAuth connection coming soon!
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Payment */}
         <Card className="bg-card border-border">
           <CardHeader>

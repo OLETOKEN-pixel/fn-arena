@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -10,14 +10,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useOpenMatches, type MatchFilters } from '@/hooks/useMatches';
 import { REGIONS, PLATFORMS, GAME_MODES, TEAM_SIZES, type Match, type Region, type Platform, type GameMode, type TeamSize } from '@/types';
 
 export default function Matches() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, wallet, isProfileComplete, refreshWallet } = useAuth();
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -26,64 +25,21 @@ export default function Matches() {
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
   const [modeFilter, setModeFilter] = useState<GameMode | 'all'>('all');
   const [sizeFilter, setSizeFilter] = useState<TeamSize | 'all'>('all');
-  const [sortBy, setSortBy] = useState<'newest' | 'fee'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'entry_fee_high'>('newest');
 
-  const fetchMatches = async () => {
-    setLoading(true);
+  // Build filters object for the hook
+  const filters: MatchFilters = useMemo(() => ({
+    region: regionFilter,
+    platform: platformFilter,
+    mode: modeFilter,
+    size: sizeFilter === 'all' ? 'all' : sizeFilter,
+    sortBy: sortBy === 'newest' ? 'newest' : 'entry_fee_high',
+    searchQuery: searchQuery,
+  }), [regionFilter, platformFilter, modeFilter, sizeFilter, sortBy, searchQuery]);
 
-    let query = supabase
-      .from('matches')
-      .select(`
-        *,
-        creator:profiles!matches_creator_id_fkey(user_id, username, avatar_url, epic_username),
-        participants:match_participants(*)
-      `)
-      .eq('status', 'open')
-      .gt('expires_at', new Date().toISOString()); // Only show non-expired OPEN matches
-
-    // Apply filters
-    if (regionFilter !== 'all') {
-      query = query.eq('region', regionFilter);
-    }
-    if (platformFilter !== 'all') {
-      query = query.eq('platform', platformFilter);
-    }
-    if (modeFilter !== 'all') {
-      query = query.eq('mode', modeFilter);
-    }
-    if (sizeFilter !== 'all') {
-      query = query.eq('team_size', sizeFilter);
-    }
-
-    // Apply sorting
-    if (sortBy === 'newest') {
-      query = query.order('created_at', { ascending: false });
-    } else if (sortBy === 'fee') {
-      query = query.order('entry_fee', { ascending: false });
-    }
-
-    const { data, error } = await query;
-
-    if (!error && data) {
-      let filtered = data as unknown as Match[];
-
-      // Apply search filter
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        filtered = filtered.filter(m =>
-          m.creator?.username?.toLowerCase().includes(q) ||
-          m.id.toLowerCase().includes(q)
-        );
-      }
-
-      setMatches(filtered);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchMatches();
-  }, [regionFilter, platformFilter, modeFilter, sizeFilter, sortBy, searchQuery]);
+  // Use the realtime-enabled hook
+  const { data: matchesData, isLoading: loading } = useOpenMatches(filters);
+  const matches = (matchesData || []) as Match[];
 
   const handleJoin = async (matchId: string) => {
     if (!user || !wallet) {
@@ -130,10 +86,10 @@ export default function Matches() {
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; status?: string };
+      const result = data as { success: boolean; error?: string; status?: string } | null;
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to join match');
+      if (!result || !result.success) {
+        throw new Error(result?.error || 'Failed to join match');
       }
 
       toast({
@@ -239,7 +195,7 @@ export default function Matches() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="fee">Highest Fee</SelectItem>
+              <SelectItem value="entry_fee_high">Highest Fee</SelectItem>
             </SelectContent>
           </Select>
         </div>

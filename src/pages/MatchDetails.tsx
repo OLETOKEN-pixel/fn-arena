@@ -45,6 +45,7 @@ export default function MatchDetails() {
   const [selectedTeam, setSelectedTeam] = useState<SelectedTeam | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('cover');
   const [joining, setJoining] = useState(false);
+  const [joining1v1, setJoining1v1] = useState(false);
 
   const fetchMatch = async () => {
     if (!id) return;
@@ -207,6 +208,51 @@ export default function MatchDetails() {
     }
   };
 
+  const handleJoin1v1 = async () => {
+    if (!match || !user || !wallet) return;
+    
+    if (!isProfileComplete) {
+      toast({
+        title: 'Complete your profile',
+        description: 'Add your Epic Games Username before joining matches.',
+        variant: 'destructive',
+      });
+      navigate('/profile');
+      return;
+    }
+
+    setJoining1v1(true);
+    
+    try {
+      const { data, error } = await supabase.rpc('join_match_v2', {
+        p_match_id: match.id,
+      });
+
+      if (error) throw error;
+
+      const result = data as { success: boolean; error?: string } | null;
+      if (!result || !result.success) {
+        throw new Error(result?.error || 'Failed to join match');
+      }
+
+      toast({
+        title: 'Joined!',
+        description: 'You have joined the match. Get ready!',
+      });
+
+      await refreshWallet();
+      fetchMatch();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to join match',
+        variant: 'destructive',
+      });
+    } finally {
+      setJoining1v1(false);
+    }
+  };
+
   if (loading) return <div className="h-screen flex items-center justify-center bg-background"><LoadingPage /></div>;
   if (!match) return null;
 
@@ -231,6 +277,9 @@ export default function MatchDetails() {
   const canAffordCover = wallet && wallet.balance >= totalTeamCost;
   const canAffordSplit = selectedTeam?.memberBalances?.every(m => m.balance >= match.entry_fee) ?? false;
   const canJoinWithTeam = selectedTeam && (paymentMode === 'cover' ? canAffordCover : canAffordSplit);
+  
+  // Join 1v1 logic
+  const canJoin1v1 = user && match.status === 'open' && match.team_size === 1 && !isParticipant && participantCount < maxParticipants;
 
   const copyMatchLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -466,8 +515,39 @@ export default function MatchDetails() {
                 </div>
               )}
 
-              {/* Match Info Card - When no chat */}
-              {!showChat && (
+              {/* Join Match for 1v1 - Show in sidebar when match is open and user is not participant */}
+              {canJoin1v1 && (
+                <Card className="bg-card border-primary/30">
+                  <CardHeader className="py-2 px-3">
+                    <CardTitle className="text-sm flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-primary" />
+                      Join This Match
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Entry Fee</span>
+                      <CoinDisplay amount={match.entry_fee} size="sm" />
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Your Balance</span>
+                      <CoinDisplay amount={wallet?.balance ?? 0} size="sm" />
+                    </div>
+                    <Button 
+                      className="w-full mt-2"
+                      size="sm"
+                      onClick={handleJoin1v1}
+                      disabled={joining1v1 || (wallet?.balance ?? 0) < match.entry_fee}
+                    >
+                      {joining1v1 ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {(wallet?.balance ?? 0) < match.entry_fee ? 'Insufficient Balance' : 'Join Match'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Match Info Card - When no chat and not join mode */}
+              {!showChat && !canJoin1v1 && (
                 <Card className="bg-card border-border/50">
                   <CardHeader className="py-2 px-3">
                     <CardTitle className="text-sm flex items-center gap-1.5">

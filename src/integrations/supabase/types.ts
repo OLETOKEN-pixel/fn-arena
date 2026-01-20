@@ -1552,10 +1552,23 @@ export type Database = {
         Returns: Json
       }
       purchase_vip: { Args: never; Returns: Json }
-      record_challenge_event: {
-        Args: { p_event_type: string; p_source_id: string; p_user_id: string }
-        Returns: Json
-      }
+      record_challenge_event:
+        | {
+            Args: {
+              p_event_type: string
+              p_source_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_event_type: string
+              p_source_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       record_platform_fee: {
         Args: { p_fee_amount: number; p_match_id: string }
         Returns: Json

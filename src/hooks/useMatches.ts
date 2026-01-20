@@ -155,7 +155,9 @@ export function useMyMatches() {
       if (matchError) throw matchError;
 
       // Sort: active matches first, then by created_at
-      const activeStatuses = ['ready', 'in_progress', 'pending_result', 'disputed'];
+      // Keep aligned with backend state machine:
+      // open -> ready_check -> in_progress -> result_pending -> finished/disputed
+      const activeStatuses = ['ready_check', 'in_progress', 'result_pending', 'disputed'];
       return (matches || []).sort((a, b) => {
         const aActive = activeStatuses.includes(a.status || '');
         const bActive = activeStatuses.includes(b.status || '');

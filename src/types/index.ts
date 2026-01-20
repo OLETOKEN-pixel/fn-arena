@@ -169,9 +169,7 @@ export interface Match {
   team_b_id?: string | null;
   payment_mode_host?: PaymentMode;
   payment_mode_joiner?: PaymentMode;
-  host_payer_user_id?: string | null;
-  joiner_payer_user_id?: string | null;
-  creator?: Partial<Profile>;
+  creator?: Profile;
   participants?: MatchParticipant[];
   result?: MatchResult;
   team_a?: Team;

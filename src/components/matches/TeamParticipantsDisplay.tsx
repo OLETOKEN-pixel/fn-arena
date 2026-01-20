@@ -1,8 +1,10 @@
-import { Crown, CheckCircle2, Clock, Trophy, Users, Copy, Swords } from 'lucide-react';
+import { useState } from 'react';
+import { Crown, CheckCircle2, Clock, Trophy, Users, Copy, Swords, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { PlayerStatsModal } from '@/components/player/PlayerStatsModal';
 import type { Match, MatchParticipant } from '@/types';
 
 interface TeamParticipantsDisplayProps {
@@ -12,6 +14,8 @@ interface TeamParticipantsDisplayProps {
 
 export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipantsDisplayProps) {
   const { toast } = useToast();
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  
   const participantCount = match.participants?.length ?? 0;
   const maxParticipants = match.team_size * 2;
   const isTeamMatch = match.team_size > 1;
@@ -34,6 +38,10 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
   const showResultStatus = match.status === 'in_progress' || match.status === 'result_pending';
   const isCompleted = match.status === 'completed' || match.status === 'admin_resolved';
 
+  // Anonymity logic: hide opponent identities until all are ready
+  const allReady = match.participants?.every(p => p.ready) ?? false;
+  const showIdentities = match.status !== 'ready_check' || allReady;
+
   const copyEpicUsername = (username: string) => {
     navigator.clipboard.writeText(username);
     toast({
@@ -41,12 +49,21 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
       description: `${username} copied to clipboard`,
     });
   };
+
+  const handleAvatarClick = (userId: string, canShow: boolean) => {
+    if (canShow) {
+      setSelectedUserId(userId);
+    }
+  };
   
   const renderParticipant = (p: MatchParticipant, isCaptain: boolean, teamSide: 'A' | 'B') => {
     const isCurrentUser = p.user_id === currentUserId;
     const isWinner = match.result?.winner_user_id === p.user_id || 
       (match.result?.winner_team_id && p.team_id === match.result.winner_team_id);
     const epicUsername = p.profile?.epic_username;
+    
+    // Show identity if: it's the current user, OR identities are revealed (all ready / match started)
+    const canShowIdentity = isCurrentUser || showIdentities;
     
     return (
       <div 
@@ -58,19 +75,31 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
             : "bg-secondary/40 border-border/30"
         )}
       >
-        {/* Avatar with Captain Badge */}
+        {/* Avatar with Captain Badge - Clickable for stats */}
         <div className="relative flex-shrink-0">
-          <Avatar className={cn(
-            "w-10 h-10 border",
-            teamSide === 'A' ? "border-accent/50" : "border-primary/50"
-          )}>
-            <AvatarImage src={p.profile?.avatar_url ?? undefined} />
-            <AvatarFallback className={cn(
-              "text-sm font-bold",
-              teamSide === 'A' ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"
-            )}>
-              {p.profile?.username?.charAt(0).toUpperCase() ?? '?'}
-            </AvatarFallback>
+          <Avatar 
+            className={cn(
+              "w-10 h-10 border transition-all",
+              teamSide === 'A' ? "border-accent/50" : "border-primary/50",
+              canShowIdentity && "cursor-pointer hover:ring-2 ring-primary/50"
+            )}
+            onClick={() => handleAvatarClick(p.user_id, canShowIdentity)}
+          >
+            {canShowIdentity ? (
+              <>
+                <AvatarImage src={p.profile?.avatar_url ?? undefined} />
+                <AvatarFallback className={cn(
+                  "text-sm font-bold",
+                  teamSide === 'A' ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"
+                )}>
+                  {p.profile?.username?.charAt(0).toUpperCase() ?? '?'}
+                </AvatarFallback>
+              </>
+            ) : (
+              <AvatarFallback className="bg-muted text-muted-foreground">
+                <EyeOff className="w-4 h-4" />
+              </AvatarFallback>
+            )}
           </Avatar>
           {isCaptain && (
             <div className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-accent rounded-full flex items-center justify-center">
@@ -82,28 +111,44 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
         {/* Player Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className={cn(
-              "font-semibold text-sm truncate",
-              isCurrentUser && "text-accent"
-            )}>
-              {p.profile?.username}
-            </p>
+            {canShowIdentity ? (
+              <p 
+                className={cn(
+                  "font-semibold text-sm truncate cursor-pointer hover:text-primary transition-colors",
+                  isCurrentUser && "text-accent"
+                )}
+                onClick={() => handleAvatarClick(p.user_id, true)}
+              >
+                {p.profile?.username}
+              </p>
+            ) : (
+              <p className="font-semibold text-sm text-muted-foreground italic">
+                Hidden
+              </p>
+            )}
             {isCurrentUser && (
               <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-bold">YOU</span>
             )}
           </div>
           
-          {/* Epic Username */}
-          {epicUsername ? (
-            <button 
-              onClick={() => copyEpicUsername(epicUsername)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors group"
-            >
-              <span className="truncate max-w-[100px]">{epicUsername}</span>
-              <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
+          {/* Epic Username - only show if identities are revealed */}
+          {canShowIdentity ? (
+            epicUsername ? (
+              <button 
+                onClick={() => copyEpicUsername(epicUsername)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors group"
+              >
+                <span className="truncate max-w-[100px]">{epicUsername}</span>
+                <Copy className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            ) : (
+              <p className="text-xs text-destructive/80">No Epic username</p>
+            )
           ) : (
-            <p className="text-xs text-destructive/80">No Epic username</p>
+            <p className="text-xs text-muted-foreground italic flex items-center gap-1">
+              <EyeOff className="w-3 h-3" />
+              Ready up to reveal
+            </p>
           )}
         </div>
         
@@ -149,141 +194,157 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
     const player2 = match.participants?.find(p => p.team_side === 'B');
 
     return (
-      <Card className="overflow-hidden border-border/50 bg-card">
-        <CardContent className="p-0">
-          <div className="grid grid-cols-[1fr,auto,1fr] items-stretch">
-            {/* Player 1 */}
-            <div className="p-4 bg-gradient-to-br from-accent/5 to-transparent">
-              <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-2 flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-                Host
-              </div>
-              {player1 ? (
-                renderParticipant(player1, true, 'A')
-              ) : (
-                <div className="flex items-center justify-center py-6 text-muted-foreground border border-dashed border-border/50 rounded-lg">
-                  <Users className="w-5 h-5 mr-2 opacity-40" />
-                  <span className="text-xs">Waiting...</span>
+      <>
+        <Card className="overflow-hidden border-border/50 bg-card">
+          <CardContent className="p-0">
+            <div className="grid grid-cols-[1fr,auto,1fr] items-stretch">
+              {/* Player 1 */}
+              <div className="p-4 bg-gradient-to-br from-accent/5 to-transparent">
+                <div className="text-[10px] font-bold text-accent uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                  Host
                 </div>
-              )}
-            </div>
-
-            {/* VS Divider */}
-            <div className="flex items-center justify-center px-3 bg-secondary/30">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-                <Swords className="w-4 h-4 text-white" />
+                {player1 ? (
+                  renderParticipant(player1, true, 'A')
+                ) : (
+                  <div className="flex items-center justify-center py-6 text-muted-foreground border border-dashed border-border/50 rounded-lg">
+                    <Users className="w-5 h-5 mr-2 opacity-40" />
+                    <span className="text-xs">Waiting...</span>
+                  </div>
+                )}
               </div>
-            </div>
 
-            {/* Player 2 */}
-            <div className="p-4 bg-gradient-to-bl from-primary/5 to-transparent">
-              <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-1 justify-end">
-                Challenger
-                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-              </div>
-              {player2 ? (
-                renderParticipant(player2, true, 'B')
-              ) : (
-                <div className="flex items-center justify-center py-6 text-muted-foreground border border-dashed border-border/50 rounded-lg">
-                  <span className="text-xs">Waiting for opponent...</span>
+              {/* VS Divider */}
+              <div className="flex items-center justify-center px-3 bg-secondary/30">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+                  <Swords className="w-4 h-4 text-white" />
                 </div>
-              )}
+              </div>
+
+              {/* Player 2 */}
+              <div className="p-4 bg-gradient-to-bl from-primary/5 to-transparent">
+                <div className="text-[10px] font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-1 justify-end">
+                  Challenger
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                </div>
+                {player2 ? (
+                  renderParticipant(player2, true, 'B')
+                ) : (
+                  <div className="flex items-center justify-center py-6 text-muted-foreground border border-dashed border-border/50 rounded-lg">
+                    <span className="text-xs">Waiting for opponent...</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <PlayerStatsModal
+          open={!!selectedUserId}
+          onOpenChange={(open) => !open && setSelectedUserId(null)}
+          userId={selectedUserId || ''}
+        />
+      </>
     );
   }
 
   // For team matches
   return (
-    <Card className="overflow-hidden border-border/50 bg-card">
-      <CardContent className="p-0">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,auto,1fr] items-stretch">
-          {/* Team A */}
-          <div className="p-4 bg-gradient-to-br from-accent/5 to-transparent">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[10px] font-bold text-accent uppercase tracking-wider flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-                Host Team
+    <>
+      <Card className="overflow-hidden border-border/50 bg-card">
+        <CardContent className="p-0">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,auto,1fr] items-stretch">
+            {/* Team A */}
+            <div className="p-4 bg-gradient-to-br from-accent/5 to-transparent">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[10px] font-bold text-accent uppercase tracking-wider flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                  Host Team
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-medium">
+                  {match.payment_mode_host === 'cover' ? 'Cover' : 'Split'}
+                </span>
               </div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-medium">
-                {match.payment_mode_host === 'cover' ? 'Cover' : 'Split'}
-              </span>
+              
+              <div className="space-y-1.5">
+                {sortedTeamA.length > 0 ? (
+                  sortedTeamA.map((p) => renderParticipant(p, p.user_id === teamACaptainId, 'A'))
+                ) : (
+                  <div className="flex items-center justify-center py-4 text-muted-foreground border border-dashed border-border/50 rounded-lg">
+                    <Users className="w-4 h-4 mr-2 opacity-40" />
+                    <span className="text-xs">Waiting...</span>
+                  </div>
+                )}
+                
+                {/* Empty slots */}
+                {Array.from({ length: match.team_size - sortedTeamA.length }).map((_, i) => (
+                  <div 
+                    key={`empty-a-${i}`}
+                    className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border/40 text-muted-foreground/50"
+                  >
+                    <Users className="w-3 h-3" />
+                    <span className="text-xs">Empty</span>
+                  </div>
+                ))}
+              </div>
             </div>
             
-            <div className="space-y-1.5">
-              {sortedTeamA.length > 0 ? (
-                sortedTeamA.map((p) => renderParticipant(p, p.user_id === teamACaptainId, 'A'))
-              ) : (
-                <div className="flex items-center justify-center py-4 text-muted-foreground border border-dashed border-border/50 rounded-lg">
-                  <Users className="w-4 h-4 mr-2 opacity-40" />
-                  <span className="text-xs">Waiting...</span>
-                </div>
-              )}
-              
-              {/* Empty slots */}
-              {Array.from({ length: match.team_size - sortedTeamA.length }).map((_, i) => (
-                <div 
-                  key={`empty-a-${i}`}
-                  className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border/40 text-muted-foreground/50"
-                >
-                  <Users className="w-3 h-3" />
-                  <span className="text-xs">Empty</span>
-                </div>
-              ))}
+            {/* VS Divider - Desktop */}
+            <div className="hidden lg:flex items-center justify-center px-3 bg-secondary/30">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+                <Swords className="w-4 h-4 text-white" />
+              </div>
             </div>
-          </div>
-          
-          {/* VS Divider - Desktop */}
-          <div className="hidden lg:flex items-center justify-center px-3 bg-secondary/30">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-              <Swords className="w-4 h-4 text-white" />
-            </div>
-          </div>
 
-          {/* Mobile VS */}
-          <div className="flex lg:hidden items-center justify-center py-2 bg-secondary/30">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-              <Swords className="w-3 h-3 text-white" />
-            </div>
-          </div>
-          
-          {/* Team B */}
-          <div className="p-4 bg-gradient-to-bl from-primary/5 to-transparent">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Challenger
+            {/* Mobile VS */}
+            <div className="flex lg:hidden items-center justify-center py-2 bg-secondary/30">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+                <Swords className="w-3 h-3 text-white" />
               </div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">
-                {match.payment_mode_joiner === 'cover' ? 'Cover' : 'Split'}
-              </span>
             </div>
             
-            <div className="space-y-1.5">
-              {sortedTeamB.length > 0 ? (
-                sortedTeamB.map((p) => renderParticipant(p, p.user_id === teamBCaptainId, 'B'))
-              ) : (
-                <div className="flex items-center justify-center py-4 text-muted-foreground border border-dashed border-border/50 rounded-lg">
-                  <span className="text-xs">Waiting for opponent...</span>
+            {/* Team B */}
+            <div className="p-4 bg-gradient-to-bl from-primary/5 to-transparent">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[10px] font-bold text-primary uppercase tracking-wider flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  Challenger
                 </div>
-              )}
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/20 text-primary font-medium">
+                  {match.payment_mode_joiner === 'cover' ? 'Cover' : 'Split'}
+                </span>
+              </div>
               
-              {/* Empty slots */}
-              {Array.from({ length: match.team_size - sortedTeamB.length }).map((_, i) => (
-                <div 
-                  key={`empty-b-${i}`}
-                  className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border/40 text-muted-foreground/50"
-                >
-                  <Users className="w-3 h-3" />
-                  <span className="text-xs">Empty</span>
-                </div>
-              ))}
+              <div className="space-y-1.5">
+                {sortedTeamB.length > 0 ? (
+                  sortedTeamB.map((p) => renderParticipant(p, p.user_id === teamBCaptainId, 'B'))
+                ) : (
+                  <div className="flex items-center justify-center py-4 text-muted-foreground border border-dashed border-border/50 rounded-lg">
+                    <span className="text-xs">Waiting for opponent...</span>
+                  </div>
+                )}
+                
+                {/* Empty slots */}
+                {Array.from({ length: match.team_size - sortedTeamB.length }).map((_, i) => (
+                  <div 
+                    key={`empty-b-${i}`}
+                    className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border/40 text-muted-foreground/50"
+                  >
+                    <Users className="w-3 h-3" />
+                    <span className="text-xs">Empty</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <PlayerStatsModal
+        open={!!selectedUserId}
+        onOpenChange={(open) => !open && setSelectedUserId(null)}
+        userId={selectedUserId || ''}
+      />
+    </>
   );
 }

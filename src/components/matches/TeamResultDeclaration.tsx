@@ -26,10 +26,18 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
   const userTeamSide = participant.team_side;
   const isTeamMatch = match.team_size > 1;
   
-  // Determine if current user is the captain
+  // Determine if current user is the captain using DETERMINISTIC payer IDs
   const isCaptain = (() => {
     if (!isTeamMatch) return true;
-    if (userTeamSide === 'A') return currentUserId === match.creator_id;
+    if (userTeamSide === 'A') {
+      // Use host_payer_user_id if available, fallback to creator_id
+      return currentUserId === (match.host_payer_user_id ?? match.creator_id);
+    }
+    // Team B: use joiner_payer_user_id if available, fallback to first joined
+    if (match.joiner_payer_user_id) {
+      return currentUserId === match.joiner_payer_user_id;
+    }
+    // Fallback for old matches without joiner_payer_user_id
     const teamBParticipants = match.participants?.filter(p => p.team_side === 'B') ?? [];
     const sortedByJoin = [...teamBParticipants].sort((a, b) => 
       new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()

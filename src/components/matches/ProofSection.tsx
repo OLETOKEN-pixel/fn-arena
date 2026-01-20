@@ -124,12 +124,12 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
       const fileExt = file.name.split('.').pop();
       const fileName = `${matchId}/${currentUserId}/${Date.now()}.${fileExt}`;
 
+      // Step 1: Upload file to storage
       const { error: uploadError } = await supabase.storage
         .from('proofs')
         .upload(fileName, file);
 
       if (uploadError) {
-        // Parse specific error types
         const errorMsg = uploadError.message?.toLowerCase() || '';
         if (errorMsg.includes('policy') || errorMsg.includes('permission') || errorMsg.includes('security')) {
           throw new Error('Not authorized: You must be a participant and the match must be in progress');
@@ -138,25 +138,32 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
         } else if (errorMsg.includes('type') || errorMsg.includes('format')) {
           throw new Error('Invalid format: Please upload JPG, PNG, or GIF');
         }
-        throw uploadError;
+        throw new Error(uploadError.message || 'Failed to upload file');
       }
 
+      // Step 2: Get public URL
       const { data: urlData } = supabase.storage
         .from('proofs')
         .getPublicUrl(fileName);
 
-      const { error: insertError } = await supabase
-        .from('match_proofs')
-        .insert({
-          match_id: matchId,
-          user_id: currentUserId,
-          image_url: urlData.publicUrl,
-        });
+      // Step 3: Use server-side RPC to create proof record (uses auth.uid())
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_match_proof', {
+        p_match_id: matchId,
+        p_image_url: urlData.publicUrl,
+      });
 
-      if (insertError) {
-        // Try to clean up the uploaded file
+      if (rpcError) {
+        // Clean up uploaded file on failure
         await supabase.storage.from('proofs').remove([fileName]);
-        throw new Error('Failed to save proof record. Please try again.');
+        throw new Error(rpcError.message || 'Failed to save proof record');
+      }
+
+      const result = rpcResult as { success: boolean; error?: string; message?: string };
+      
+      if (!result.success) {
+        // Clean up uploaded file on failure
+        await supabase.storage.from('proofs').remove([fileName]);
+        throw new Error(result.error || 'Failed to save proof record');
       }
 
       toast({

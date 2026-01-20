@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Users, Trophy, Clock, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Users, Trophy, Clock, CheckCircle2, AlertTriangle, XCircle, EyeOff } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -54,6 +54,10 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
   const isWinner = match.result?.winner_user_id === currentUserId;
   const isCompleted = match.status === 'completed' || match.status === 'admin_resolved' || match.status === 'finished';
 
+  // Anonymity: Hide opponent identity until all are ready
+  const allReady = match.participants?.every(p => p.ready) ?? false;
+  const showOpponentIdentity = match.status !== 'ready_check' || allReady;
+
   return (
     <Card className={cn(
       'bg-card border-border hover:border-primary/50 transition-all duration-200',
@@ -88,18 +92,32 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">vs</span>
           {opponent ? (
-            <>
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={opponent.profile?.avatar_url ?? undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                  {opponent.profile?.username?.charAt(0).toUpperCase() ?? '?'}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium text-sm">{opponent.profile?.username}</p>
-                <p className="text-xs text-muted-foreground">{opponent.profile?.epic_username}</p>
-              </div>
-            </>
+            showOpponentIdentity ? (
+              <>
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={opponent.profile?.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                    {opponent.profile?.username?.charAt(0).toUpperCase() ?? '?'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-sm">{opponent.profile?.username}</p>
+                  <p className="text-xs text-muted-foreground">{opponent.profile?.epic_username}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-muted text-muted-foreground">
+                    <EyeOff className="w-4 h-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-sm text-muted-foreground italic">Hidden</p>
+                  <p className="text-xs text-muted-foreground">Ready up to reveal</p>
+                </div>
+              </>
+            )
           ) : (
             <span className="text-muted-foreground text-sm">Waiting for opponent...</span>
           )}

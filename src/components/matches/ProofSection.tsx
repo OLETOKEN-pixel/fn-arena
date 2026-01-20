@@ -128,7 +128,18 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
         .from('proofs')
         .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        // Parse specific error types
+        const errorMsg = uploadError.message?.toLowerCase() || '';
+        if (errorMsg.includes('policy') || errorMsg.includes('permission') || errorMsg.includes('security')) {
+          throw new Error('Not authorized: You must be a participant and the match must be in progress');
+        } else if (errorMsg.includes('size') || errorMsg.includes('large')) {
+          throw new Error('File too large: Maximum size is 5MB');
+        } else if (errorMsg.includes('type') || errorMsg.includes('format')) {
+          throw new Error('Invalid format: Please upload JPG, PNG, or GIF');
+        }
+        throw uploadError;
+      }
 
       const { data: urlData } = supabase.storage
         .from('proofs')
@@ -142,7 +153,11 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
           image_url: urlData.publicUrl,
         });
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        // Try to clean up the uploaded file
+        await supabase.storage.from('proofs').remove([fileName]);
+        throw new Error('Failed to save proof record. Please try again.');
+      }
 
       toast({
         title: 'Proof uploaded',
@@ -153,11 +168,11 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
       
       fetchProofs();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
       toast({
         title: 'Upload failed',
-        description: 'Failed to upload screenshot. Please try again.',
+        description: error.message || 'Failed to upload screenshot. Please try again.',
         variant: 'destructive',
       });
     } finally {

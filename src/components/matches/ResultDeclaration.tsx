@@ -36,16 +36,28 @@ export function ResultDeclaration({ match, currentUserId, onResultDeclared }: Re
         p_result: result,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle specific DB errors
+        const errorMsg = error.message?.toLowerCase() || '';
+        if (errorMsg.includes('where clause')) {
+          throw new Error('Server configuration error. Please contact support.');
+        }
+        throw error;
+      }
 
-      const response = data as { success: boolean; error?: string; status?: string; winner?: string };
+      // Validate response structure
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid server response. Please try again.');
+      }
+
+      const response = data as { success: boolean; error?: string; status?: string; winner_id?: string; message?: string };
 
       if (!response.success) {
         throw new Error(response.error || 'Failed to submit result');
       }
 
       if (response.status === 'completed') {
-        const isWinner = response.winner === currentUserId;
+        const isWinner = response.winner_id === currentUserId;
         toast({
           title: isWinner ? '🎉 Congratulations!' : 'Match Completed',
           description: isWinner 
@@ -55,24 +67,31 @@ export function ResultDeclaration({ match, currentUserId, onResultDeclared }: Re
         
         // Invalidate challenges query for real-time progress update
         queryClient.invalidateQueries({ queryKey: ['challenges'] });
+        queryClient.invalidateQueries({ queryKey: ['wallet'] });
       } else if (response.status === 'disputed') {
         toast({
           title: 'Dispute Opened',
           description: 'Results conflict. An admin will review this match.',
           variant: 'destructive',
         });
+      } else if (response.status === 'already_submitted') {
+        toast({
+          title: 'Already Submitted',
+          description: 'You have already declared your result.',
+        });
       } else {
         toast({
           title: 'Result Submitted',
-          description: 'Waiting for opponent to confirm...',
+          description: response.message || 'Waiting for opponent to confirm...',
         });
       }
 
       onResultDeclared();
     } catch (error: any) {
+      console.error('Submit result error:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to submit result',
+        description: error.message || 'Failed to submit result. Please try again.',
         variant: 'destructive',
       });
     } finally {

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Match, MatchResult, Profile } from '@/types';
 
 interface MatchResultDeclarationProps {
@@ -14,6 +15,7 @@ interface MatchResultDeclarationProps {
 
 export function MatchResultDeclaration({ match, currentUserId, onResultDeclared }: MatchResultDeclarationProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [declaring, setDeclaring] = useState(false);
 
   const result = match.result;
@@ -63,6 +65,8 @@ export function MatchResultDeclaration({ match, currentUserId, onResultDeclared 
         });
       }
 
+      // Invalidate challenges for immediate progress update
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
       onResultDeclared();
     } catch (error) {
       toast({

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import type { Match } from '@/types';
 
@@ -15,6 +16,7 @@ interface TeamResultDeclarationProps {
 
 export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }: TeamResultDeclarationProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
 
   const participant = match.participants?.find(p => p.user_id === currentUserId);
@@ -88,6 +90,8 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
         });
       }
 
+      // Invalidate challenges for immediate progress update
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
       onResultDeclared();
     } catch (error: any) {
       toast({

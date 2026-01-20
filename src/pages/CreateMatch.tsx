@@ -132,47 +132,22 @@ export default function CreateMatch() {
 
         navigate(`/matches/${result?.match_id}`);
       } else {
-        // Create 1v1 match (existing logic)
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 2);
-
-        const { data: match, error: matchError } = await supabase
-          .from('matches')
-          .insert({
-            creator_id: user.id,
-            game: 'FN',
-            region,
-            platform,
-            mode,
-            team_size: teamSize,
-            first_to: firstTo,
-            entry_fee: actualFee,
-            is_private: isPrivate,
-            expires_at: expiresAt.toISOString(),
-          })
-          .select()
-          .single();
-
-        if (matchError) throw matchError;
-
-        // Lock coins using secure server-side function
-        const { data: lockResult, error: lockError } = await supabase.rpc('lock_funds_for_match', {
-          p_match_id: match.id,
-          p_amount: actualFee,
+        // Create 1v1 match using secure RPC with active match validation
+        const { data, error } = await supabase.rpc('create_match_1v1', {
+          p_region: region,
+          p_platform: platform,
+          p_mode: mode,
+          p_first_to: firstTo,
+          p_entry_fee: actualFee,
+          p_is_private: isPrivate,
         });
 
-        if (lockError) throw lockError;
-        const lockData = lockResult as { success: boolean; error?: string } | null;
-        if (lockData && !lockData.success) {
-          throw new Error(lockData.error || 'Failed to lock funds');
+        if (error) throw error;
+
+        const result = data as { success: boolean; error?: string; match_id?: string } | null;
+        if (result && !result.success) {
+          throw new Error(result.error);
         }
-
-        // Add creator as participant
-        await supabase.from('match_participants').insert({
-          match_id: match.id,
-          user_id: user.id,
-          team_side: 'A',
-        });
 
         await refreshWallet();
 
@@ -181,7 +156,7 @@ export default function CreateMatch() {
           description: 'Your match is now live.',
         });
 
-        navigate(`/matches/${match.id}`);
+        navigate(`/matches/${result?.match_id}`);
       }
     } catch (error: unknown) {
       console.error('Match creation error:', error);

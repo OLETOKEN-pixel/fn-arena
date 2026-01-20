@@ -8,7 +8,7 @@ import { Camera, Upload, X, Loader2, Trash2, ZoomIn, ImageIcon } from 'lucide-re
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
-
+import { useQueryClient } from '@tanstack/react-query';
 interface Proof {
   id: string;
   match_id: string;
@@ -34,6 +34,7 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
   const [selectedProof, setSelectedProof] = useState<Proof | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const fetchProofs = useCallback(async () => {
     try {
@@ -148,6 +149,9 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
         description: 'Your screenshot has been uploaded successfully',
       });
 
+      // Invalidate challenges query for real-time progress update
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
+      
       fetchProofs();
     } catch (error) {
       console.error('Upload error:', error);

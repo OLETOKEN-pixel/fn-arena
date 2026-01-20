@@ -26,6 +26,7 @@ import AdminMatchDetail from "./pages/AdminMatchDetail";
 import AdminUserDetail from "./pages/AdminUserDetail";
 import Highlights from "./pages/Highlights";
 import Leaderboard from "./pages/Leaderboard";
+import Challenges from "./pages/Challenges";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ function App() {
                 <Route path="/admin/users/:id" element={<AdminUserDetail />} />
                 <Route path="/highlights" element={<Highlights />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/challenges" element={<Challenges />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLoadingGuard>

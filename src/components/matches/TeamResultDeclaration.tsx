@@ -77,11 +77,18 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
             ? 'Congratulazioni! Le vincite sono state aggiunte al tuo wallet.'
             : 'Peccato, ritenta la prossima volta!',
         });
+        // Invalidate wallet for updated balance
+        queryClient.invalidateQueries({ queryKey: ['wallet'] });
       } else if (response.status === 'disputed') {
         toast({
           title: 'Disputa Aperta',
           description: 'I risultati sono in conflitto. Un admin esaminerà il match.',
           variant: 'destructive',
+        });
+      } else if (response.status === 'already_submitted') {
+        toast({
+          title: 'Già Inviato',
+          description: 'Il tuo team ha già dichiarato il risultato.',
         });
       } else {
         toast({

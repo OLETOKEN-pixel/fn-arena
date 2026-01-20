@@ -44,6 +44,105 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_anti_abuse: {
+        Row: {
+          id: string
+          match_count: number | null
+          match_date: string
+          opponent_key: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          match_count?: number | null
+          match_date?: string
+          opponent_key: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          match_count?: number | null
+          match_date?: string
+          opponent_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      challenge_event_log: {
+        Row: {
+          challenge_id: string | null
+          created_at: string | null
+          event_hash: string
+          event_type: string
+          id: string
+          processed: boolean | null
+          source_id: string | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id?: string | null
+          created_at?: string | null
+          event_hash: string
+          event_type: string
+          id?: string
+          processed?: boolean | null
+          source_id?: string | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string | null
+          created_at?: string | null
+          event_hash?: string
+          event_type?: string
+          id?: string
+          processed?: boolean | null
+          source_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      challenges: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          is_active: boolean | null
+          metric_type: string
+          reward_coin: number
+          reward_xp: number
+          target_value: number
+          title: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          is_active?: boolean | null
+          metric_type: string
+          reward_coin?: number
+          reward_xp?: number
+          target_value?: number
+          title: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          is_active?: boolean | null
+          metric_type?: string
+          reward_coin?: number
+          reward_xp?: number
+          target_value?: number
+          title?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string | null
@@ -921,6 +1020,7 @@ export type Database = {
       transactions: {
         Row: {
           amount: number
+          challenge_progress_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -935,6 +1035,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          challenge_progress_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -949,6 +1050,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          challenge_progress_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -992,6 +1094,59 @@ export type Database = {
           },
         ]
       }
+      user_challenge_progress: {
+        Row: {
+          challenge_id: string
+          claimed_at: string | null
+          completed_at: string | null
+          id: string
+          is_claimed: boolean | null
+          is_completed: boolean | null
+          period_key: string
+          progress_value: number
+          reward_granted_coin: number | null
+          reward_granted_xp: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          claimed_at?: string | null
+          completed_at?: string | null
+          id?: string
+          is_claimed?: boolean | null
+          is_completed?: boolean | null
+          period_key: string
+          progress_value?: number
+          reward_granted_coin?: number | null
+          reward_granted_xp?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          claimed_at?: string | null
+          completed_at?: string | null
+          id?: string
+          is_claimed?: boolean | null
+          is_completed?: boolean | null
+          period_key?: string
+          progress_value?: number
+          reward_granted_coin?: number | null
+          reward_granted_xp?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_challenge_progress_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1009,6 +1164,24 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_xp: {
+        Row: {
+          total_xp: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          total_xp?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          total_xp?: number
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1267,6 +1440,14 @@ export type Database = {
       }
       cancel_match_v2: { Args: { p_match_id: string }; Returns: Json }
       change_username_vip: { Args: { p_new_username: string }; Returns: Json }
+      check_challenge_anti_abuse: {
+        Args: {
+          p_opponent_team_id: string
+          p_opponent_user_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       check_epic_username_available: {
         Args: { p_epic_username: string; p_user_id?: string }
         Returns: boolean
@@ -1276,6 +1457,10 @@ export type Database = {
         Returns: boolean
       }
       check_vip_status: { Args: { p_user_id?: string }; Returns: Json }
+      claim_challenge_reward: {
+        Args: { p_challenge_id: string; p_period_key: string }
+        Returns: Json
+      }
       complete_match_payout: {
         Args: { p_match_id: string; p_winner_user_id: string }
         Returns: Json
@@ -1306,6 +1491,7 @@ export type Database = {
         Returns: Json
       }
       get_admin_issue_stats: { Args: never; Returns: Json }
+      get_current_period_key: { Args: { p_type: string }; Returns: string }
       get_player_stats: { Args: { p_user_id: string }; Returns: Json }
       get_team_members_with_balance: {
         Args: { p_team_id: string }
@@ -1318,6 +1504,8 @@ export type Database = {
           username: string
         }[]
       }
+      get_user_challenges: { Args: { p_type?: string }; Returns: Json }
+      get_user_xp: { Args: never; Returns: number }
       has_active_match: { Args: { p_user_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -1356,6 +1544,10 @@ export type Database = {
         Returns: Json
       }
       purchase_vip: { Args: never; Returns: Json }
+      record_challenge_event: {
+        Args: { p_event_type: string; p_source_id: string; p_user_id: string }
+        Returns: Json
+      }
       record_platform_fee: {
         Args: { p_fee_amount: number; p_match_id: string }
         Returns: Json
@@ -1395,6 +1587,10 @@ export type Database = {
         Returns: Json
       }
       team_has_active_match: { Args: { p_team_id: string }; Returns: Json }
+      update_challenge_progress: {
+        Args: { p_metric_type: string; p_source_id: string; p_user_id: string }
+        Returns: undefined
+      }
       withdraw_platform_earnings: {
         Args: {
           p_amount: number

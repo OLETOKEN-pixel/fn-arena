@@ -9,7 +9,8 @@ import {
   Shield,
   Plus,
   Lock,
-  Play
+  Play,
+  Trophy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +29,7 @@ const navItems: NavItem[] = [
   { icon: Home, label: 'Home', href: '/' },
   { icon: Swords, label: 'Live Matches', href: '/matches' },
   { icon: Play, label: 'Highlights', href: '/highlights' },
+  { icon: Trophy, label: 'Challenges', href: '/challenges', requiresAuth: true },
   { icon: Gamepad2, label: 'My Matches', href: '/my-matches', requiresAuth: true },
   { icon: Users, label: 'Teams', href: '/teams', requiresAuth: true },
   { icon: Wallet, label: 'Wallet', href: '/wallet', requiresAuth: true },

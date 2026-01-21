@@ -1512,20 +1512,36 @@ export type Database = {
         Returns: Json
       }
       create_team: { Args: { p_name: string }; Returns: Json }
-      create_team_match: {
-        Args: {
-          p_entry_fee: number
-          p_first_to?: number
-          p_is_private?: boolean
-          p_mode: string
-          p_payment_mode?: string
-          p_platform: string
-          p_region: string
-          p_team_id: string
-          p_team_size: number
-        }
-        Returns: Json
-      }
+      create_team_match:
+        | {
+            Args: {
+              p_entry_fee: number
+              p_first_to?: number
+              p_is_private?: boolean
+              p_mode: string
+              p_payment_mode?: string
+              p_platform: string
+              p_region: string
+              p_team_id: string
+              p_team_size: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_entry_fee: number
+              p_first_to: number
+              p_game: string
+              p_is_private?: boolean
+              p_mode: string
+              p_payment_mode?: string
+              p_platform: string
+              p_region: string
+              p_team_id: string
+              p_team_size: number
+            }
+            Returns: Json
+          }
       declare_match_result: {
         Args: { p_i_won: boolean; p_match_id: string }
         Returns: Json

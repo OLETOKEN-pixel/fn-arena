@@ -82,6 +82,12 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
           description: 'I risultati sono in conflitto. Un admin esaminerà il match.',
           variant: 'destructive',
         });
+      } else if (response.status === 'finalize_failed') {
+        toast({
+          title: 'Errore Finalizzazione',
+          description: response.error || 'Impossibile completare il match. Contatta il supporto.',
+          variant: 'destructive',
+        });
       } else if (response.status === 'already_submitted') {
         toast({
           title: 'Già Inviato',

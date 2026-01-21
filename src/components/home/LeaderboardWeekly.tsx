@@ -28,28 +28,26 @@ export function LeaderboardWeekly() {
 
   useEffect(() => {
     const fetchWeeklyLeaderboard = async () => {
-      // Try weekly view first, fallback to regular leaderboard
-      const { data, error } = await supabase
-        .from('leaderboard_weekly')
-        .select('*')
-        .limit(10);
+      // Weekly leaderboard via secured RPC
+      const { data, error } = await supabase.rpc('get_leaderboard_weekly', {
+        p_limit: 10,
+      });
 
       if (!error && data && data.length > 0) {
         setEntries(data as WeeklyEntry[]);
       } else {
-        // Fallback to regular leaderboard if no weekly data
-        const { data: fallbackData } = await supabase
-          .from('leaderboard')
-          .select('user_id, username, avatar_url, total_earnings')
-          .order('total_earnings', { ascending: false })
-          .limit(10);
+        // Fallback to all-time leaderboard via secured RPC
+        const { data: fallbackData } = await supabase.rpc('get_leaderboard', {
+          p_limit: 10,
+          p_offset: 0,
+        });
         
         if (fallbackData) {
           setEntries(fallbackData.map(e => ({
-            user_id: e.user_id || '',
-            username: e.username || '',
-            avatar_url: e.avatar_url,
-            weekly_earned: Number(e.total_earnings) || 0,
+            user_id: (e as any).user_id || '',
+            username: (e as any).username || '',
+            avatar_url: (e as any).avatar_url,
+            weekly_earned: Number((e as any).total_earnings) || 0,
           })));
         }
       }

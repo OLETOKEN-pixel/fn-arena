@@ -590,6 +590,8 @@ export type Database = {
       }
       matches: {
         Row: {
+          captain_a_user_id: string | null
+          captain_b_user_id: string | null
           created_at: string | null
           creator_id: string
           entry_fee: number
@@ -615,6 +617,8 @@ export type Database = {
           team_size: number | null
         }
         Insert: {
+          captain_a_user_id?: string | null
+          captain_b_user_id?: string | null
           created_at?: string | null
           creator_id: string
           entry_fee: number
@@ -640,6 +644,8 @@ export type Database = {
           team_size?: number | null
         }
         Update: {
+          captain_a_user_id?: string | null
+          captain_b_user_id?: string | null
           created_at?: string | null
           creator_id?: string
           entry_fee?: number
@@ -1478,17 +1484,29 @@ export type Database = {
         Args: { p_match_id: string; p_winner_user_id: string }
         Returns: Json
       }
-      create_match_1v1: {
-        Args: {
-          p_entry_fee: number
-          p_first_to: number
-          p_is_private?: boolean
-          p_mode: string
-          p_platform: string
-          p_region: string
-        }
-        Returns: Json
-      }
+      create_match_1v1:
+        | {
+            Args: {
+              p_entry_fee: number
+              p_first_to?: number
+              p_is_private?: boolean
+              p_mode: string
+              p_platform: string
+              p_region: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_entry_fee: number
+              p_first_to: number
+              p_is_private?: boolean
+              p_mode: string
+              p_platform: string
+              p_region: string
+            }
+            Returns: Json
+          }
       create_match_proof: {
         Args: { p_image_url: string; p_match_id: string }
         Returns: Json

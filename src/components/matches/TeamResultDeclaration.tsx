@@ -26,15 +26,12 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
   const userTeamSide = participant.team_side;
   const isTeamMatch = match.team_size > 1;
   
-  // Determine if current user is the captain
+  // Determine if current user is the captain using persistent columns (single source of truth)
   const isCaptain = (() => {
-    if (!isTeamMatch) return true;
-    if (userTeamSide === 'A') return currentUserId === match.creator_id;
-    const teamBParticipants = match.participants?.filter(p => p.team_side === 'B') ?? [];
-    const sortedByJoin = [...teamBParticipants].sort((a, b) => 
-      new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
-    );
-    return sortedByJoin[0]?.user_id === currentUserId;
+    if (!isTeamMatch) return true; // 1v1: everyone can declare
+    // Use the persistent captain columns from the match record
+    if (userTeamSide === 'A') return currentUserId === match.captain_a_user_id;
+    return currentUserId === match.captain_b_user_id;
   })();
   
   // Get team statuses

@@ -177,6 +177,9 @@ export interface Match {
   team_b_id?: string | null;
   payment_mode_host?: PaymentMode;
   payment_mode_joiner?: PaymentMode;
+  // Persistent captain IDs - single source of truth
+  captain_a_user_id?: string | null;
+  captain_b_user_id?: string | null;
   creator?: Profile | ProfileSummary;
   participants?: MatchParticipant[];
   result?: MatchResult;

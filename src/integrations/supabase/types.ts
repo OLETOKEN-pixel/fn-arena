@@ -1445,6 +1445,7 @@ export type Database = {
       }
       admin_global_search: { Args: { p_query: string }; Returns: Json }
       admin_prepare_delete_user: { Args: { p_user_id: string }; Returns: Json }
+      admin_purge_legacy_match: { Args: { p_match_id: string }; Returns: Json }
       admin_resolve_dispute: {
         Args: {
           p_admin_notes?: string

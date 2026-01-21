@@ -50,10 +50,10 @@ export default function MyMatches() {
         .from('matches')
         .select(`
           *,
-          creator:profiles!matches_creator_id_fkey(user_id, username, avatar_url, epic_username),
+          creator:profiles_public!matches_creator_id_fkey(user_id, username, avatar_url, epic_username),
           participants:match_participants(
             *,
-            profile:profiles(user_id, username, avatar_url, epic_username)
+            profile:profiles_public(user_id, username, avatar_url, epic_username)
           ),
           result:match_results(*)
         `)

@@ -413,6 +413,7 @@ export type Database = {
           id: string
           image_url: string
           match_id: string
+          storage_path: string | null
           user_id: string
         }
         Insert: {
@@ -421,6 +422,7 @@ export type Database = {
           id?: string
           image_url: string
           match_id: string
+          storage_path?: string | null
           user_id: string
         }
         Update: {
@@ -429,6 +431,7 @@ export type Database = {
           id?: string
           image_url?: string
           match_id?: string
+          storage_path?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1509,6 +1512,10 @@ export type Database = {
       }
       create_match_proof: {
         Args: { p_image_url: string; p_match_id: string }
+        Returns: Json
+      }
+      create_match_proof_v2: {
+        Args: { p_match_id: string; p_storage_path: string }
         Returns: Json
       }
       create_team: { Args: { p_name: string }; Returns: Json }

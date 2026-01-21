@@ -14,6 +14,7 @@ interface Proof {
   match_id: string;
   user_id: string;
   image_url: string;
+  storage_path?: string | null;
   description: string | null;
   created_at: string;
   username?: string;
@@ -60,13 +61,37 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
       const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
       
-      const enrichedProofs: Proof[] = proofsData.map(proof => ({
-        ...proof,
-        username: profileMap.get(proof.user_id)?.username || 'Unknown',
-        avatar_url: profileMap.get(proof.user_id)?.avatar_url || null,
-      }));
+      // Create signed URLs for private bucket display
+      const signed = await Promise.all(
+        proofsData.map(async (proof) => {
+          const storagePath = (proof as any).storage_path || (typeof (proof as any).image_url === 'string' ? (proof as any).image_url : null);
 
-      setProofs(enrichedProofs);
+          // If legacy row stored a full public URL, extract the path after /proofs/
+          const normalizedPath = typeof storagePath === 'string' && storagePath.includes('/proofs/')
+            ? storagePath.split('/proofs/')[1]
+            : storagePath;
+
+          let displayUrl = (proof as any).image_url as string;
+          if (typeof normalizedPath === 'string' && normalizedPath.length > 0 && !normalizedPath.startsWith('http')) {
+            const { data: signedData } = await supabase.storage
+              .from('proofs')
+              .createSignedUrl(normalizedPath, 60 * 60); // 1 hour
+            if (signedData?.signedUrl) {
+              displayUrl = signedData.signedUrl;
+            }
+          }
+
+          return {
+            ...(proof as any),
+            storage_path: (proof as any).storage_path ?? (normalizedPath ?? null),
+            image_url: displayUrl,
+            username: profileMap.get((proof as any).user_id)?.username || 'Unknown',
+            avatar_url: profileMap.get((proof as any).user_id)?.avatar_url || null,
+          } as Proof;
+        })
+      );
+
+      setProofs(signed);
     } catch (error) {
       console.error('Error fetching proofs:', error);
     } finally {
@@ -142,14 +167,10 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
       }
 
       // Step 2: Get public URL
-      const { data: urlData } = supabase.storage
-        .from('proofs')
-        .getPublicUrl(fileName);
-
-      // Step 3: Use server-side RPC to create proof record (uses auth.uid())
-      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_match_proof', {
+      // Step 2: Create DB row with storage path (private bucket)
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('create_match_proof_v2', {
         p_match_id: matchId,
-        p_image_url: urlData.publicUrl,
+        p_storage_path: fileName,
       });
 
       if (rpcError) {
@@ -189,9 +210,9 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
 
   const handleDelete = async (proof: Proof) => {
     try {
-      const urlParts = proof.image_url.split('/proofs/');
-      if (urlParts.length > 1) {
-        const filePath = urlParts[1];
+      const rawPath = proof.storage_path || proof.image_url;
+      const filePath = rawPath.includes('/proofs/') ? rawPath.split('/proofs/')[1] : rawPath;
+      if (filePath && !filePath.startsWith('http')) {
         await supabase.storage.from('proofs').remove([filePath]);
       }
 

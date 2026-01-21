@@ -71,7 +71,7 @@ export default function Teams() {
             *,
             members:team_members(
               *,
-              profile:profiles!team_members_user_id_fkey(user_id, username, avatar_url, epic_username)
+                profile:profiles_public!team_members_user_id_fkey(user_id, username, avatar_url, epic_username)
             )
           `)
           .in('id', teamIds);

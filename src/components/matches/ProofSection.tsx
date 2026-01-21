@@ -54,7 +54,7 @@ export function ProofSection({ matchId, currentUserId, isAdmin, isParticipant }:
       const userIds = [...new Set(proofsData.map(p => p.user_id))];
       
       const { data: profilesData } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('user_id, username, avatar_url')
         .in('user_id', userIds);
 

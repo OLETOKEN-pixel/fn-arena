@@ -65,7 +65,7 @@ export function MatchChat({
       const userIds = [...new Set(messagesData.map(m => m.user_id))];
       
       const { data: profilesData } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('user_id, username, avatar_url')
         .in('user_id', userIds);
 
@@ -102,7 +102,7 @@ export function MatchChat({
           const newMsg = payload.new as ChatMessage;
           
           const { data: profileData } = await supabase
-            .from('profiles')
+            .from('profiles_public')
             .select('user_id, username, avatar_url')
             .eq('user_id', newMsg.user_id)
             .single();

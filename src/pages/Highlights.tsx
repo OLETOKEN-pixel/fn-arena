@@ -73,7 +73,7 @@ export default function Highlights() {
       
       // Fetch profiles
       const { data: profilesData } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('user_id, username, avatar_url')
         .in('user_id', userIds);
 

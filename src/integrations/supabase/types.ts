@@ -1585,6 +1585,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      is_match_participant: {
+        Args: { p_match_id: string; p_user_id: string }
+        Returns: boolean
+      }
       join_match_v2: { Args: { p_match_id: string }; Returns: Json }
       join_team_match: {
         Args: { p_match_id: string; p_payment_mode?: string; p_team_id: string }

@@ -1551,7 +1551,7 @@ export type Database = {
         Returns: Json
       }
       delete_team: { Args: { p_team_id: string }; Returns: Json }
-      expire_stale_matches: { Args: never; Returns: undefined }
+      expire_stale_matches: { Args: never; Returns: Json }
       finalize_match_payout: {
         Args: { p_match_id: string; p_winner_side: string }
         Returns: Json

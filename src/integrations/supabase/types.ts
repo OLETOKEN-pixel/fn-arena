@@ -597,8 +597,10 @@ export type Database = {
           finished_at: string | null
           first_to: number | null
           game: string
+          host_payer_user_id: string | null
           id: string
           is_private: boolean | null
+          joiner_payer_user_id: string | null
           mode: string
           payment_mode_host: string | null
           payment_mode_joiner: string | null
@@ -619,8 +621,10 @@ export type Database = {
           finished_at?: string | null
           first_to?: number | null
           game?: string
+          host_payer_user_id?: string | null
           id?: string
           is_private?: boolean | null
+          joiner_payer_user_id?: string | null
           mode: string
           payment_mode_host?: string | null
           payment_mode_joiner?: string | null
@@ -641,8 +645,10 @@ export type Database = {
           finished_at?: string | null
           first_to?: number | null
           game?: string
+          host_payer_user_id?: string | null
           id?: string
           is_private?: boolean | null
+          joiner_payer_user_id?: string | null
           mode?: string
           payment_mode_host?: string | null
           payment_mode_joiner?: string | null
@@ -1485,26 +1491,49 @@ export type Database = {
         Returns: Json
       }
       create_team: { Args: { p_name: string }; Returns: Json }
-      create_team_match: {
-        Args: {
-          p_entry_fee: number
-          p_first_to: number
-          p_is_private?: boolean
-          p_mode: string
-          p_payment_mode: string
-          p_platform: string
-          p_region: string
-          p_team_id: string
-          p_team_size: number
-        }
-        Returns: Json
-      }
+      create_team_match:
+        | {
+            Args: {
+              p_entry_fee: number
+              p_first_to?: number
+              p_is_private?: boolean
+              p_mode: string
+              p_payment_mode?: string
+              p_platform: string
+              p_region: string
+              p_team_id: string
+              p_team_size: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_entry_fee: number
+              p_first_to: number
+              p_is_private?: boolean
+              p_mode: string
+              p_payment_mode: string
+              p_platform: string
+              p_region: string
+              p_team_id: string
+              p_team_size: number
+            }
+            Returns: Json
+          }
       declare_match_result: {
         Args: { p_i_won: boolean; p_match_id: string }
         Returns: Json
       }
+      declare_result: {
+        Args: { p_match_id: string; p_result: string }
+        Returns: Json
+      }
       delete_team: { Args: { p_team_id: string }; Returns: Json }
       expire_stale_matches: { Args: never; Returns: undefined }
+      finalize_match_payout: {
+        Args: { p_match_id: string; p_winner_side: string }
+        Returns: Json
+      }
       finalize_team_match: {
         Args: { p_match_id: string; p_winner_side: string }
         Returns: Json

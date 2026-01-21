@@ -55,29 +55,29 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
     setSubmitting(true);
 
     try {
-      const rpcName = isTeamMatch ? 'submit_team_result' : 'submit_match_result';
-      
-      const { data, error } = await supabase.rpc(rpcName, {
+      // Use unified declare_result RPC for all match types
+      const { data, error } = await supabase.rpc('declare_result', {
         p_match_id: match.id,
         p_result: result,
       });
 
       if (error) throw error;
 
-      const response = data as { success: boolean; error?: string; status?: string; winner?: string; message?: string };
+      const response = data as { success: boolean; error?: string; status?: string; winner_side?: string; message?: string };
 
       if (!response.success) {
         throw new Error(response.error || 'Failed to submit result');
       }
 
       if (response.status === 'completed') {
+        const isWinner = (response.winner_side === 'A' && userTeamSide === 'A') || 
+                         (response.winner_side === 'B' && userTeamSide === 'B');
         toast({
-          title: result === 'WIN' ? '🎉 Vittoria!' : 'Match Completato',
-          description: result === 'WIN' 
+          title: isWinner ? '🎉 Vittoria!' : 'Match Completato',
+          description: isWinner 
             ? 'Congratulazioni! Le vincite sono state aggiunte al tuo wallet.'
             : 'Peccato, ritenta la prossima volta!',
         });
-        // Invalidate wallet for updated balance
         queryClient.invalidateQueries({ queryKey: ['wallet'] });
       } else if (response.status === 'disputed') {
         toast({
@@ -88,7 +88,7 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
       } else if (response.status === 'already_submitted') {
         toast({
           title: 'Già Inviato',
-          description: 'Il tuo team ha già dichiarato il risultato.',
+          description: response.message || 'Il risultato è già stato dichiarato.',
         });
       } else {
         toast({
@@ -97,10 +97,10 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
         });
       }
 
-      // Invalidate challenges for immediate progress update
       queryClient.invalidateQueries({ queryKey: ['challenges'] });
       onResultDeclared();
     } catch (error: any) {
+      console.error('Submit result error:', error);
       toast({
         title: 'Errore',
         description: error.message || 'Impossibile inviare il risultato',

@@ -95,8 +95,35 @@ export default function MatchDetails() {
     setLoading(false);
   };
 
+  // Initial fetch and realtime subscription
   useEffect(() => {
     fetchMatch();
+    
+    // Subscribe to realtime updates for this match
+    if (id) {
+      const channel = supabase
+        .channel(`match-details-${id}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${id}` },
+          () => fetchMatch()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'match_participants', filter: `match_id=eq.${id}` },
+          () => fetchMatch()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'match_results', filter: `match_id=eq.${id}` },
+          () => fetchMatch()
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [id, user]);
 
   const handleCancelMatch = async () => {

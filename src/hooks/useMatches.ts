@@ -27,9 +27,16 @@ export function useOpenMatches(filters: MatchFilters = {}) {
           creator:profiles!matches_creator_id_fkey(username, avatar_url, epic_username),
           participants:match_participants(
             id,
+            match_id,
             user_id,
             team_side,
             team_id,
+            ready,
+            ready_at,
+            result_choice,
+            result_at,
+            status,
+            joined_at,
             profile:profiles!match_participants_user_id_fkey(username, avatar_url, epic_username)
           )
         `)

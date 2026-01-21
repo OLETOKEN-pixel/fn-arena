@@ -606,6 +606,7 @@ export type Database = {
           payment_mode_joiner: string | null
           platform: string
           private_code: string | null
+          ready_check_at: string | null
           region: string
           started_at: string | null
           status: string | null
@@ -630,6 +631,7 @@ export type Database = {
           payment_mode_joiner?: string | null
           platform: string
           private_code?: string | null
+          ready_check_at?: string | null
           region: string
           started_at?: string | null
           status?: string | null
@@ -654,6 +656,7 @@ export type Database = {
           payment_mode_joiner?: string | null
           platform?: string
           private_code?: string | null
+          ready_check_at?: string | null
           region?: string
           started_at?: string | null
           status?: string | null
@@ -1509,10 +1512,10 @@ export type Database = {
         | {
             Args: {
               p_entry_fee: number
-              p_first_to: number
+              p_first_to?: number
               p_is_private?: boolean
               p_mode: string
-              p_payment_mode: string
+              p_payment_mode?: string
               p_platform: string
               p_region: string
               p_team_id: string
@@ -1647,7 +1650,7 @@ export type Database = {
         Args: { p_match_id: string; p_result: string }
         Returns: Json
       }
-      team_has_active_match: { Args: { p_team_id: string }; Returns: Json }
+      team_has_active_match: { Args: { p_team_id: string }; Returns: boolean }
       update_challenge_progress: {
         Args: { p_metric_type: string; p_source_id: string; p_user_id: string }
         Returns: undefined

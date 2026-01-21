@@ -67,6 +67,14 @@ export interface Profile {
   updated_at: string;
 }
 
+// Partial profile for list views (returned by joins with limited fields)
+export interface ProfileSummary {
+  user_id?: string;
+  username: string;
+  avatar_url: string | null;
+  epic_username?: string | null;
+}
+
 export type WithdrawalStatus = 'pending' | 'approved' | 'rejected' | 'completed';
 
 export interface WithdrawalRequest {
@@ -169,7 +177,7 @@ export interface Match {
   team_b_id?: string | null;
   payment_mode_host?: PaymentMode;
   payment_mode_joiner?: PaymentMode;
-  creator?: Profile;
+  creator?: Profile | ProfileSummary;
   participants?: MatchParticipant[];
   result?: MatchResult;
   team_a?: Team;
@@ -188,7 +196,7 @@ export interface MatchParticipant {
   result_at: string | null;
   status: 'joined' | 'ready' | 'playing' | 'finished' | 'left';
   joined_at: string;
-  profile?: Profile;
+  profile?: Profile | ProfileSummary;
   team?: Team;
 }
 

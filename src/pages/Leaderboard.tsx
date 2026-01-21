@@ -32,13 +32,10 @@ export default function Leaderboard() {
   const fetchLeaderboard = async (pageNum: number) => {
     setLoading(true);
     const from = (pageNum - 1) * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-
-    const { data, error } = await supabase
-      .from('leaderboard')
-      .select('*')
-      .range(from, to)
-      .order('total_earnings', { ascending: false });
+    const { data, error } = await supabase.rpc('get_leaderboard', {
+      p_limit: PAGE_SIZE,
+      p_offset: from,
+    });
 
     if (!error && data) {
       if (pageNum === 1) {

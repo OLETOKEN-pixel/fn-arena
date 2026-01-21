@@ -20,10 +20,10 @@ export function Leaderboard() {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      const { data, error } = await supabase
-        .from('leaderboard')
-        .select('*')
-        .limit(10);
+      const { data, error } = await supabase.rpc('get_leaderboard', {
+        p_limit: 10,
+        p_offset: 0,
+      });
 
       if (!error && data) {
         setEntries(data as LeaderboardEntry[]);

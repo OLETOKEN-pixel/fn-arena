@@ -1562,6 +1562,27 @@ export type Database = {
       }
       get_admin_issue_stats: { Args: never; Returns: Json }
       get_current_period_key: { Args: { p_type: string }; Returns: string }
+      get_leaderboard: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          id: string
+          total_earnings: number
+          total_matches: number
+          user_id: string
+          username: string
+          wins: number
+        }[]
+      }
+      get_leaderboard_weekly: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          user_id: string
+          username: string
+          weekly_earned: number
+        }[]
+      }
       get_player_stats: { Args: { p_user_id: string }; Returns: Json }
       get_team_members_with_balance: {
         Args: { p_team_id: string }

@@ -1484,29 +1484,28 @@ export type Database = {
         Args: { p_match_id: string; p_winner_user_id: string }
         Returns: Json
       }
-      create_match_1v1:
-        | {
-            Args: {
-              p_entry_fee: number
-              p_first_to?: number
-              p_is_private?: boolean
-              p_mode: string
-              p_platform: string
-              p_region: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_entry_fee: number
-              p_first_to: number
-              p_is_private?: boolean
-              p_mode: string
-              p_platform: string
-              p_region: string
-            }
-            Returns: Json
-          }
+      create_match_1v1: {
+        Args: {
+          p_entry_fee: number
+          p_first_to?: number
+          p_is_private?: boolean
+          p_mode: string
+          p_platform: string
+          p_region: string
+        }
+        Returns: Json
+      }
+      create_match_1v1_legacy: {
+        Args: {
+          p_entry_fee: number
+          p_first_to: number
+          p_is_private?: boolean
+          p_mode: string
+          p_platform: string
+          p_region: string
+        }
+        Returns: Json
+      }
       create_match_proof: {
         Args: { p_image_url: string; p_match_id: string }
         Returns: Json

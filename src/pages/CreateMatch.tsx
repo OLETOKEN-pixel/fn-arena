@@ -134,11 +134,12 @@ export default function CreateMatch() {
       } else {
         // Create 1v1 match using secure RPC with active match validation
         const { data, error } = await supabase.rpc('create_match_1v1', {
+          // NOTE: canonical DB signature starts with p_entry_fee (numeric) to avoid overload ambiguity
+          p_entry_fee: actualFee,
           p_region: region,
           p_platform: platform,
           p_mode: mode,
           p_first_to: firstTo,
-          p_entry_fee: actualFee,
           p_is_private: isPrivate,
         });
 

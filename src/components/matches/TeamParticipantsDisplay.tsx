@@ -67,6 +67,15 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
     
     // Show identity if: it's the current user, OR identities are revealed (all ready / match started)
     const canShowIdentity = isCurrentUser || showIdentities;
+
+    if (canShowIdentity && !hasProfile) {
+      // eslint-disable-next-line no-console
+      console.warn('[TeamParticipantsDisplay] Missing profile for participant', {
+        matchId: match.id,
+        matchStatus: match.status,
+        participantUserId: p.user_id,
+      });
+    }
     
     return (
       <div 

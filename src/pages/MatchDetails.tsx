@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock, Share2, Gamepad2, Globe, Monitor, Crosshair, Timer, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,9 +36,14 @@ export default function MatchDetails() {
   const { user, profile, wallet, isProfileComplete, refreshWallet } = useAuth();
 
   const [match, setMatch] = useState<Match | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Split initial load from background refresh to avoid full-screen freezes under realtime bursts
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [leaving, setLeaving] = useState(false);
+
+  const inflightRef = useRef(false);
+  const pendingRefetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Team join state
   const isJoinMode = searchParams.get('join') === 'true';
@@ -47,17 +52,33 @@ export default function MatchDetails() {
   const [joining, setJoining] = useState(false);
   const [joining1v1, setJoining1v1] = useState(false);
 
-  const fetchMatch = async () => {
+  const fetchMatch = useCallback(async (opts?: { background?: boolean }) => {
     if (!id) return;
-    setLoading(true);
+    const background = !!opts?.background;
+
+    // Dedupe inflight to avoid piling up requests under load
+    if (inflightRef.current) return;
+    inflightRef.current = true;
+
+    if (background) {
+      setRefreshing(true);
+    } else {
+      setInitialLoading(true);
+    }
+
+    const t0 = performance.now();
+
+    try {
 
     // 1) Try participant/admin view (protected)
     // 2) If it returns Access denied, fallback to public view (OPEN-friendly)
 
     const tryPublicFallback = async () => {
+      const rpcStart = performance.now();
       const { data: pubData, error: pubError } = await supabase.rpc('get_match_public_details', {
         p_match_id: id,
       });
+      const rpcMs = Math.round(performance.now() - rpcStart);
 
       if (pubError || !pubData) {
         toast({
@@ -86,16 +107,22 @@ export default function MatchDetails() {
       };
 
       setMatch(publicMatch);
-      setLoading(false);
+      setInitialLoading(false);
+      setRefreshing(false);
+
+      // eslint-disable-next-line no-console
+      console.info('[perf] get_match_public_details', { ms: rpcMs });
     };
 
-    // If not logged in, only public view is possible
-    if (!user) {
-      await tryPublicFallback();
-      return;
-    }
+      // If not logged in, only public view is possible
+      if (!user) {
+        await tryPublicFallback();
+        return;
+      }
 
-    const { data, error } = await supabase.rpc('get_match_details', { p_match_id: id });
+      const rpcStart = performance.now();
+      const { data, error } = await supabase.rpc('get_match_details', { p_match_id: id });
+      const rpcMs = Math.round(performance.now() - rpcStart);
 
     if (error || !data) {
       toast({
@@ -155,13 +182,23 @@ export default function MatchDetails() {
       }
     }
 
-    setMatch(matchData);
-    setLoading(false);
-  };
+      setMatch(matchData);
+      setInitialLoading(false);
+      setRefreshing(false);
+
+      // eslint-disable-next-line no-console
+      console.info('[perf] get_match_details', { ms: rpcMs, totalMs: Math.round(performance.now() - t0) });
+    } finally {
+      inflightRef.current = false;
+      // Ensure we never get stuck in a loading state
+      setInitialLoading(false);
+      setRefreshing(false);
+    }
+  }, [id, navigate, profile?.role, toast, user]);
 
   // Initial fetch and realtime subscription
   useEffect(() => {
-    fetchMatch();
+    fetchMatch({ background: false });
     
     // Subscribe to realtime updates for this match
     if (id) {
@@ -170,25 +207,39 @@ export default function MatchDetails() {
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'matches', filter: `id=eq.${id}` },
-          () => fetchMatch()
+          () => {
+            // Throttle bursts: many events can arrive in <100ms under load
+            if (pendingRefetchRef.current) clearTimeout(pendingRefetchRef.current);
+            pendingRefetchRef.current = setTimeout(() => fetchMatch({ background: true }), 350);
+          }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'match_participants', filter: `match_id=eq.${id}` },
-          () => fetchMatch()
+          () => {
+            if (pendingRefetchRef.current) clearTimeout(pendingRefetchRef.current);
+            pendingRefetchRef.current = setTimeout(() => fetchMatch({ background: true }), 350);
+          }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'match_results', filter: `match_id=eq.${id}` },
-          () => fetchMatch()
+          () => {
+            if (pendingRefetchRef.current) clearTimeout(pendingRefetchRef.current);
+            pendingRefetchRef.current = setTimeout(() => fetchMatch({ background: true }), 350);
+          }
         )
         .subscribe();
 
       return () => {
+        if (pendingRefetchRef.current) {
+          clearTimeout(pendingRefetchRef.current);
+          pendingRefetchRef.current = null;
+        }
         supabase.removeChannel(channel);
       };
     }
-  }, [id, user]);
+  }, [id, fetchMatch]);
 
   const handleCancelMatch = async () => {
     if (!match) return;
@@ -304,7 +355,7 @@ export default function MatchDetails() {
       await refreshWallet();
       // Remove join param and refresh
       navigate(`/matches/${match.id}`, { replace: true });
-      fetchMatch();
+      fetchMatch({ background: true });
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -354,7 +405,7 @@ export default function MatchDetails() {
       });
 
       await refreshWallet();
-      fetchMatch();
+      fetchMatch({ background: true });
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -366,7 +417,7 @@ export default function MatchDetails() {
     }
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center bg-background"><LoadingPage /></div>;
+  if (initialLoading) return <div className="h-screen flex items-center justify-center bg-background"><LoadingPage /></div>;
   if (!match) return null;
 
   const participantCount =

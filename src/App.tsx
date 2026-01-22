@@ -28,7 +28,19 @@ import Highlights from "./pages/Highlights";
 import Leaderboard from "./pages/Leaderboard";
 import Challenges from "./pages/Challenges";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Performance defaults (safe): reduce refetch under load
+      retry: 1,
+      staleTime: 10_000,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 function App() {
   return (

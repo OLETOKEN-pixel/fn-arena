@@ -1590,6 +1590,7 @@ export type Database = {
           weekly_earned: number
         }[]
       }
+      get_match_details: { Args: { p_match_id: string }; Returns: Json }
       get_player_stats: { Args: { p_user_id: string }; Returns: Json }
       get_team_members_with_balance: {
         Args: { p_team_id: string }

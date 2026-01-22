@@ -41,6 +41,23 @@ export default function Matches() {
   const { data: matchesData, isLoading: loading } = useOpenMatches(filters);
   const matches = (matchesData || []) as Match[];
 
+  const getJoinErrorCopy = (reasonCode?: string, fallback?: string) => {
+    switch (reasonCode) {
+      case 'MATCH_FULL':
+        return 'Match pieno.';
+      case 'MATCH_NOT_JOINABLE':
+        return 'Match non è più joinabile.';
+      case 'INSUFFICIENT_BALANCE':
+        return 'Fondi insufficienti.';
+      case 'ALREADY_IN_ACTIVE_MATCH':
+        return 'Hai già un match attivo.';
+      case 'NOT_AUTHENTICATED':
+        return 'Devi essere autenticato per joinare.';
+      default:
+        return fallback || 'Impossibile joinare il match.';
+    }
+  };
+
   const handleJoin = async (matchId: string) => {
     if (!user || !wallet) {
       navigate('/auth');
@@ -80,16 +97,21 @@ export default function Matches() {
     setJoining(matchId);
 
     try {
-      const { data, error } = await supabase.rpc('join_match_v2', {
-        p_match_id: matchId,
-      });
-
+      const { data, error } = await supabase.rpc('join_match', { p_match_id: matchId });
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string; status?: string } | null;
+      const result = data as
+        | { success: boolean; reason_code?: string; message?: string; error?: string }
+        | null;
 
-      if (!result || !result.success) {
-        throw new Error(result?.error || 'Failed to join match');
+      if (!result?.success) {
+        const msg = getJoinErrorCopy(result?.reason_code, result?.message || result?.error);
+        toast({
+          title: 'Impossibile joinare',
+          description: msg,
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({

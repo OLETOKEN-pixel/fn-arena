@@ -218,8 +218,10 @@ export function useJoinMatch() {
 
   return useMutation({
     mutationFn: async (matchId: string) => {
-      const { error } = await supabase.rpc('join_match_v2', { p_match_id: matchId });
+      const { data, error } = await supabase.rpc('join_match', { p_match_id: matchId });
       if (error) throw error;
+      const result = data as { success: boolean; message?: string; error?: string } | null;
+      if (!result?.success) throw new Error(result?.message || result?.error || 'Failed to join match');
     },
     onSuccess: () => {
       // Invalidate all match queries

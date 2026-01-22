@@ -35,16 +35,10 @@ export function useEligibleTeams(teamSize: number, entryFee?: number) {
       return;
     }
 
-    // Fetch teams with all accepted members
+    // Fetch teams (members are hydrated via RPC to avoid profiles_public visibility issues)
     const { data: teamsData } = await supabase
       .from('teams')
-      .select(`
-        *,
-        members:team_members(
-          *,
-          profile:profiles_public!team_members_user_id_fkey(user_id, username, avatar_url, epic_username)
-        )
-      `)
+      .select('*')
       .in('id', teamIds);
 
     if (!teamsData) {
@@ -53,17 +47,42 @@ export function useEligibleTeams(teamSize: number, entryFee?: number) {
       return;
     }
 
-    // Process teams - filter members to only accepted ones and count
-    const processedTeams: TeamWithMembersAndBalance[] = teamsData.map((team: any) => {
-      const acceptedMembers = (team.members || []).filter(
-        (m: TeamMember) => m.status === 'accepted'
-      );
-      return {
+    // Hydrate members via RPC and compute accepted member count
+    const processedTeams: TeamWithMembersAndBalance[] = [];
+
+    for (const team of teamsData as any[]) {
+      const { data: membersData } = await supabase.rpc('get_team_members', {
+        p_team_id: team.id,
+      });
+
+      const membersResult = membersData as
+        | { success: boolean; members?: Array<any>; error?: string }
+        | null;
+      const membersRaw = (membersResult?.success ? membersResult.members : []) ?? [];
+
+      const acceptedMembers = membersRaw
+        .filter((m: any) => m.status === 'accepted')
+        .map((m: any) => ({
+          id: m.id ?? `${m.team_id}-${m.user_id}-${m.role}-${m.status}`,
+          team_id: m.team_id,
+          user_id: m.user_id,
+          role: m.role,
+          status: m.status,
+          created_at: m.created_at,
+          profile: {
+            user_id: m.user_id,
+            username: m.username,
+            avatar_url: m.avatar_url,
+            epic_username: m.epic_username,
+          } as unknown as Profile,
+        })) as (TeamMember & { profile: Profile })[];
+
+      processedTeams.push({
         ...team,
         members: acceptedMembers,
         acceptedMemberCount: acceptedMembers.length,
-      };
-    });
+      });
+    }
 
     // If entryFee is provided, fetch balance info for eligible teams
     if (entryFee !== undefined && teamSize > 0) {

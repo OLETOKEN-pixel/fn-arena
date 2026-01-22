@@ -20,6 +20,8 @@ interface TeamWithMembers extends Team {
   members: (TeamMember & { profile: Profile })[];
 }
 
+type TeamMemberPublic = Pick<Profile, 'user_id' | 'username' | 'avatar_url' | 'epic_username'>;
+
 export default function Teams() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -64,31 +66,68 @@ export default function Teams() {
 
       const teamIds = memberData?.map(m => m.team_id) ?? [];
 
-      if (teamIds.length > 0) {
-        const { data: teamsData, error: teamsError } = await supabase
-          .from('teams')
-          .select(`
-            *,
-            members:team_members(
-              *,
-                profile:profiles_public!team_members_user_id_fkey(user_id, username, avatar_url, epic_username)
-            )
-          `)
-          .in('id', teamIds);
-
-        if (teamsError) {
-          console.error('Failed to fetch teams:', teamsError);
-          toast({
-            title: 'Error loading teams',
-            description: teamsError.message,
-            variant: 'destructive',
-          });
-        } else if (teamsData) {
-          setTeams(teamsData as unknown as TeamWithMembers[]);
-        }
-      } else {
+      if (teamIds.length === 0) {
         setTeams([]);
+        return;
       }
+
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('teams')
+        .select('*')
+        .in('id', teamIds);
+
+      if (teamsError) {
+        console.error('Failed to fetch teams:', teamsError);
+        toast({
+          title: 'Error loading teams',
+          description: teamsError.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const baseTeams = (teamsData || []) as Team[];
+      const hydrated: TeamWithMembers[] = [];
+
+      for (const t of baseTeams) {
+        const { data: membersData, error: membersError } = await supabase.rpc('get_team_members', {
+          p_team_id: t.id,
+        });
+
+        if (membersError) {
+          console.error('Failed to fetch team members:', { teamId: t.id, membersError });
+          hydrated.push({ ...t, members: [] } as TeamWithMembers);
+          continue;
+        }
+
+        const membersResult = membersData as
+          | { success: boolean; members?: Array<any>; error?: string }
+          | null;
+
+        const membersRaw = (membersResult?.success ? membersResult.members : []) ?? [];
+        const members = membersRaw.map((m: any) => {
+          const profile: TeamMemberPublic = {
+            user_id: m.user_id,
+            username: m.username,
+            avatar_url: m.avatar_url,
+            epic_username: m.epic_username,
+          };
+
+          return {
+            id: m.id ?? `${m.team_id}-${m.user_id}-${m.role}-${m.status}`,
+            team_id: m.team_id,
+            user_id: m.user_id,
+            role: m.role,
+            status: m.status,
+            created_at: m.created_at,
+            profile: profile as unknown as Profile,
+          } as TeamMember & { profile: Profile };
+        });
+
+        hydrated.push({ ...t, members } as TeamWithMembers);
+      }
+
+      setTeams(hydrated);
     } catch (err) {
       console.error('Unexpected error fetching teams:', err);
     } finally {

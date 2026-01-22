@@ -49,14 +49,53 @@ export default function MatchDetails() {
 
   const fetchMatch = async () => {
     if (!id) return;
-    // Avoid calling protected RPC before auth is ready.
-    if (!user) return;
-
     setLoading(true);
 
-    const { data, error } = await supabase.rpc('get_match_details', {
-      p_match_id: id,
-    });
+    // 1) Try participant/admin view (protected)
+    // 2) If it returns Access denied, fallback to public view (OPEN-friendly)
+
+    const tryPublicFallback = async () => {
+      const { data: pubData, error: pubError } = await supabase.rpc('get_match_public_details', {
+        p_match_id: id,
+      });
+
+      if (pubError || !pubData) {
+        toast({
+          title: 'Error',
+          description: 'Match not found or could not be loaded.',
+          variant: 'destructive',
+        });
+        navigate('/matches');
+        return;
+      }
+
+      const pubResult = pubData as unknown as { success: boolean; error?: string; match?: unknown };
+      if (!pubResult.success || !pubResult.match) {
+        toast({
+          title: 'Error',
+          description: pubResult.error || 'Match not found or could not be loaded.',
+          variant: 'destructive',
+        });
+        navigate('/matches');
+        return;
+      }
+
+      const publicMatch = pubResult.match as Match & {
+        participant_count?: number;
+        max_participants?: number;
+      };
+
+      setMatch(publicMatch);
+      setLoading(false);
+    };
+
+    // If not logged in, only public view is possible
+    if (!user) {
+      await tryPublicFallback();
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('get_match_details', { p_match_id: id });
 
     if (error || !data) {
       toast({
@@ -64,18 +103,23 @@ export default function MatchDetails() {
         description: 'Match not found or could not be loaded.',
         variant: 'destructive',
       });
-      navigate('/my-matches');
+      navigate('/matches');
       return;
     }
 
     const result = data as unknown as { success: boolean; error?: string; match?: unknown };
     if (!result.success || !result.match) {
+      if ((result.error || '').toLowerCase() === 'access denied') {
+        await tryPublicFallback();
+        return;
+      }
+
       toast({
         title: 'Error',
         description: result.error || 'Match not found or could not be loaded.',
         variant: 'destructive',
       });
-      navigate('/my-matches');
+      navigate('/matches');
       return;
     }
 
@@ -96,17 +140,17 @@ export default function MatchDetails() {
       // ignore
     }
     
-    // Access control: keep client-side guard (RPC already enforces it)
+    // If match is not open, non-participants should not see the full page.
     if (matchData.status !== 'open') {
       const isParticipant = matchData.participants?.some((p) => p.user_id === user.id);
       const isAdmin = profile?.role === 'admin';
       if (!isParticipant && !isAdmin) {
         toast({
-          title: 'Access Denied',
-          description: 'You are not a participant in this match.',
+          title: 'Solo partecipanti',
+          description: 'Questo match non è più pubblico. Solo i partecipanti possono vederlo.',
           variant: 'destructive',
         });
-        navigate('/my-matches');
+        navigate('/matches');
         return;
       }
     }
@@ -222,7 +266,16 @@ export default function MatchDetails() {
     setJoining(true);
     
     try {
-      const { data, error } = await supabase.rpc('join_team_match', {
+      if (selectedTeam.owner_id !== user?.id) {
+        toast({
+          title: 'Impossibile joinare',
+          description: 'Solo il proprietario del team può joinare il match.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('join_match', {
         p_match_id: match.id,
         p_team_id: selectedTeam.id,
         p_payment_mode: paymentMode,
@@ -230,9 +283,17 @@ export default function MatchDetails() {
 
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string };
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to join');
+      const result = data as
+        | { success: boolean; reason_code?: string; message?: string; error?: string }
+        | null;
+
+      if (!result?.success) {
+        toast({
+          title: 'Impossibile joinare',
+          description: result?.message || result?.error || 'Failed to join match',
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({
@@ -271,15 +332,20 @@ export default function MatchDetails() {
     setJoining1v1(true);
     
     try {
-      const { data, error } = await supabase.rpc('join_match_v2', {
-        p_match_id: match.id,
-      });
-
+      const { data, error } = await supabase.rpc('join_match', { p_match_id: match.id });
       if (error) throw error;
 
-      const result = data as { success: boolean; error?: string } | null;
-      if (!result || !result.success) {
-        throw new Error(result?.error || 'Failed to join match');
+      const result = data as
+        | { success: boolean; reason_code?: string; message?: string; error?: string }
+        | null;
+
+      if (!result?.success) {
+        toast({
+          title: 'Impossibile joinare',
+          description: result?.message || result?.error || 'Failed to join match',
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({
@@ -303,7 +369,11 @@ export default function MatchDetails() {
   if (loading) return <div className="h-screen flex items-center justify-center bg-background"><LoadingPage /></div>;
   if (!match) return null;
 
-  const participantCount = match.participants?.length ?? 0;
+  const participantCount =
+    match.participants?.length ??
+    // public view: injected by get_match_public_details
+    ((match as any).participant_count as number | undefined) ??
+    0;
   const maxParticipants = match.team_size * 2;
   const isCreator = user?.id === match.creator_id;
   const participant = match.participants?.find(p => p.user_id === user?.id);

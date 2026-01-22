@@ -19,6 +19,8 @@ interface TeamWithMembers extends Team {
   members: (TeamMember & { profile: Profile })[];
 }
 
+type TeamMemberPublic = Pick<Profile, 'user_id' | 'username' | 'avatar_url' | 'epic_username'>;
+
 export default function TeamDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -33,18 +35,8 @@ export default function TeamDetails() {
 
   const fetchTeam = async () => {
     if (!id) return;
-    
-    const { data, error } = await supabase
-      .from('teams')
-      .select(`
-        *,
-        members:team_members(
-          *,
-          profile:profiles_public!team_members_user_id_fkey(user_id, username, avatar_url, epic_username)
-        )
-      `)
-      .eq('id', id)
-      .maybeSingle();
+
+    const { data, error } = await supabase.from('teams').select('*').eq('id', id).maybeSingle();
 
     if (error) {
       // Show actual error message for debugging
@@ -68,7 +60,48 @@ export default function TeamDetails() {
       return;
     }
 
-    setTeam(data as unknown as TeamWithMembers);
+    const baseTeam = data as Team;
+
+    const { data: membersData, error: membersError } = await supabase.rpc('get_team_members', {
+      p_team_id: baseTeam.id,
+    });
+
+    if (membersError) {
+      console.error('Team members fetch error:', membersError);
+      toast({
+        title: 'Error loading team members',
+        description: `${membersError.message} (code: ${membersError.code})`,
+        variant: 'destructive',
+      });
+      navigate('/teams');
+      return;
+    }
+
+    const membersResult = membersData as
+      | { success: boolean; members?: Array<any>; error?: string }
+      | null;
+    const membersRaw = (membersResult?.success ? membersResult.members : []) ?? [];
+
+    const members = membersRaw.map((m: any) => {
+      const profile: TeamMemberPublic = {
+        user_id: m.user_id,
+        username: m.username,
+        avatar_url: m.avatar_url,
+        epic_username: m.epic_username,
+      };
+
+      return {
+        id: m.id ?? `${m.team_id}-${m.user_id}-${m.role}-${m.status}`,
+        team_id: m.team_id,
+        user_id: m.user_id,
+        role: m.role,
+        status: m.status,
+        created_at: m.created_at,
+        profile: profile as unknown as Profile,
+      } as TeamMember & { profile: Profile };
+    });
+
+    setTeam({ ...baseTeam, members } as TeamWithMembers);
     setLoading(false);
   };
 
@@ -347,12 +380,12 @@ export default function TeamDetails() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{member.profile?.username}</p>
-                    {member.profile?.epic_username && (
-                      <p className="text-xs text-muted-foreground">
-                        Epic: {member.profile.epic_username}
-                      </p>
-                    )}
+                      <p className="font-medium">{member.profile?.username || 'Utente'}</p>
+                      {member.profile?.epic_username ? (
+                        <p className="text-xs text-muted-foreground">Epic: {member.profile.epic_username}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Epic non collegato</p>
+                      )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

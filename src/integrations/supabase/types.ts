@@ -1591,7 +1591,9 @@ export type Database = {
         }[]
       }
       get_match_details: { Args: { p_match_id: string }; Returns: Json }
+      get_match_public_details: { Args: { p_match_id: string }; Returns: Json }
       get_player_stats: { Args: { p_user_id: string }; Returns: Json }
+      get_team_members: { Args: { p_team_id: string }; Returns: Json }
       get_team_members_with_balance: {
         Args: { p_team_id: string }
         Returns: {
@@ -1617,6 +1619,14 @@ export type Database = {
       is_match_participant: {
         Args: { p_match_id: string; p_user_id: string }
         Returns: boolean
+      }
+      join_match: {
+        Args: {
+          p_match_id: string
+          p_payment_mode?: string
+          p_team_id?: string
+        }
+        Returns: Json
       }
       join_match_v2: { Args: { p_match_id: string }; Returns: Json }
       join_team_match: {

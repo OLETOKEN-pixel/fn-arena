@@ -26,14 +26,6 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
   const userTeamSide = participant.team_side;
   const isTeamMatch = match.team_size > 1;
   
-  // Determine if current user is the captain using persistent columns (single source of truth)
-  const isCaptain = (() => {
-    if (!isTeamMatch) return true; // 1v1: everyone can declare
-    // Use the persistent captain columns from the match record
-    if (userTeamSide === 'A') return currentUserId === match.captain_a_user_id;
-    return currentUserId === match.captain_b_user_id;
-  })();
-  
   // Get team statuses
   const teamAParticipants = match.participants?.filter(p => p.team_side === 'A') ?? [];
   const teamBParticipants = match.participants?.filter(p => p.team_side === 'B') ?? [];
@@ -133,7 +125,7 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
           <div>
             <span className="text-sm font-semibold">Dichiara Risultato</span>
             {isTeamMatch && (
-              <p className="text-xs text-muted-foreground">Solo il capitano</p>
+              <p className="text-xs text-muted-foreground">Per il tuo team</p>
             )}
           </div>
         </div>
@@ -181,60 +173,53 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
 
         {/* Action Buttons */}
         {!hasSubmitted ? (
-          isCaptain ? (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  size="sm"
-                  className="h-10 bg-success hover:bg-success/90 text-success-foreground font-bold text-xs"
-                  onClick={() => handleSubmitResult('WIN')}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      VINTO
-                    </>
-                  )}
-                </Button>
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                size="sm"
+                className="h-10 bg-success hover:bg-success/90 text-success-foreground font-bold text-xs"
+                onClick={() => handleSubmitResult('WIN')}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    VINTO
+                  </>
+                )}
+              </Button>
 
-                <Button
-                  size="sm"
-                  className="h-10 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold text-xs"
-                  onClick={() => handleSubmitResult('LOSS')}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <X className="w-3 h-3 mr-1" />
-                      PERSO
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              {/* Warning - Compact */}
-              <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <p className="text-[10px] text-amber-200">
-                  Dichiarazioni false = ban e perdita coins
-                </p>
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-3 rounded-lg bg-secondary/30">
-              <Users className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
-              <p className="text-xs font-medium">In attesa del capitano</p>
+              <Button
+                size="sm"
+                className="h-10 bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold text-xs"
+                onClick={() => handleSubmitResult('LOSS')}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <X className="w-3 h-3 mr-1" />
+                    PERSO
+                  </>
+                )}
+              </Button>
             </div>
-          )
+
+            {/* Warning - Compact */}
+            <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[10px] text-amber-200">
+                Dichiarazioni false = ban e perdita coins
+              </p>
+            </div>
+          </>
         ) : (
           <div className="text-center py-3 rounded-lg bg-primary/10">
             <Clock className="w-5 h-5 mx-auto mb-1 text-primary animate-pulse" />
-            <p className="text-xs font-medium text-primary">Risultato Inviato</p>
+            <p className="text-xs font-medium text-primary">Dichiarazione inviata (bloccata)</p>
             <p className="text-[10px] text-muted-foreground">
               {opponentTeamResult === null ? 'Attesa team avversario...' : 'Elaborazione...'}
             </p>

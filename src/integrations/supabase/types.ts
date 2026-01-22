@@ -1708,11 +1708,16 @@ export type Database = {
         Args: { p_match_id: string; p_result: string }
         Returns: Json
       }
+      submit_team_declaration: {
+        Args: { p_match_id: string; p_result: string }
+        Returns: Json
+      }
       submit_team_result: {
         Args: { p_match_id: string; p_result: string }
         Returns: Json
       }
       team_has_active_match: { Args: { p_team_id: string }; Returns: boolean }
+      try_finalize_match: { Args: { p_match_id: string }; Returns: Json }
       update_challenge_progress: {
         Args: { p_metric_type: string; p_source_id: string; p_user_id: string }
         Returns: undefined

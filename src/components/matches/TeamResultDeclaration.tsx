@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Trophy, X, Loader2, AlertTriangle, CheckCircle2, Clock, Users, Sparkles } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,12 +18,14 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+  const [showFinalizeRetry, setShowFinalizeRetry] = useState(false);
 
-  const participant = match.participants?.find(p => p.user_id === currentUserId);
-  
-  if (!participant) return null;
-  
-  const userTeamSide = participant.team_side;
+  const participant = useMemo(() => {
+    return match.participants?.find((p) => p.user_id === currentUserId) ?? null;
+  }, [match.participants, currentUserId]);
+
+  const userTeamSide = participant?.team_side;
   const isTeamMatch = match.team_size > 1;
   
   // Get team statuses
@@ -38,32 +40,121 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
   
   const hasSubmitted = myTeamResult !== null;
 
+  const bothTeamsDeclared = useMemo(() => {
+    return teamAResult !== null && teamBResult !== null;
+  }, [teamAResult, teamBResult]);
+
+  const canAttemptFinalize = match.status === 'result_pending' && bothTeamsDeclared;
+
+  // Anti "Elaborazione..." infinite: if both teams declared but match still pending, surface a manual retry.
+  useEffect(() => {
+    setShowFinalizeRetry(false);
+
+    if (!canAttemptFinalize) return;
+
+    const t = setTimeout(() => {
+      setShowFinalizeRetry(true);
+    }, 8000);
+
+    return () => clearTimeout(t);
+  }, [canAttemptFinalize, match.id]);
+
+  if (!participant || !userTeamSide) return null;
+
+  const handleFinalize = async () => {
+    if (finalizing) return;
+    setFinalizing(true);
+
+    try {
+      const { data, error } = await supabase.rpc('try_finalize_match', {
+        p_match_id: match.id,
+      });
+
+      if (error) throw error;
+
+      const res = data as
+        | {
+            success: boolean;
+            status?: string;
+            winner_side?: string;
+            error_code?: string;
+            message?: string;
+          }
+        | null;
+
+      if (!res?.success) {
+        throw new Error(res?.message || 'Impossibile finalizzare il match');
+      }
+
+      if (res.status === 'completed' || res.status === 'already_finalized') {
+        toast({
+          title: 'Match Completato',
+          description: 'Payout elaborato. Aggiorno il wallet...',
+        });
+        queryClient.invalidateQueries({ queryKey: ['wallet'] });
+      } else if (res.status === 'disputed') {
+        toast({
+          title: 'Disputa Aperta',
+          description: 'Errore o incoerenza in finalizzazione. Un admin esaminerà il match.',
+          variant: 'destructive',
+        });
+      } else if (res.status === 'need_other_team') {
+        toast({
+          title: 'In attesa',
+          description: 'Manca ancora la dichiarazione dell’altro team.',
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['challenges'] });
+      onResultDeclared();
+    } catch (error: any) {
+      console.error('Finalize match error:', error);
+      toast({
+        title: 'Errore Finalizzazione',
+        description: error.message || 'Impossibile finalizzare il match',
+        variant: 'destructive',
+      });
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
   const handleSubmitResult = async (result: 'WIN' | 'LOSS') => {
     if (submitting || hasSubmitted) return;
 
     setSubmitting(true);
 
     try {
-      // Use unified declare_result RPC for all match types
-      const { data, error } = await supabase.rpc('declare_result', {
+      // Membership-based declaration + safe finalization attempt
+      const { data, error } = await supabase.rpc('submit_team_declaration', {
         p_match_id: match.id,
         p_result: result,
       });
 
       if (error) throw error;
 
-      const response = data as { success: boolean; error?: string; status?: string; winner_side?: string; message?: string };
+      const response = data as
+        | {
+            success: boolean;
+            status?: string;
+            winner_side?: string;
+            error?: string;
+            message?: string;
+            error_code?: string;
+          }
+        | null;
 
-      if (!response.success) {
-        throw new Error(response.error || 'Failed to submit result');
+      if (!response?.success) {
+        throw new Error(response?.error || response?.message || 'Failed to submit result');
       }
 
-      if (response.status === 'completed') {
-        const isWinner = (response.winner_side === 'A' && userTeamSide === 'A') || 
-                         (response.winner_side === 'B' && userTeamSide === 'B');
+      if (response.status === 'completed' || response.status === 'already_finalized') {
+        const isWinner =
+          (response.winner_side === 'A' && userTeamSide === 'A') ||
+          (response.winner_side === 'B' && userTeamSide === 'B');
         toast({
           title: isWinner ? '🎉 Vittoria!' : 'Match Completato',
-          description: isWinner 
+          description: isWinner
             ? 'Congratulazioni! Le vincite sono state aggiunte al tuo wallet.'
             : 'Peccato, ritenta la prossima volta!',
         });
@@ -71,13 +162,9 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
       } else if (response.status === 'disputed') {
         toast({
           title: 'Disputa Aperta',
-          description: 'I risultati sono in conflitto. Un admin esaminerà il match.',
-          variant: 'destructive',
-        });
-      } else if (response.status === 'finalize_failed') {
-        toast({
-          title: 'Errore Finalizzazione',
-          description: response.error || 'Impossibile completare il match. Contatta il supporto.',
+          description:
+            response.message ||
+            'Finalizzazione non riuscita o risultati in conflitto. Un admin esaminerà il match.',
           variant: 'destructive',
         });
       } else if (response.status === 'already_submitted') {
@@ -88,7 +175,7 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
       } else {
         toast({
           title: 'Risultato Inviato',
-          description: response.message || 'In attesa che l\'altro team confermi...',
+          description: 'In attesa che l\'altro team confermi...',
         });
       }
 
@@ -223,6 +310,32 @@ export function TeamResultDeclaration({ match, currentUserId, onResultDeclared }
             <p className="text-[10px] text-muted-foreground">
               {opponentTeamResult === null ? 'Attesa team avversario...' : 'Elaborazione...'}
             </p>
+
+            {canAttemptFinalize && (
+              <div className="mt-3 flex flex-col items-center gap-2">
+                {showFinalizeRetry && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Se resta in elaborazione, puoi riprovare manualmente.
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 px-3 text-xs"
+                  onClick={handleFinalize}
+                  disabled={finalizing}
+                >
+                  {finalizing ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Riprovo...
+                    </span>
+                  ) : (
+                    'Riprova finalizzazione'
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

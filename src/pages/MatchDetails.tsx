@@ -52,6 +52,8 @@ export default function MatchDetails() {
     // Avoid calling protected RPC before auth is ready.
     if (!user) return;
 
+    setLoading(true);
+
     const { data, error } = await supabase.rpc('get_match_details', {
       p_match_id: id,
     });
@@ -78,6 +80,21 @@ export default function MatchDetails() {
     }
 
     const matchData = result.match as Match;
+
+    // Debug: if profiles are missing while match is in a phase where identities should be visible
+    try {
+      const missingProfiles = (matchData.participants ?? []).filter((p: any) => !p?.profile);
+      if (missingProfiles.length > 0) {
+        // eslint-disable-next-line no-console
+        console.warn('[MatchDetails] participants missing profile data', {
+          matchId: id,
+          status: matchData.status,
+          missingUserIds: missingProfiles.map((p: any) => p.user_id),
+        });
+      }
+    } catch {
+      // ignore
+    }
     
     // Access control: keep client-side guard (RPC already enforces it)
     if (matchData.status !== 'open') {

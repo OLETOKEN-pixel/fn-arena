@@ -88,7 +88,7 @@ export function useOpenMatches(filters: MatchFilters = {}) {
       return matches;
     },
     staleTime: 30_000, // 30 seconds
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   // Real-time subscription for matches
@@ -99,14 +99,20 @@ export function useOpenMatches(filters: MatchFilters = {}) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'matches' },
         () => {
-          queryClient.invalidateQueries({ queryKey: queryKeys.matches.all });
+          // Avoid global invalidation storms under load.
+          // Refresh only OPEN list queries.
+          queryClient.invalidateQueries({
+            predicate: (q) => q.queryKey?.[0] === 'matches' && q.queryKey?.[1] === 'open',
+          });
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'match_participants' },
         () => {
-          queryClient.invalidateQueries({ queryKey: queryKeys.matches.all });
+          queryClient.invalidateQueries({
+            predicate: (q) => q.queryKey?.[0] === 'matches' && q.queryKey?.[1] === 'open',
+          });
         }
       )
       .subscribe();
@@ -172,7 +178,7 @@ export function useMyMatches() {
     },
     enabled: !!user,
     staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   // Real-time subscription for user's matches
@@ -214,7 +220,7 @@ export function useMyMatches() {
 
 export function useJoinMatch() {
   const queryClient = useQueryClient();
-  const { refreshWallet } = useAuth();
+  const { refreshWallet, user } = useAuth();
 
   return useMutation({
     mutationFn: async (matchId: string) => {
@@ -224,8 +230,14 @@ export function useJoinMatch() {
       if (!result?.success) throw new Error(result?.message || result?.error || 'Failed to join match');
     },
     onSuccess: () => {
-      // Invalidate all match queries
-      queryClient.invalidateQueries({ queryKey: queryKeys.matches.all });
+      // Avoid invalidating everything under load.
+      // Refresh OPEN lists + the user's matches.
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey?.[0] === 'matches' && q.queryKey?.[1] === 'open',
+      });
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.matches.my(user.id) });
+      }
       // Refresh wallet balance
       refreshWallet();
     },
@@ -234,7 +246,7 @@ export function useJoinMatch() {
 
 export function useCreateMatch() {
   const queryClient = useQueryClient();
-  const { refreshWallet } = useAuth();
+  const { refreshWallet, user } = useAuth();
 
   return useMutation({
     mutationFn: async (matchData: {
@@ -279,7 +291,12 @@ export function useCreateMatch() {
       return match;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.matches.all });
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey?.[0] === 'matches' && q.queryKey?.[1] === 'open',
+      });
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.matches.my(user.id) });
+      }
       refreshWallet();
     },
   });

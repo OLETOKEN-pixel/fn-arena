@@ -49,22 +49,14 @@ export default function MatchDetails() {
 
   const fetchMatch = async () => {
     if (!id) return;
+    // Avoid calling protected RPC before auth is ready.
+    if (!user) return;
 
-    const { data, error } = await supabase
-      .from('matches')
-      .select(`
-        *,
-        creator:profiles_public!matches_creator_id_fkey(user_id, username, avatar_url, epic_username),
-        participants:match_participants(
-          *,
-          profile:profiles_public(user_id, username, avatar_url, epic_username)
-        ),
-        result:match_results(*)
-      `)
-      .eq('id', id)
-      .single();
+    const { data, error } = await supabase.rpc('get_match_details', {
+      p_match_id: id,
+    });
 
-    if (error) {
+    if (error || !data) {
       toast({
         title: 'Error',
         description: 'Match not found or could not be loaded.',
@@ -74,11 +66,22 @@ export default function MatchDetails() {
       return;
     }
 
-    const matchData = data as unknown as Match;
+    const result = data as unknown as { success: boolean; error?: string; match?: unknown };
+    if (!result.success || !result.match) {
+      toast({
+        title: 'Error',
+        description: result.error || 'Match not found or could not be loaded.',
+        variant: 'destructive',
+      });
+      navigate('/my-matches');
+      return;
+    }
+
+    const matchData = result.match as Match;
     
-    // Access control: if match is not open, only participants can view
-    if (matchData.status !== 'open' && user) {
-      const isParticipant = matchData.participants?.some(p => p.user_id === user.id);
+    // Access control: keep client-side guard (RPC already enforces it)
+    if (matchData.status !== 'open') {
+      const isParticipant = matchData.participants?.some((p) => p.user_id === user.id);
       const isAdmin = profile?.role === 'admin';
       if (!isParticipant && !isAdmin) {
         toast({

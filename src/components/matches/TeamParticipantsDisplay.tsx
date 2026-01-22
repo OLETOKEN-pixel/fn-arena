@@ -62,7 +62,8 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
     const isCurrentUser = p.user_id === currentUserId;
     const isWinner = match.result?.winner_user_id === p.user_id || 
       (match.result?.winner_team_id && p.team_id === match.result.winner_team_id);
-    const epicUsername = p.profile?.epic_username;
+    const hasProfile = !!p.profile;
+    const epicUsername = hasProfile ? p.profile?.epic_username : undefined;
     
     // Show identity if: it's the current user, OR identities are revealed (all ready / match started)
     const canShowIdentity = isCurrentUser || showIdentities;
@@ -114,15 +115,21 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             {canShowIdentity ? (
-              <p 
-                className={cn(
-                  "font-semibold text-sm truncate cursor-pointer hover:text-primary transition-colors",
-                  isCurrentUser && "text-accent"
-                )}
-                onClick={() => handleAvatarClick(p.user_id, true)}
-              >
-                {p.profile?.username}
-              </p>
+              hasProfile ? (
+                <p 
+                  className={cn(
+                    "font-semibold text-sm truncate cursor-pointer hover:text-primary transition-colors",
+                    isCurrentUser && "text-accent"
+                  )}
+                  onClick={() => handleAvatarClick(p.user_id, true)}
+                >
+                  {p.profile?.username}
+                </p>
+              ) : (
+                <p className="font-semibold text-sm text-muted-foreground italic">
+                  Loading...
+                </p>
+              )
             ) : (
               <p className="font-semibold text-sm text-muted-foreground italic">
                 Hidden
@@ -135,7 +142,11 @@ export function TeamParticipantsDisplay({ match, currentUserId }: TeamParticipan
           
           {/* Epic Username - only show if identities are revealed */}
           {canShowIdentity ? (
-            epicUsername ? (
+            !hasProfile ? (
+              <p className="text-xs text-muted-foreground italic">
+                Loading...
+              </p>
+            ) : epicUsername ? (
               <button 
                 onClick={() => copyEpicUsername(epicUsername)}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors group"

@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock, Share2, Gamepad2, Globe, Monitor, Crosshair, Timer, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { MatchStatusBadge, RegionBadge, PlatformBadge } from '@/components/ui/custom-badge';
+import { Badge, MatchStatusBadge, RegionBadge, PlatformBadge } from '@/components/ui/custom-badge';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { EpicUsernameWarning } from '@/components/common/EpicUsernameWarning';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
@@ -34,6 +34,8 @@ export default function MatchDetails() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, profile, wallet, isProfileComplete, refreshWallet } = useAuth();
+
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [match, setMatch] = useState<Match | null>(null);
   // Split initial load from background refresh to avoid full-screen freezes under realtime bursts
@@ -114,8 +116,8 @@ export default function MatchDetails() {
       console.info('[perf] get_match_public_details', { ms: rpcMs });
     };
 
-      // If not logged in, only public view is possible
-      if (!user) {
+       // If not logged in, only public view is possible
+       if (!user) {
         await tryPublicFallback();
         return;
       }
@@ -167,11 +169,10 @@ export default function MatchDetails() {
       // ignore
     }
     
-    // If match is not open, non-participants should not see the full page.
-    if (matchData.status !== 'open') {
-      const isParticipant = matchData.participants?.some((p) => p.user_id === user.id);
-      const isAdmin = profile?.role === 'admin';
-      if (!isParticipant && !isAdmin) {
+     // If match is not open, non-participants should not see the full page (admins can spectate).
+     if (matchData.status !== 'open') {
+       const isParticipant = matchData.participants?.some((p) => p.user_id === user.id);
+       if (!isParticipant && !isAdmin) {
         toast({
           title: 'Solo partecipanti',
           description: 'Questo match non è più pubblico. Solo i partecipanti possono vederlo.',
@@ -194,7 +195,20 @@ export default function MatchDetails() {
       setInitialLoading(false);
       setRefreshing(false);
     }
-  }, [id, navigate, profile?.role, toast, user]);
+   }, [id, navigate, toast, user, isAdmin]);
+
+  // Admin check (server-side)
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      const { data } = await supabase.rpc('is_admin');
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, [user]);
 
   // Initial fetch and realtime subscription
   useEffect(() => {
@@ -429,16 +443,16 @@ export default function MatchDetails() {
   const isCreator = user?.id === match.creator_id;
   const participant = match.participants?.find(p => p.user_id === user?.id);
   const isParticipant = !!participant;
-  const isAdmin = profile?.role === 'admin';
+  const isAdminSpectator = isAdmin && !!user && !isParticipant;
   
-  const canCancel = isCreator && match.status === 'open';
-  const canLeave = isParticipant && !isCreator && match.status === 'ready_check' && !participant?.ready;
+  const canCancel = !isAdminSpectator && isCreator && match.status === 'open';
+  const canLeave = !isAdminSpectator && isParticipant && !isCreator && match.status === 'ready_check' && !participant?.ready;
   
-  const showReadyUp = match.status === 'ready_check' && isParticipant;
-  const showResultDeclaration = isParticipant && (match.status === 'in_progress' || match.status === 'result_pending');
+  const showReadyUp = !isAdminSpectator && match.status === 'ready_check' && isParticipant;
+  const showResultDeclaration = !isAdminSpectator && isParticipant && (match.status === 'in_progress' || match.status === 'result_pending');
   
   // Show team join UI for team matches when in join mode
-  const showTeamJoin = isJoinMode && match.status === 'open' && match.team_size > 1 && !isParticipant && user;
+  const showTeamJoin = !isAdminSpectator && isJoinMode && match.status === 'open' && match.team_size > 1 && !isParticipant && user;
   
   // Calculate costs for team join
   const totalTeamCost = match.entry_fee * match.team_size;
@@ -447,7 +461,7 @@ export default function MatchDetails() {
   const canJoinWithTeam = selectedTeam && (paymentMode === 'cover' ? canAffordCover : canAffordSplit);
   
   // Join 1v1 logic
-  const canJoin1v1 = user && match.status === 'open' && match.team_size === 1 && !isParticipant && participantCount < maxParticipants;
+  const canJoin1v1 = !isAdminSpectator && user && match.status === 'open' && match.team_size === 1 && !isParticipant && participantCount < maxParticipants;
 
   const copyMatchLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -479,12 +493,17 @@ export default function MatchDetails() {
 
             {/* Center - Match Title & Info */}
             <div className="flex items-center gap-3 flex-1 justify-center">
-              <div className="flex items-center gap-2 bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
+               <div className="flex items-center gap-2 bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
                 <Gamepad2 className="w-4 h-4 text-accent" />
                 <span className="font-bold text-sm">
                   {match.team_size}v{match.team_size} {match.mode}
                 </span>
                 <MatchStatusBadge status={match.status} />
+                 {isAdminSpectator && (
+                   <Badge variant="outline" className="text-[10px] uppercase">
+                     ADMIN VIEW
+                   </Badge>
+                 )}
               </div>
 
               {/* Entry & Prize - Compact */}

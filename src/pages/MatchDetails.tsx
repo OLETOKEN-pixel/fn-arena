@@ -624,7 +624,7 @@ export default function MatchDetails() {
               <TeamParticipantsDisplay match={match} currentUserId={user?.id} />
 
               {/* ===== PROOF SCREENSHOTS - Compact ===== */}
-              {user && isParticipant && (
+              {user && (isParticipant || isAdmin) && (
                 <ProofSection
                   matchId={match.id}
                   currentUserId={user.id}

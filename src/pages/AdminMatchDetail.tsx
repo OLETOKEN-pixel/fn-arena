@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MatchChat } from '@/components/matches/MatchChat';
+import { ProofSection } from '@/components/matches/ProofSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -441,6 +442,16 @@ export default function AdminMatchDetail() {
               <p className="text-sm">{match.result.dispute_reason}</p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Proof Screenshots (Admin spectator: view + delete, no upload) */}
+        {user && (
+          <ProofSection
+            matchId={match.id}
+            currentUserId={user.id}
+            isAdmin={true}
+            isParticipant={false}
+          />
         )}
 
         {/* Admin Resolution Panel */}

@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/custom-badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { MatchChat } from '@/components/matches/MatchChat';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +45,10 @@ export default function AdminMatchDetail() {
   const [resolving, setResolving] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
   const [notFound, setNotFound] = useState(false);
+
+  const [forceExpireOpen, setForceExpireOpen] = useState(false);
+  const [forceExpireReason, setForceExpireReason] = useState('');
+  const [forceExpiring, setForceExpiring] = useState(false);
 
   // Check admin status
   useEffect(() => {
@@ -149,6 +155,41 @@ export default function AdminMatchDetail() {
     setResolving(false);
   };
 
+  const handleForceExpire = async () => {
+    if (!match) return;
+    setForceExpiring(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_force_expire_match', {
+        p_match_id: match.id,
+        p_reason: forceExpireReason.trim() || null,
+      });
+
+      if (error) throw error;
+      const result = data as { success: boolean; error?: string; refund_count?: number; refunded_total?: number } | null;
+      if (!result?.success) {
+        const msg = result?.error === 'already_settled'
+          ? 'Match già settled (payout eseguito).'
+          : result?.error === 'in_progress_blocked'
+            ? 'Force Expire bloccato su match in_progress.'
+            : result?.error || 'Impossibile forzare expire.';
+        toast({ title: 'Errore', description: msg, variant: 'destructive' });
+        return;
+      }
+
+      toast({
+        title: 'Force Expire OK',
+        description: `Refunds: ${result.refund_count ?? 0} • Totale: ${(result.refunded_total ?? 0).toFixed?.(2) ?? result.refunded_total ?? 0}`,
+      });
+      setForceExpireOpen(false);
+      setForceExpireReason('');
+      fetchMatch();
+    } catch (e: any) {
+      toast({ title: 'Errore', description: e?.message || 'Impossibile forzare expire.', variant: 'destructive' });
+    } finally {
+      setForceExpiring(false);
+    }
+  };
+
   // Calculate prize/fee
   const prizePool = match ? match.entry_fee * 2 * (1 - PLATFORM_FEE) : 0;
   const platformFee = match ? match.entry_fee * 2 * PLATFORM_FEE : 0;
@@ -156,6 +197,8 @@ export default function AdminMatchDetail() {
   // Get participants by side
   const teamAParticipants = match?.participants?.filter(p => p.team_side === 'A') || [];
   const teamBParticipants = match?.participants?.filter(p => p.team_side === 'B') || [];
+
+  const canForceExpire = !['expired', 'completed', 'admin_resolved', 'finished', 'canceled'].includes(match.status) && match.status !== 'in_progress';
 
   if (authLoading || isAdmin === null) return <MainLayout><LoadingPage /></MainLayout>;
   if (isAdmin !== true) return null;
@@ -446,6 +489,85 @@ export default function AdminMatchDetail() {
             </CardContent>
           </Card>
         )}
+
+        {/* Force Expire */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <RefreshCw className="w-5 h-5" />
+                Force Expire
+              </span>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={!canForceExpire}
+                onClick={() => setForceExpireOpen(true)}
+              >
+                Force Expire
+              </Button>
+            </CardTitle>
+            <CardDescription>
+              Chiude il match come <span className="font-mono">expired</span> e rimborsa in modo idempotente (no payout). Bloccato su <span className="font-mono">in_progress</span>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!canForceExpire && (
+              <p className="text-sm text-muted-foreground">
+                Non disponibile per lo stato attuale.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Dialog open={forceExpireOpen} onOpenChange={setForceExpireOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confermi Force Expire?</DialogTitle>
+              <DialogDescription>
+                Questa azione è idempotente (cliccabile 2 volte senza doppi rimborsi). Se il match è già settled, verrà rifiutata.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Textarea
+                placeholder="Motivo (opzionale)"
+                value={forceExpireReason}
+                onChange={(e) => setForceExpireReason(e.target.value)}
+                className="min-h-[90px]"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setForceExpireOpen(false)} disabled={forceExpiring}>
+                Annulla
+              </Button>
+              <Button variant="destructive" onClick={handleForceExpire} disabled={forceExpiring}>
+                {forceExpiring ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Force Expire
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Admin Chat */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle>Chat (Admin)</CardTitle>
+            <CardDescription>Messaggi mostrati con mittente “ADMIN” quando scrive un admin.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {user && (
+              <div className="h-[420px]">
+                <MatchChat
+                  matchId={match.id}
+                  matchStatus={match.status}
+                  currentUserId={user.id}
+                  isAdmin={true}
+                  isParticipant={false}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Admin Notes (if already resolved) */}
         {match.result?.admin_notes && match.status === 'admin_resolved' && (

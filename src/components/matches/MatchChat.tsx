@@ -16,7 +16,7 @@ interface ChatMessage {
   message: string;
   is_system: boolean;
   created_at: string;
-  username?: string;
+  display_name?: string;
   avatar_url?: string | null;
 }
 
@@ -50,34 +50,14 @@ export function MatchChat({
   const fetchMessages = useCallback(async () => {
     try {
       const { data: messagesData, error } = await supabase
-        .from('match_chat_messages')
+        .from('match_chat_messages_view')
         .select('*')
         .eq('match_id', matchId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
 
-      if (!messagesData || messagesData.length === 0) {
-        setMessages([]);
-        return;
-      }
-
-      const userIds = [...new Set(messagesData.map(m => m.user_id))];
-      
-      const { data: profilesData } = await supabase
-        .from('profiles_public')
-        .select('user_id, username, avatar_url')
-        .in('user_id', userIds);
-
-      const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
-      
-      const enrichedMessages: ChatMessage[] = messagesData.map(msg => ({
-        ...msg,
-        username: profileMap.get(msg.user_id)?.username || 'Unknown',
-        avatar_url: profileMap.get(msg.user_id)?.avatar_url || null,
-      }));
-
-      setMessages(enrichedMessages);
+      setMessages((messagesData || []) as unknown as ChatMessage[]);
     } catch (error) {
       console.error('Error fetching chat messages:', error);
     } finally {
@@ -100,20 +80,15 @@ export function MatchChat({
         },
         async (payload) => {
           const newMsg = payload.new as ChatMessage;
-          
-          const { data: profileData } = await supabase
-            .from('profiles_public')
-            .select('user_id, username, avatar_url')
-            .eq('user_id', newMsg.user_id)
-            .single();
 
-          const enrichedMsg: ChatMessage = {
-            ...newMsg,
-            username: profileData?.username || 'Unknown',
-            avatar_url: profileData?.avatar_url || null,
-          };
+          // Enrich via view to guarantee display_name === 'ADMIN' for admins
+          const { data: enriched } = await supabase
+            .from('match_chat_messages_view')
+            .select('*')
+            .eq('id', newMsg.id)
+            .maybeSingle();
 
-          setMessages(prev => [...prev, enrichedMsg]);
+          setMessages(prev => [...prev, ((enriched || newMsg) as unknown as ChatMessage)]);
         }
       )
       .subscribe();
@@ -235,7 +210,7 @@ export function MatchChat({
                   )}>
                     <AvatarImage src={msg.avatar_url || undefined} />
                     <AvatarFallback className="text-[10px] font-bold">
-                      {msg.username?.charAt(0).toUpperCase() || '?'}
+                      {msg.display_name?.charAt(0).toUpperCase() || '?'}
                     </AvatarFallback>
                   </Avatar>
                   
@@ -248,7 +223,7 @@ export function MatchChat({
                         'text-xs font-medium',
                         isOwnMessage ? 'text-accent' : 'text-foreground'
                       )}>
-                        {msg.username}
+                        {msg.display_name}
                       </span>
                       <span className="text-[10px] text-muted-foreground">
                         {format(new Date(msg.created_at), 'HH:mm')}

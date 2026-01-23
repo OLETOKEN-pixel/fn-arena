@@ -198,8 +198,6 @@ export default function AdminMatchDetail() {
   const teamAParticipants = match?.participants?.filter(p => p.team_side === 'A') || [];
   const teamBParticipants = match?.participants?.filter(p => p.team_side === 'B') || [];
 
-  const canForceExpire = !['expired', 'completed', 'admin_resolved', 'finished', 'canceled'].includes(match.status) && match.status !== 'in_progress';
-
   if (authLoading || isAdmin === null) return <MainLayout><LoadingPage /></MainLayout>;
   if (isAdmin !== true) return null;
 
@@ -222,6 +220,10 @@ export default function AdminMatchDetail() {
   if (loading || !match) {
     return <MainLayout><LoadingPage /></MainLayout>;
   }
+
+  const canForceExpire =
+    !['expired', 'completed', 'admin_resolved', 'finished', 'canceled'].includes(match.status) &&
+    match.status !== 'in_progress';
 
   return (
     <MainLayout>

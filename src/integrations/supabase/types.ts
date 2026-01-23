@@ -1403,6 +1403,27 @@ export type Database = {
         }
         Relationships: []
       }
+      match_chat_messages_view: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          is_system: boolean | null
+          match_id: string | null
+          message: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_chat_messages_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles_public: {
         Row: {
           avatar_url: string | null
@@ -1444,6 +1465,10 @@ export type Database = {
       }
       admin_backfill_challenge_progress: {
         Args: { p_user_id: string }
+        Returns: Json
+      }
+      admin_force_expire_match: {
+        Args: { p_match_id: string; p_reason?: string }
         Returns: Json
       }
       admin_global_search: { Args: { p_query: string }; Returns: Json }

@@ -11,6 +11,19 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CREATE-PAYPAL-ORDER] ${step}${detailsStr}`);
 };
 
+// Get the base URL for return/cancel URLs - prefer SITE_URL env var
+const getReturnBaseUrl = (reqOrigin: string | null): string => {
+  // Priority: SITE_URL env var > request origin > fallback
+  const siteUrl = Deno.env.get("SITE_URL");
+  if (siteUrl) {
+    return siteUrl;
+  }
+  if (reqOrigin && !reqOrigin.includes("localhost")) {
+    return reqOrigin;
+  }
+  return "https://oleboytoken.lovable.app";
+};
+
 // Production domain fallback
 const PRODUCTION_DOMAIN = "https://oleboytoken.lovable.app";
 
@@ -77,12 +90,19 @@ serve(async (req) => {
     const baseUrl = getPayPalBaseUrl();
     logStep(`Mode: ${isLiveMode ? "LIVE" : "SANDBOX"}`, { baseUrl });
 
-    // Production origin check
-    const origin = req.headers.get("origin") || PRODUCTION_DOMAIN;
-    const isProductionOrigin = origin.includes("oleboytoken.lovable.app");
+    // Get return base URL using priority: SITE_URL > origin > fallback
+    const reqOrigin = req.headers.get("origin");
+    const returnBaseUrl = getReturnBaseUrl(reqOrigin);
     
-    if (isProductionOrigin && !isLiveMode) {
-      logStep("WARNING: Production origin detected but using SANDBOX PayPal mode");
+    logStep("Return URL configuration", { 
+      siteUrl: Deno.env.get("SITE_URL") || "(not set)",
+      reqOrigin: reqOrigin || "(not set)",
+      finalReturnBaseUrl: returnBaseUrl,
+      mode: isLiveMode ? "LIVE" : "SANDBOX"
+    });
+    
+    if (returnBaseUrl.includes("lovable.app") && isLiveMode) {
+      logStep("WARNING: Using lovable.app domain in LIVE mode - check SITE_URL env var");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -122,7 +142,7 @@ serve(async (req) => {
       );
     }
 
-    logStep("Creating PayPal order", { amount, origin, mode: isLiveMode ? "LIVE" : "SANDBOX" });
+    logStep("Creating PayPal order", { amount, returnBaseUrl, mode: isLiveMode ? "LIVE" : "SANDBOX" });
 
     const accessToken = await getPayPalAccessToken();
     logStep("Got PayPal access token");
@@ -143,8 +163,8 @@ serve(async (req) => {
         brand_name: "OLEBOY TOKEN",
         landing_page: "NO_PREFERENCE",
         user_action: "PAY_NOW",
-        return_url: `${origin}/payment/success?provider=paypal`,
-        cancel_url: `${origin}/buy?canceled=true`,
+        return_url: `${returnBaseUrl}/payment/success?provider=paypal`,
+        cancel_url: `${returnBaseUrl}/buy?canceled=true`,
       },
     };
 

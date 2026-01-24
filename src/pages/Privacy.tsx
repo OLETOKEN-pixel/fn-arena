@@ -37,7 +37,7 @@ export default function Privacy() {
 
         {/* Content Card */}
         <Card className="p-6 lg:p-8">
-          <div className="prose prose-invert max-w-none prose-headings:text-success prose-headings:font-bold prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:pb-3 prose-h2:border-b prose-h2:border-success/30 prose-h3:text-xl prose-h3:font-semibold prose-h3:mt-8 prose-h3:mb-4 prose-li:text-muted-foreground prose-p:text-muted-foreground">
+          <div className="prose prose-invert max-w-none prose-headings:text-amber-400 prose-headings:font-bold prose-h2:text-2xl prose-h2:lg:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:pb-3 prose-h2:border-b prose-h2:border-amber-400/30 prose-h3:text-xl prose-h3:font-semibold prose-h3:mt-8 prose-h3:mb-4 prose-li:text-muted-foreground prose-p:text-muted-foreground">
 
             <p className="text-muted-foreground">
               This Privacy Policy explains how OleBoy Token collects, uses, shares, and protects your personal data when you use our website and services. By using oleboytoken.com (the "Platform"), you acknowledge that you have read and understood this Privacy Policy. If you do not agree, please stop using the Platform.

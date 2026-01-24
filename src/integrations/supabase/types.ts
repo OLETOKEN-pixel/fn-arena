@@ -1481,6 +1481,7 @@ export type Database = {
       admin_purge_legacy_match:
         | { Args: { p_match_id: string }; Returns: Json }
         | { Args: { p_match_id: string; p_reason?: string }; Returns: Json }
+      admin_recalculate_wallet_locked_balance: { Args: never; Returns: Json }
       admin_resolve_dispute: {
         Args: {
           p_admin_notes?: string

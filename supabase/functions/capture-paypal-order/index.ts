@@ -112,18 +112,32 @@ serve(async (req) => {
     // IDEMPOTENCY CHECK: See if this order was already captured
     const { data: existingTx } = await supabase
       .from("transactions")
-      .select("id, status, paypal_capture_id")
+      .select("id, status, paypal_capture_id, amount")
       .eq("paypal_order_id", orderId)
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (existingTx?.status === "completed" && existingTx?.paypal_capture_id) {
-      logStep("Order already captured, returning success", { transactionId: existingTx.id });
+      logStep("Order already captured, returning success", { 
+        transactionId: existingTx.id,
+        amount: existingTx.amount 
+      });
       return new Response(
-        JSON.stringify({ success: true, message: "Order already processed" }),
+        JSON.stringify({ success: true, coins: existingTx.amount, message: "Order already processed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Verify we have a pending transaction for this order
+    if (!existingTx) {
+      logStep("No pending transaction found for order", { orderId, userId: user.id });
+      return new Response(
+        JSON.stringify({ error: "Order not found. Please try again or contact support.", success: false }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    logStep("Found pending transaction", { transactionId: existingTx.id, amount: existingTx.amount });
 
     const accessToken = await getPayPalAccessToken();
     logStep("Got PayPal access token");
@@ -226,31 +240,20 @@ serve(async (req) => {
       logStep("Transaction update error", txUpdateError);
     }
 
-    // Update wallet balance
-    const { data: wallet, error: walletError } = await supabase
-      .from("wallets")
-      .select("balance")
-      .eq("user_id", user.id)
-      .single();
+    // Update wallet balance ATOMICALLY using RPC
+    logStep("Updating wallet balance atomically", { userId: user.id, amount });
+    
+    const { data: newBalance, error: rpcError } = await supabase.rpc('increment_wallet_balance', {
+      p_user_id: user.id,
+      p_amount: amount
+    });
 
-    if (walletError) {
-      logStep("Wallet fetch error", walletError);
-      throw new Error("Failed to fetch wallet");
+    if (rpcError) {
+      logStep("Wallet RPC update error", rpcError);
+      throw new Error("Failed to update wallet balance");
     }
 
-    const newBalance = (wallet.balance || 0) + amount;
-
-    const { error: updateError } = await supabase
-      .from("wallets")
-      .update({ balance: newBalance })
-      .eq("user_id", user.id);
-
-    if (updateError) {
-      logStep("Wallet update error", updateError);
-      throw new Error("Failed to update wallet");
-    }
-
-    logStep("Wallet updated", { previousBalance: wallet.balance, newBalance, coinsAdded: amount });
+    logStep("Wallet updated atomically", { newBalance, coinsAdded: amount });
 
     return new Response(
       JSON.stringify({ success: true, coins: amount }),

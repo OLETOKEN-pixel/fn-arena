@@ -11,21 +11,29 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CREATE-PAYPAL-ORDER] ${step}${detailsStr}`);
 };
 
+// PRODUCTION DOMAIN - used for return URLs in LIVE mode
+const PRODUCTION_DOMAIN = "https://oleboytoken.com";
+
 // Get the base URL for return/cancel URLs - prefer SITE_URL env var
-const getReturnBaseUrl = (reqOrigin: string | null): string => {
-  // Priority: SITE_URL env var > request origin > fallback
+const getReturnBaseUrl = (reqOrigin: string | null, isLiveMode: boolean): string => {
+  // Priority: SITE_URL env var > production domain (in live) > request origin > fallback
   const siteUrl = Deno.env.get("SITE_URL");
   if (siteUrl) {
-    return siteUrl;
+    return siteUrl.replace(/\/$/, ''); // Remove trailing slash
   }
+  
+  // In LIVE mode, always use production domain
+  if (isLiveMode) {
+    return PRODUCTION_DOMAIN;
+  }
+  
+  // In sandbox, allow localhost or dev domains
   if (reqOrigin && !reqOrigin.includes("localhost")) {
     return reqOrigin;
   }
-  return "https://oleboytoken.lovable.app";
+  
+  return PRODUCTION_DOMAIN;
 };
-
-// Production domain fallback
-const PRODUCTION_DOMAIN = "https://oleboytoken.lovable.app";
 
 const getPayPalBaseUrl = () => {
   const mode = Deno.env.get("PAYPAL_MODE") || "sandbox";
@@ -88,22 +96,23 @@ serve(async (req) => {
     // Detect mode (LIVE vs SANDBOX)
     const isLiveMode = paypalMode === "live";
     const baseUrl = getPayPalBaseUrl();
-    logStep(`Mode: ${isLiveMode ? "LIVE" : "SANDBOX"}`, { baseUrl });
+    
+    logStep(`Mode: ${isLiveMode ? "LIVE" : "SANDBOX"}`, { 
+      baseUrl,
+      productionDomain: PRODUCTION_DOMAIN
+    });
 
-    // Get return base URL using priority: SITE_URL > origin > fallback
+    // Get return base URL using priority: SITE_URL > production domain (live) > origin
     const reqOrigin = req.headers.get("origin");
-    const returnBaseUrl = getReturnBaseUrl(reqOrigin);
+    const returnBaseUrl = getReturnBaseUrl(reqOrigin, isLiveMode);
     
     logStep("Return URL configuration", { 
       siteUrl: Deno.env.get("SITE_URL") || "(not set)",
       reqOrigin: reqOrigin || "(not set)",
       finalReturnBaseUrl: returnBaseUrl,
-      mode: isLiveMode ? "LIVE" : "SANDBOX"
+      mode: isLiveMode ? "LIVE" : "SANDBOX",
+      willUseProductionDomain: isLiveMode && !Deno.env.get("SITE_URL")
     });
-    
-    if (returnBaseUrl.includes("lovable.app") && isLiveMode) {
-      logStep("WARNING: Using lovable.app domain in LIVE mode - check SITE_URL env var");
-    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";

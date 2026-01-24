@@ -1730,6 +1730,17 @@ export type Database = {
           username: string
         }[]
       }
+      get_user_avatars: {
+        Args: never
+        Returns: {
+          id: string
+          image_url: string
+          is_default: boolean
+          is_equipped: boolean
+          name: string
+          sort_order: number
+        }[]
+      }
       get_user_challenges: { Args: { p_type?: string }; Returns: Json }
       get_user_xp: { Args: never; Returns: number }
       has_active_match: { Args: { p_user_id: string }; Returns: boolean }

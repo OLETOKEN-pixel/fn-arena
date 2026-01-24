@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import logo from '@/assets/logo-oleboy.png';
 
@@ -6,7 +7,22 @@ interface AppLoadingGuardProps {
 }
 
 export function AppLoadingGuard({ children }: AppLoadingGuardProps) {
-  const { loading } = useAuth();
+  const { loading, profile } = useAuth();
+
+  // Preload active avatar for instant display
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = profile.avatar_url;
+      document.head.appendChild(link);
+      
+      // Also preload into browser cache
+      const img = new Image();
+      img.src = profile.avatar_url;
+    }
+  }, [profile?.avatar_url]);
 
   if (loading) {
     return (

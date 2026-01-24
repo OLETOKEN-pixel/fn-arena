@@ -1,0 +1,143 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Trophy, Medal, Award, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { CoinDisplay } from '@/components/common/CoinDisplay';
+import { PlayerStatsModal } from '@/components/player/PlayerStatsModal';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+
+interface WeeklyEntry {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  weekly_earned: number;
+}
+
+const rankIcons = [
+  { icon: Trophy, color: 'text-yellow-400' },
+  { icon: Medal, color: 'text-gray-400' },
+  { icon: Award, color: 'text-amber-600' },
+];
+
+export function LeaderboardCompact() {
+  const [entries, setEntries] = useState<WeeklyEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchWeeklyLeaderboard = async () => {
+      const { data, error } = await supabase.rpc('get_leaderboard_weekly', {
+        p_limit: 5,
+      });
+
+      if (!error && data && data.length > 0) {
+        setEntries(data as WeeklyEntry[]);
+      } else {
+        const { data: fallbackData } = await supabase.rpc('get_leaderboard', {
+          p_limit: 5,
+          p_offset: 0,
+        });
+        
+        if (fallbackData) {
+          setEntries(fallbackData.map(e => ({
+            user_id: (e as any).user_id || '',
+            username: (e as any).username || '',
+            avatar_url: (e as any).avatar_url,
+            weekly_earned: Number((e as any).total_earnings) || 0,
+          })));
+        }
+      }
+      setLoading(false);
+    };
+
+    fetchWeeklyLeaderboard();
+  }, []);
+
+  return (
+    <>
+      <Card className="flex-1 min-h-0 flex flex-col bg-card border-border overflow-hidden">
+        <CardHeader className="py-3 px-4 flex-shrink-0">
+          <CardTitle className="flex items-center justify-between text-base">
+            <span className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-400" />
+              Top This Week
+            </span>
+            <Button variant="ghost" size="sm" asChild className="text-xs">
+              <Link to="/leaderboard" className="flex items-center gap-1">
+                View All
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        
+        <CardContent className="flex-1 overflow-y-auto px-4 pb-4">
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                  <Skeleton className="flex-1 h-4" />
+                  <Skeleton className="w-14 h-4" />
+                </div>
+              ))}
+            </div>
+          ) : entries.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6 text-sm">
+              No activity this week. Be the first!
+            </p>
+          ) : (
+            <div className="space-y-1">
+              {entries.map((entry, index) => {
+                const RankIcon = rankIcons[index]?.icon;
+                const rankColor = rankIcons[index]?.color;
+
+                return (
+                  <div
+                    key={entry.user_id}
+                    className={cn(
+                      'flex items-center gap-2 p-2 rounded-lg transition-colors hover:bg-secondary/50 cursor-pointer',
+                      index < 3 && 'bg-secondary/30'
+                    )}
+                    onClick={() => setSelectedUserId(entry.user_id)}
+                  >
+                    <div className="w-6 text-center flex-shrink-0">
+                      {RankIcon ? (
+                        <RankIcon className={cn('w-4 h-4 mx-auto', rankColor)} />
+                      ) : (
+                        <span className="text-xs font-medium text-muted-foreground">
+                          #{index + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <AvatarImage src={entry.avatar_url ?? undefined} className="object-cover" />
+                      <AvatarFallback className="text-xs bg-primary/20 text-primary">
+                        {entry.username?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <p className="flex-1 font-medium truncate text-sm">{entry.username}</p>
+
+                    <CoinDisplay amount={entry.weekly_earned} size="sm" showSign />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <PlayerStatsModal
+        open={!!selectedUserId}
+        onOpenChange={(open) => !open && setSelectedUserId(null)}
+        userId={selectedUserId || ''}
+      />
+    </>
+  );
+}

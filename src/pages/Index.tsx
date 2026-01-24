@@ -1,21 +1,34 @@
 import { MainLayout } from '@/components/layout/MainLayout';
-import { HeroSection } from '@/components/home/HeroSection';
-import { FeatureCards } from '@/components/home/FeatureCards';
-import { RecentMatches } from '@/components/home/RecentMatches';
-import { LeaderboardWeekly } from '@/components/home/LeaderboardWeekly';
+import { HeroCompact } from '@/components/home/HeroCompact';
+import { StatsBar } from '@/components/home/StatsBar';
+import { LiveMatchesCompact } from '@/components/home/LiveMatchesCompact';
+import { LeaderboardCompact } from '@/components/home/LeaderboardCompact';
+import { ProgressCard } from '@/components/home/ProgressCard';
+import { WalletSnapshot } from '@/components/home/WalletSnapshot';
 
 export default function Index() {
   return (
     <MainLayout>
-      <HeroSection />
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentMatches />
-          <FeatureCards />
-        </div>
-        <div className="lg:col-span-1">
-          <LeaderboardWeekly />
+      <div className="flex flex-col gap-4 lg:h-[calc(100vh-120px)] lg:min-h-[600px]">
+        {/* HERO COMPATTO */}
+        <HeroCompact />
+        
+        {/* STATS BAR */}
+        <StatsBar />
+        
+        {/* MAIN GRID */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+          {/* LEFT: Live Matches + Progress */}
+          <div className="lg:col-span-2 flex flex-col gap-4 min-h-0">
+            <LiveMatchesCompact />
+            <ProgressCard />
+          </div>
+          
+          {/* RIGHT: Leaderboard + Wallet */}
+          <div className="flex flex-col gap-4 min-h-0">
+            <LeaderboardCompact />
+            <WalletSnapshot />
+          </div>
         </div>
       </div>
     </MainLayout>

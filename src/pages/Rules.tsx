@@ -37,7 +37,7 @@ export default function Rules() {
 
         {/* Content Card */}
         <Card className="p-6 lg:p-8">
-          <div className="prose prose-invert max-w-none prose-headings:text-accent prose-headings:font-semibold prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-li:text-muted-foreground prose-p:text-muted-foreground">
+          <div className="prose prose-invert max-w-none prose-headings:text-amber-400 prose-headings:font-bold prose-h2:text-2xl prose-h2:lg:text-3xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:pb-3 prose-h2:border-b prose-h2:border-amber-400/30 prose-h3:text-xl prose-h3:font-semibold prose-h3:mt-8 prose-h3:mb-4 prose-li:text-muted-foreground prose-p:text-muted-foreground">
             
             <h2>1. Punctuality, AFK & Match Start</h2>
             <ul className="space-y-2">

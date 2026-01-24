@@ -1467,6 +1467,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      admin_cleanup_legacy_stuck_matches: {
+        Args: { p_cutoff_minutes?: number }
+        Returns: Json
+      }
       admin_fix_orphan_locked_balance: { Args: never; Returns: Json }
       admin_force_expire_match: {
         Args: { p_match_id: string; p_reason?: string }
@@ -1474,7 +1478,9 @@ export type Database = {
       }
       admin_global_search: { Args: { p_query: string }; Returns: Json }
       admin_prepare_delete_user: { Args: { p_user_id: string }; Returns: Json }
-      admin_purge_legacy_match: { Args: { p_match_id: string }; Returns: Json }
+      admin_purge_legacy_match:
+        | { Args: { p_match_id: string }; Returns: Json }
+        | { Args: { p_match_id: string; p_reason?: string }; Returns: Json }
       admin_resolve_dispute: {
         Args: {
           p_admin_notes?: string

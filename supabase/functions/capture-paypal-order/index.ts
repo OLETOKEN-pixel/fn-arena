@@ -54,7 +54,17 @@ serve(async (req) => {
   }
 
   try {
-    logStep("Function started");
+    // Log mode and environment at startup
+    const paypalMode = Deno.env.get("PAYPAL_MODE") || "sandbox";
+    const isLiveMode = paypalMode === "live";
+    const baseUrl = getPayPalBaseUrl();
+    
+    logStep("Function started", { 
+      mode: isLiveMode ? "LIVE" : "SANDBOX",
+      baseUrl,
+      hasClientId: !!Deno.env.get("PAYPAL_CLIENT_ID"),
+      hasClientSecret: !!Deno.env.get("PAYPAL_CLIENT_SECRET")
+    });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -81,18 +91,23 @@ serve(async (req) => {
       );
     }
 
-    logStep("User authenticated", { userId: user.id });
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { orderId } = await req.json();
+    // Parse request body and extract orderId
+    const body = await req.json();
+    const orderId = body.orderId;
+    
+    logStep("Request body received", { orderId, rawBody: JSON.stringify(body) });
     
     if (!orderId) {
+      logStep("Missing orderId in request");
       return new Response(
-        JSON.stringify({ error: "Missing orderId" }),
+        JSON.stringify({ error: "Missing orderId", success: false }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    logStep("Capturing PayPal order", { orderId });
+    logStep("Capturing PayPal order", { orderId, mode: isLiveMode ? "LIVE" : "SANDBOX" });
 
     // IDEMPOTENCY CHECK: See if this order was already captured
     const { data: existingTx } = await supabase
@@ -113,7 +128,7 @@ serve(async (req) => {
     const accessToken = await getPayPalAccessToken();
     logStep("Got PayPal access token");
 
-    const baseUrl = getPayPalBaseUrl();
+    // Use existing baseUrl from top of function
 
     // First get order details to verify it's ready for capture
     const orderResponse = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}`, {

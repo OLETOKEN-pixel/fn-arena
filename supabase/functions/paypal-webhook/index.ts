@@ -123,18 +123,16 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Handle CHECKOUT.ORDER.APPROVED and PAYMENT.CAPTURE.COMPLETED
-    if (event.event_type === "CHECKOUT.ORDER.APPROVED" || 
-        event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
-      
-      const orderId = event.resource?.id || event.resource?.supplementary_data?.related_ids?.order_id;
+    // Handle CHECKOUT.ORDER.APPROVED - need to capture the payment
+    if (event.event_type === "CHECKOUT.ORDER.APPROVED") {
+      const orderId = event.resource?.id;
       
       if (!orderId) {
-        logStep("No order ID in event");
+        logStep("No order ID in CHECKOUT.ORDER.APPROVED event");
         return new Response(JSON.stringify({ received: true }), { status: 200 });
       }
 
-      logStep("Processing order", { orderId, eventType: event.event_type });
+      logStep("Processing ORDER.APPROVED - will attempt capture", { orderId });
 
       // Check if already processed (idempotency)
       const { data: existingTx } = await supabase
@@ -153,8 +151,96 @@ serve(async (req) => {
         return new Response(JSON.stringify({ received: true }), { status: 200 });
       }
 
-      // For CAPTURE.COMPLETED, the capture ID is in the resource
-      const captureId = event.resource?.id || "webhook-capture";
+      // Webhook fallback: Capture the order if it hasn't been captured yet
+      logStep("Attempting to capture order via webhook fallback", { orderId });
+      
+      const baseUrl = getPayPalBaseUrl();
+      const captureResponse = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}/capture`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const captureData = await captureResponse.json();
+      logStep("Webhook capture response", { 
+        status: captureResponse.status, 
+        captureStatus: captureData.status,
+        orderId 
+      });
+
+      if (captureData.status === "COMPLETED") {
+        const captureId = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.id || "webhook-capture";
+        const amount = existingTx.amount;
+
+        // Update transaction
+        await supabase
+          .from("transactions")
+          .update({
+            status: "completed",
+            paypal_capture_id: captureId,
+            description: `Purchased ${amount} Coins via PayPal`,
+          })
+          .eq("id", existingTx.id);
+
+        // Update wallet
+        const { data: wallet } = await supabase
+          .from("wallets")
+          .select("balance")
+          .eq("user_id", existingTx.user_id)
+          .single();
+
+        if (wallet) {
+          const newBalance = (wallet.balance || 0) + amount;
+          await supabase
+            .from("wallets")
+            .update({ balance: newBalance })
+            .eq("user_id", existingTx.user_id);
+
+          logStep("Wallet updated via webhook capture fallback", { 
+            userId: existingTx.user_id, 
+            previousBalance: wallet.balance,
+            newBalance,
+            coinsAdded: amount 
+          });
+        }
+
+        logStep("Order captured and processed via webhook", { orderId, amount, captureId });
+      } else {
+        logStep("Capture not completed via webhook", { status: captureData.status, orderId });
+      }
+    }
+
+    // Handle PAYMENT.CAPTURE.COMPLETED - payment already captured, just update records
+    if (event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
+      const captureId = event.resource?.id;
+      const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
+      
+      if (!orderId) {
+        logStep("No order ID in CAPTURE.COMPLETED event", { captureId });
+        return new Response(JSON.stringify({ received: true }), { status: 200 });
+      }
+
+      logStep("Processing CAPTURE.COMPLETED", { orderId, captureId });
+
+      // Check if already processed (idempotency)
+      const { data: existingTx } = await supabase
+        .from("transactions")
+        .select("id, status, paypal_capture_id, user_id, amount")
+        .eq("paypal_order_id", orderId)
+        .maybeSingle();
+
+      if (!existingTx) {
+        logStep("No pending transaction found for order", { orderId });
+        return new Response(JSON.stringify({ received: true }), { status: 200 });
+      }
+
+      if (existingTx.status === "completed" && existingTx.paypal_capture_id) {
+        logStep("Order already completed", { transactionId: existingTx.id });
+        return new Response(JSON.stringify({ received: true }), { status: 200 });
+      }
+
       const amount = existingTx.amount;
 
       // Update transaction
@@ -181,7 +267,7 @@ serve(async (req) => {
           .update({ balance: newBalance })
           .eq("user_id", existingTx.user_id);
 
-        logStep("Wallet updated via webhook", { 
+        logStep("Wallet updated via CAPTURE.COMPLETED webhook", { 
           userId: existingTx.user_id, 
           previousBalance: wallet.balance,
           newBalance,
@@ -189,7 +275,7 @@ serve(async (req) => {
         });
       }
 
-      logStep("Order processed successfully", { orderId, amount, captureId });
+      logStep("Order processed via CAPTURE.COMPLETED", { orderId, amount, captureId });
     }
 
     // Handle PAYMENT.CAPTURE.REFUNDED

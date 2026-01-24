@@ -21,15 +21,19 @@ export default function PaymentSuccess() {
 
   useEffect(() => {
     const handlePayment = async () => {
-      const orderId = searchParams.get('orderId');
       const provider = searchParams.get('provider');
+      // PayPal returns 'token' as the order ID in the redirect URL
+      const orderId = searchParams.get('orderId') || searchParams.get('token');
 
       // Handle PayPal return
       if (provider === 'paypal' && orderId) {
+        console.log('[PaymentSuccess] PayPal return detected', { orderId });
         try {
           const { data, error } = await supabase.functions.invoke('capture-paypal-order', {
             body: { orderId },
           });
+
+          console.log('[PaymentSuccess] Capture response', { data, error });
 
           if (error) throw error;
 
@@ -41,7 +45,7 @@ export default function PaymentSuccess() {
             throw new Error(data?.error || 'Payment capture failed');
           }
         } catch (error) {
-          console.error('PayPal capture error:', error);
+          console.error('[PaymentSuccess] PayPal capture error:', error);
           setErrorMessage(error instanceof Error ? error.message : 'Payment failed');
           setStatus('error');
         }
@@ -132,10 +136,40 @@ export default function PaymentSuccess() {
                 <p className="text-muted-foreground mb-6">
                   {errorMessage || 'Something went wrong with your payment.'}
                 </p>
-                <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
                   <Button asChild className="w-full">
                     <Link to="/buy">Try Again</Link>
                   </Button>
+                  {(searchParams.get('orderId') || searchParams.get('token')) && (
+                    <Button 
+                      variant="secondary" 
+                      className="w-full"
+                      onClick={async () => {
+                        const orderId = searchParams.get('orderId') || searchParams.get('token');
+                        if (!orderId) return;
+                        setStatus('loading');
+                        setErrorMessage('');
+                        try {
+                          const { data, error } = await supabase.functions.invoke('capture-paypal-order', {
+                            body: { orderId },
+                          });
+                          if (error) throw error;
+                          if (data?.success) {
+                            setCoins(data.coins || 0);
+                            setStatus('success');
+                            await refreshWallet();
+                          } else {
+                            throw new Error(data?.error || 'Payment capture failed');
+                          }
+                        } catch (err) {
+                          setErrorMessage(err instanceof Error ? err.message : 'Retry failed');
+                          setStatus('error');
+                        }
+                      }}
+                    >
+                      Retry Capture
+                    </Button>
+                  )}
                   <Button variant="outline" asChild className="w-full">
                     <Link to="/">Go Home</Link>
                   </Button>

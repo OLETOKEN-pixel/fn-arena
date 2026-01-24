@@ -53,8 +53,11 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-20 lg:w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
-      {/* Logo */}
-      <div className="flex items-center justify-center lg:justify-start gap-3 px-4 h-16 border-b border-sidebar-border">
+      {/* Logo - Cliccabile */}
+      <Link 
+        to="/" 
+        className="flex items-center justify-center lg:justify-start gap-3 px-4 h-16 border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/50 transition-all duration-200"
+      >
         <img 
           src={logoOleboy} 
           alt="OLEBOY TOKEN" 
@@ -63,7 +66,7 @@ export function Sidebar() {
         <span className="hidden lg:block font-display font-bold text-lg text-foreground">
           OLEBOY <span className="text-accent">TOKEN</span>
         </span>
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 py-6 px-3">
@@ -120,34 +123,42 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Quick Actions - visible to all, but locked for non-logged users */}
-      <div className="p-3 border-t border-sidebar-border space-y-2">
+      {/* Quick Actions - Premium Buttons */}
+      <div className="p-3 border-t border-sidebar-border space-y-3">
         <Link
           to={user ? "/matches/create" : "/auth?next=/matches/create"}
           className={cn(
-            "flex items-center justify-center lg:justify-start gap-2 px-3 py-2.5 rounded-lg font-medium transition-colors",
-            user 
-              ? "bg-primary text-primary-foreground hover:bg-primary/90"
-              : "bg-primary/50 text-primary-foreground/70 hover:bg-primary/60"
+            "group relative flex items-center justify-center lg:justify-start gap-2 px-4 py-3 rounded-xl font-semibold transition-all duration-300 overflow-hidden",
+            "bg-gradient-to-r from-primary via-primary to-primary/80 text-primary-foreground",
+            "hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30",
+            "active:scale-[0.98]",
+            "border border-primary/30",
+            user ? "" : "opacity-80"
           )}
         >
-          <Plus className="w-5 h-5" />
-          <span className="hidden lg:block">Create Match</span>
-          {!user && <Lock className="hidden lg:block ml-auto w-4 h-4 opacity-50" />}
+          {/* Shimmer effect */}
+          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+          <Plus className="w-5 h-5 relative z-10" />
+          <span className="hidden lg:block relative z-10">Create Match</span>
+          {!user && <Lock className="hidden lg:block ml-auto w-4 h-4 opacity-50 relative z-10" />}
         </Link>
         
         <Link
           to={user ? "/buy" : "/auth?next=/buy"}
           className={cn(
-            "flex items-center justify-center lg:justify-start gap-2 px-3 py-2.5 rounded-lg font-medium transition-colors",
-            user 
-              ? "bg-accent text-accent-foreground hover:bg-accent/90"
-              : "bg-accent/50 text-accent-foreground/70 hover:bg-accent/60"
+            "group relative flex items-center justify-center lg:justify-start gap-2 px-4 py-3 rounded-xl font-bold transition-all duration-300 overflow-hidden",
+            "bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 text-black",
+            "hover:scale-[1.02] hover:shadow-lg hover:shadow-amber-500/40",
+            "active:scale-[0.98]",
+            "border border-amber-400/50",
+            user ? "" : "opacity-80"
           )}
         >
+          {/* Shimmer effect */}
+          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
           <CoinIcon size="sm" />
-          <span className="hidden lg:block">Buy Coins</span>
-          {!user && <Lock className="hidden lg:block ml-auto w-4 h-4 opacity-50" />}
+          <span className="hidden lg:block relative z-10">Buy Coins</span>
+          {!user && <Lock className="hidden lg:block ml-auto w-4 h-4 opacity-50 relative z-10" />}
         </Link>
       </div>
     </aside>

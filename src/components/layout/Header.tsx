@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, LogIn, LogOut, Menu, X } from 'lucide-react';
+import { Bell, LogIn, LogOut, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,15 +25,7 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
   const { user, profile, wallet, signOut } = useAuth();
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
   const [showVipModal, setShowVipModal] = useState(false);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/matches?search=${encodeURIComponent(searchQuery)}`);
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -58,19 +49,8 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
           )}
         </Button>
 
-        {/* Search */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-md">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search matches, players..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-secondary border-none focus-visible:ring-primary"
-            />
-          </div>
-        </form>
+        {/* Spacer for layout balance */}
+        <div className="flex-1" />
 
         {/* Right side */}
         <div className="flex items-center gap-3">

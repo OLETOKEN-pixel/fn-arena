@@ -1467,6 +1467,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      admin_fix_orphan_locked_balance: { Args: never; Returns: Json }
       admin_force_expire_match: {
         Args: { p_match_id: string; p_reason?: string }
         Returns: Json
@@ -1486,6 +1487,11 @@ export type Database = {
         Args: { p_action: string; p_match_id: string; p_notes?: string }
         Returns: Json
       }
+      admin_resolve_match_v3: {
+        Args: { p_action: string; p_match_id: string; p_notes?: string }
+        Returns: Json
+      }
+      auto_refund_expired_matches: { Args: never; Returns: Json }
       cancel_match_v2: { Args: { p_match_id: string }; Returns: Json }
       change_username_vip: { Args: { p_new_username: string }; Returns: Json }
       check_challenge_anti_abuse: {

@@ -130,7 +130,7 @@ export default function AdminMatchDetail() {
 
     setResolving(true);
 
-    const { data, error } = await supabase.rpc('admin_resolve_match_v2', {
+    const { data, error } = await supabase.rpc('admin_resolve_match_v3', {
       p_match_id: match.id,
       p_action: action,
       p_notes: adminNotes || null,

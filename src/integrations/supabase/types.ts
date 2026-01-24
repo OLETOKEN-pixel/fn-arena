@@ -1751,6 +1751,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_wallet_balance: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: number
+      }
       is_admin: { Args: never; Returns: boolean }
       is_match_participant: {
         Args: { p_match_id: string; p_user_id: string }

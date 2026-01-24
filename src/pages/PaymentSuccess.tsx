@@ -24,10 +24,20 @@ export default function PaymentSuccess() {
       const provider = searchParams.get('provider');
       // PayPal returns 'token' as the order ID in the redirect URL
       const orderId = searchParams.get('orderId') || searchParams.get('token');
+      const payerId = searchParams.get('PayerID');
+
+      // Log all URL params for debugging
+      console.log('[PaymentSuccess] Page loaded', {
+        provider,
+        orderId,
+        payerId,
+        fullUrl: window.location.href,
+        allParams: Object.fromEntries(searchParams.entries())
+      });
 
       // Handle PayPal return
       if (provider === 'paypal' && orderId) {
-        console.log('[PaymentSuccess] PayPal return detected', { orderId });
+        console.log('[PaymentSuccess] PayPal return - initiating capture', { orderId, payerId });
         try {
           const { data, error } = await supabase.functions.invoke('capture-paypal-order', {
             body: { orderId },
@@ -46,6 +56,33 @@ export default function PaymentSuccess() {
           }
         } catch (error) {
           console.error('[PaymentSuccess] PayPal capture error:', error);
+          setErrorMessage(error instanceof Error ? error.message : 'Payment failed');
+          setStatus('error');
+        }
+        return;
+      }
+
+      // PayPal redirect without provider param (fallback)
+      if (orderId && !provider) {
+        console.log('[PaymentSuccess] PayPal redirect detected (no provider param)', { orderId });
+        try {
+          const { data, error } = await supabase.functions.invoke('capture-paypal-order', {
+            body: { orderId },
+          });
+
+          console.log('[PaymentSuccess] Fallback capture response', { data, error });
+
+          if (error) throw error;
+
+          if (data?.success) {
+            setCoins(data.coins || 0);
+            setStatus('success');
+            await refreshWallet();
+          } else {
+            throw new Error(data?.error || 'Payment capture failed');
+          }
+        } catch (error) {
+          console.error('[PaymentSuccess] Fallback PayPal capture error:', error);
           setErrorMessage(error instanceof Error ? error.message : 'Payment failed');
           setStatus('error');
         }

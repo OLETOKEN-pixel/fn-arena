@@ -184,23 +184,17 @@ serve(async (req) => {
           })
           .eq("id", existingTx.id);
 
-        // Update wallet
-        const { data: wallet } = await supabase
-          .from("wallets")
-          .select("balance")
-          .eq("user_id", existingTx.user_id)
-          .single();
+        // Update wallet atomically using RPC
+        const { data: newBalance, error: rpcError } = await supabase.rpc('increment_wallet_balance', {
+          p_user_id: existingTx.user_id,
+          p_amount: amount
+        });
 
-        if (wallet) {
-          const newBalance = (wallet.balance || 0) + amount;
-          await supabase
-            .from("wallets")
-            .update({ balance: newBalance })
-            .eq("user_id", existingTx.user_id);
-
-          logStep("Wallet updated via webhook capture fallback", { 
+        if (rpcError) {
+          logStep("Wallet RPC error in webhook capture", rpcError);
+        } else {
+          logStep("Wallet updated via webhook capture fallback (atomic)", { 
             userId: existingTx.user_id, 
-            previousBalance: wallet.balance,
             newBalance,
             coinsAdded: amount 
           });
@@ -253,23 +247,17 @@ serve(async (req) => {
         })
         .eq("id", existingTx.id);
 
-      // Update wallet
-      const { data: wallet } = await supabase
-        .from("wallets")
-        .select("balance")
-        .eq("user_id", existingTx.user_id)
-        .single();
+      // Update wallet atomically using RPC
+      const { data: newBalance, error: rpcError } = await supabase.rpc('increment_wallet_balance', {
+        p_user_id: existingTx.user_id,
+        p_amount: amount
+      });
 
-      if (wallet) {
-        const newBalance = (wallet.balance || 0) + amount;
-        await supabase
-          .from("wallets")
-          .update({ balance: newBalance })
-          .eq("user_id", existingTx.user_id);
-
-        logStep("Wallet updated via CAPTURE.COMPLETED webhook", { 
+      if (rpcError) {
+        logStep("Wallet RPC error in CAPTURE.COMPLETED", rpcError);
+      } else {
+        logStep("Wallet updated via CAPTURE.COMPLETED webhook (atomic)", { 
           userId: existingTx.user_id, 
-          previousBalance: wallet.balance,
           newBalance,
           coinsAdded: amount 
         });

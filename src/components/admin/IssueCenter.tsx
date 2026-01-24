@@ -1,12 +1,31 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Clock, XCircle, Users, RefreshCw, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Clock, XCircle, Users, RefreshCw, ExternalLink, Wrench } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/custom-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { Match } from '@/types';
+
+interface LegacyCleanupResult {
+  success: boolean;
+  non_terminal_processed?: number;
+  terminal_stuck_processed?: number;
+  total_matches_processed?: number;
+  total_refunded?: number;
+  processed_match_ids?: string[];
+  auto_refund_result?: { processed?: number; refunded_total?: number };
+  orphan_fix_result?: { fixed_wallets?: number; fixed_total?: number };
+  error?: string;
+}
 
 interface IssueStats {
   disputed: number;
@@ -26,6 +45,9 @@ export function IssueCenter({ matches, onRefresh }: IssueCenterProps) {
   const { toast } = useToast();
   const [stats, setStats] = useState<IssueStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cleaningUp, setCleaningUp] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<LegacyCleanupResult | null>(null);
+  const [showCleanupDialog, setShowCleanupDialog] = useState(false);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -34,6 +56,46 @@ export function IssueCenter({ matches, onRefresh }: IssueCenterProps) {
       setStats(data as unknown as IssueStats);
     }
     setLoading(false);
+  };
+
+  const handleLegacyCleanup = async () => {
+    setCleaningUp(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_cleanup_legacy_stuck_matches', {
+        p_cutoff_minutes: 35
+      });
+      
+      if (error) {
+        toast({ 
+          title: 'Errore', 
+          description: error.message, 
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      const result = data as unknown as LegacyCleanupResult;
+      setCleanupResult(result);
+      setShowCleanupDialog(true);
+
+      if (result.success) {
+        toast({ 
+          title: 'Pulizia completata', 
+          description: `${result.total_matches_processed || 0} match processati, ${result.total_refunded || 0} Coins rimborsati` 
+        });
+        // Refresh data
+        fetchStats();
+        onRefresh();
+      }
+    } catch (e) {
+      toast({ 
+        title: 'Errore', 
+        description: 'Errore durante la pulizia', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setCleaningUp(false);
+    }
   };
 
   useEffect(() => {
@@ -103,12 +165,24 @@ export function IssueCenter({ matches, onRefresh }: IssueCenterProps) {
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h3 className="font-semibold text-lg">Centro Issues</h3>
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Aggiorna
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleLegacyCleanup} 
+            disabled={cleaningUp}
+            className="text-warning border-warning/50 hover:bg-warning/10"
+          >
+            <Wrench className={`w-4 h-4 mr-2 ${cleaningUp ? 'animate-spin' : ''}`} />
+            {cleaningUp ? 'Pulizia...' : 'Ripara Match Legacy'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Aggiorna
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -189,6 +263,71 @@ export function IssueCenter({ matches, onRefresh }: IssueCenterProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Legacy Cleanup Result Dialog */}
+      <Dialog open={showCleanupDialog} onOpenChange={setShowCleanupDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-warning" />
+              Risultato Pulizia Legacy
+            </DialogTitle>
+            <DialogDescription>
+              Riepilogo delle operazioni eseguite
+            </DialogDescription>
+          </DialogHeader>
+          
+          {cleanupResult && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-secondary rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold">{cleanupResult.non_terminal_processed || 0}</p>
+                  <p className="text-xs text-muted-foreground">Match Non-Terminali</p>
+                </div>
+                <div className="bg-secondary rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold">{cleanupResult.terminal_stuck_processed || 0}</p>
+                  <p className="text-xs text-muted-foreground">Match Bloccati</p>
+                </div>
+                <div className="bg-primary/10 rounded-lg p-3 text-center col-span-2">
+                  <p className="text-2xl font-bold text-primary">
+                    {(cleanupResult.total_refunded || 0).toFixed(2)} Coins
+                  </p>
+                  <p className="text-xs text-muted-foreground">Totale Rimborsato</p>
+                </div>
+              </div>
+
+              {cleanupResult.orphan_fix_result && cleanupResult.orphan_fix_result.fixed_wallets! > 0 && (
+                <div className="bg-warning/10 rounded-lg p-3">
+                  <p className="text-sm font-medium text-warning">
+                    Wallet riparati: {cleanupResult.orphan_fix_result.fixed_wallets}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    +{(cleanupResult.orphan_fix_result.fixed_total || 0).toFixed(2)} Coins sbloccati
+                  </p>
+                </div>
+              )}
+
+              {cleanupResult.processed_match_ids && cleanupResult.processed_match_ids.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  <p className="font-medium mb-1">Match processati (primi 10):</p>
+                  <div className="font-mono bg-secondary rounded p-2 max-h-20 overflow-y-auto">
+                    {cleanupResult.processed_match_ids.map(id => (
+                      <div key={id}>{id.slice(0, 8)}...</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button 
+                className="w-full" 
+                onClick={() => setShowCleanupDialog(false)}
+              >
+                Chiudi
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

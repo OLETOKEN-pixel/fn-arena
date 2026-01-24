@@ -1,5 +1,5 @@
-import { AvatarShopCard } from './AvatarShopCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AvatarShopCard } from './AvatarShopCard';
 import type { ShopAvatar } from '@/hooks/useAvatarShop';
 
 interface AvatarGridProps {
@@ -24,8 +24,14 @@ export function AvatarGrid({
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <div key={i} className="rounded-xl border border-border overflow-hidden">
+            <Skeleton className="aspect-square" />
+            <div className="p-3 space-y-2">
+              <Skeleton className="h-4 w-16 mx-auto" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -34,7 +40,7 @@ export function AvatarGrid({
   if (avatars.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p>Nessun avatar disponibile</p>
+        <p>Nessun avatar disponibile nello shop</p>
       </div>
     );
   }

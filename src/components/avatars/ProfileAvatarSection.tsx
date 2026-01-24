@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -52,19 +53,19 @@ export function ProfileAvatarSection() {
                 className={cn(
                   'relative w-16 h-16 rounded-full overflow-hidden border-2 transition-all',
                   isActive
-                    ? 'border-accent ring-2 ring-accent/30'
+                    ? 'border-primary ring-2 ring-primary/30'
                     : 'border-border hover:border-muted-foreground cursor-pointer'
                 )}
-                title={avatar.name}
               >
                 <img
                   src={avatar.image_url}
-                  alt={avatar.name}
+                  alt="Avatar"
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
                 {isActive && (
-                  <div className="absolute inset-0 bg-accent/20 flex items-center justify-center">
-                    <Check className="w-6 h-6 text-accent" />
+                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                    <Check className="w-6 h-6 text-primary" />
                   </div>
                 )}
               </button>
@@ -83,7 +84,7 @@ export function ProfileAvatarSection() {
           className="mt-4 p-0 h-auto text-sm"
           asChild
         >
-          <a href="/challenges">Vai allo Shop Avatar →</a>
+          <Link to="/challenges">Vai allo Shop Avatar →</Link>
         </Button>
       </CardContent>
     </Card>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChallenges } from '@/hooks/useChallenges';
@@ -9,8 +9,9 @@ import { ChallengeCountdown } from '@/components/challenges/ChallengeCountdown';
 import { AvatarGrid } from '@/components/avatars/AvatarGrid';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy, Zap, Calendar, Star, ShoppingBag } from 'lucide-react';
+import { Trophy, Zap, Calendar, Star, ShoppingBag, Sparkles, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Challenges() {
@@ -44,6 +45,8 @@ export default function Challenges() {
   const dailyTotal = dailyChallenges.length;
   const weeklyTotal = weeklyChallenges.length;
   const ownedAvatarsCount = avatars.filter((a) => a.is_owned).length;
+  const canAffordAvatar = userXp >= 500;
+  const xpNeeded = Math.max(0, 500 - userXp);
 
   if (!authLoading && !user) {
     return <Navigate to="/auth?next=/challenges" replace />;
@@ -66,12 +69,12 @@ export default function Challenges() {
                 </p>
               </div>
 
-              {/* XP Badge */}
+              {/* XP Badge - Larger and more prominent */}
               <div className="flex items-center gap-3">
-                <Badge variant="secondary" className="px-3 py-1.5 text-sm font-semibold">
-                  <Zap className="w-4 h-4 mr-1.5 text-accent" />
-                  {userXp.toLocaleString()} XP
-                </Badge>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent/20 border border-accent/30">
+                  <Sparkles className="w-5 h-5 text-accent" />
+                  <span className="text-lg font-bold text-accent">{userXp.toLocaleString()} XP</span>
+                </div>
               </div>
             </div>
 
@@ -85,6 +88,80 @@ export default function Challenges() {
                 targetDate={resetTimes.weeklyReset}
                 label="Weekly reset"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* AVATAR SHOP HERO BANNER - Always visible */}
+        <div className="max-w-5xl mx-auto px-4 mb-6">
+          <div 
+            className={cn(
+              "relative overflow-hidden rounded-2xl p-5 border transition-all",
+              canAffordAvatar 
+                ? "bg-gradient-to-r from-accent/20 via-primary/10 to-accent/20 border-accent/40 glow-gold"
+                : "bg-gradient-to-r from-primary/10 via-card to-primary/10 border-primary/30"
+            )}
+          >
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
+
+            <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {/* Avatar previews */}
+                <div className="flex -space-x-3">
+                  {avatars.slice(0, 3).map((avatar, i) => (
+                    <div 
+                      key={avatar.id}
+                      className="w-12 h-12 rounded-full overflow-hidden border-2 border-background shadow-lg"
+                      style={{ zIndex: 3 - i }}
+                    >
+                      <img 
+                        src={avatar.image_url} 
+                        alt="Avatar" 
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  ))}
+                  {avatars.length > 3 && (
+                    <div className="w-12 h-12 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs font-medium">
+                      +{avatars.length - 3}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    <ShoppingBag className="w-5 h-5 text-accent" />
+                    Avatar Shop
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {canAffordAvatar ? (
+                      <span className="text-success font-medium">Hai XP sufficienti per un nuovo avatar!</span>
+                    ) : (
+                      <>Ti mancano <span className="text-accent font-medium">{xpNeeded} XP</span> per il prossimo avatar</>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Owned count */}
+                <Badge variant="secondary" className="px-3 py-1.5">
+                  {ownedAvatarsCount}/{avatars.length + 1} posseduti
+                </Badge>
+
+                <Button 
+                  onClick={() => setActiveTab('shop')} 
+                  className={cn(
+                    canAffordAvatar && "glow-blue animate-pulse"
+                  )}
+                >
+                  Apri Shop
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -123,12 +200,18 @@ export default function Challenges() {
                   {weeklyCompleted}/{weeklyTotal}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="shop" className="gap-2">
+              <TabsTrigger 
+                value="shop" 
+                className={cn(
+                  "gap-2",
+                  canAffordAvatar && "ring-2 ring-accent/50"
+                )}
+              >
                 <ShoppingBag className="w-4 h-4" />
                 Shop
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {ownedAvatarsCount}/{avatars.length}
-                </Badge>
+                {canAffordAvatar && (
+                  <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -192,11 +275,17 @@ export default function Challenges() {
 
             {/* Shop Tab */}
             <TabsContent value="shop" className="mt-6">
-              <div className="mb-4 p-3 rounded-lg bg-accent/10 border border-accent/20 text-sm">
-                <span className="font-medium text-accent">Avatar Shop:</span>{' '}
-                <span className="text-muted-foreground">
-                  Usa i tuoi XP per sbloccare nuovi avatar. Hai {userXp.toLocaleString()} XP disponibili.
-                </span>
+              <div className="mb-4 p-3 rounded-lg bg-accent/10 border border-accent/20 text-sm flex items-center justify-between">
+                <div>
+                  <span className="font-medium text-accent">Avatar Shop:</span>{' '}
+                  <span className="text-muted-foreground">
+                    Usa i tuoi XP per sbloccare nuovi avatar.
+                  </span>
+                </div>
+                <Badge variant="secondary" className="px-3 py-1">
+                  <Sparkles className="w-3 h-3 mr-1 text-accent" />
+                  {userXp.toLocaleString()} XP
+                </Badge>
               </div>
 
               <AvatarGrid
@@ -208,6 +297,19 @@ export default function Challenges() {
                 isEquipping={isEquipping}
                 isLoading={avatarsLoading}
               />
+
+              {/* Profile Avatar Link */}
+              <div className="mt-6 p-4 rounded-xl bg-card border border-border text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Gestisci i tuoi avatar acquistati dal profilo
+                </p>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/profile">
+                    Vai al Profilo
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

@@ -1,4 +1,4 @@
-import { Swords, Wallet, Users, MessageCircle, Trophy } from 'lucide-react';
+import { Swords, Wallet, Users, Trophy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const features = [
@@ -24,13 +24,6 @@ const features = [
     bgColor: 'bg-success/10',
   },
   {
-    icon: MessageCircle,
-    title: 'Global Chat',
-    description: 'Connect with the community in real-time. Find opponents and discuss strategies.',
-    color: 'text-primary',
-    bgColor: 'bg-primary/10',
-  },
-  {
     icon: Trophy,
     title: 'Leaderboard',
     description: 'Track your wins, earnings, and compete for the top spot each month.',
@@ -46,7 +39,7 @@ export function FeatureCards() {
         Platform Features
       </h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {features.map((feature) => {
           const Icon = feature.icon;
           return (

@@ -85,25 +85,13 @@ export function AvatarShopCard({
 
       {/* Info section */}
       <div className="p-3 space-y-2">
-        <h3 className="font-semibold text-sm truncate">{avatar.name}</h3>
-
-        {/* Price or status */}
-        {!isOwned && (
-          <div className="flex items-center gap-1.5 text-sm">
-            <Zap className="w-4 h-4 text-accent" />
-            <span
-              className={cn(
-                'font-medium',
-                canAfford ? 'text-foreground' : 'text-destructive'
-              )}
-            >
-              {avatar.price_xp} XP
-            </span>
-            {!canAfford && (
-              <span className="text-xs text-muted-foreground">(hai {userXp})</span>
-            )}
-          </div>
-        )}
+        {/* Price display - always show */}
+        <div className="flex items-center justify-center gap-1.5 text-sm">
+          <Sparkles className="w-4 h-4 text-accent" />
+          <span className={cn('font-bold', canAfford ? 'text-accent' : 'text-muted-foreground')}>
+            {avatar.price_xp} XP
+          </span>
+        </div>
 
         {/* Action button */}
         <div className="pt-1">

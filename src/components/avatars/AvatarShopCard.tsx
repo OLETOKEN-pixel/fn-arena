@@ -74,12 +74,15 @@ export function AvatarShopCard({
       )}
 
       {/* Avatar image */}
-      <div className="aspect-square bg-muted p-4">
+      <div className="aspect-square bg-muted p-3">
         <img
           src={avatar.image_url}
-          alt={avatar.name}
-          className="w-full h-full object-cover rounded-lg"
+          alt="Avatar"
+          className="w-full h-full object-cover object-center rounded-lg"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src = '/avatars/rookie.png';
+          }}
         />
       </div>
 

@@ -56,8 +56,8 @@ export default function Challenges() {
     <MainLayout>
       <div className="min-h-screen pb-8">
         {/* Header */}
-        <div className="bg-gradient-to-b from-card/80 to-transparent border-b border-border/50 px-4 py-6 mb-6">
-          <div className="max-w-5xl mx-auto">
+        <div className="bg-gradient-to-b from-card/80 to-transparent border-b border-border/50 py-6 mb-6">
+          <div className="max-w-screen-xl mx-auto">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -93,7 +93,7 @@ export default function Challenges() {
         </div>
 
         {/* AVATAR SHOP HERO BANNER - Always visible */}
-        <div className="max-w-5xl mx-auto px-4 mb-6">
+        <div className="max-w-screen-xl mx-auto mb-6">
           <div 
             className={cn(
               "relative overflow-hidden rounded-2xl p-5 border transition-all",
@@ -167,7 +167,7 @@ export default function Challenges() {
         </div>
 
         {/* Content */}
-        <div className="max-w-5xl mx-auto px-4">
+        <div className="max-w-screen-xl mx-auto">
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as 'daily' | 'weekly' | 'shop')}

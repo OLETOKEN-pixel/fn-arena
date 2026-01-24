@@ -34,8 +34,8 @@ export function MainLayout({ children }: MainLayoutProps) {
             isMobileMenuOpen={isMobileMenuOpen}
           />
           
-          <main className="flex-1 p-4 lg:p-6">
-            <div className="max-w-6xl mx-auto">
+          <main className="flex-1 px-4 lg:px-8 xl:px-12 py-4 lg:py-6">
+            <div className="max-w-screen-2xl mx-auto w-full">
               {children}
             </div>
           </main>

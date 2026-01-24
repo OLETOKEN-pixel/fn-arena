@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { REGIONS, PLATFORMS, type Region, type Platform } from '@/types';
 import { LoadingPage } from '@/components/common/LoadingSpinner';
 import { VipModal } from '@/components/vip/VipModal';
+import { ProfileAvatarSection } from '@/components/avatars/ProfileAvatarSection';
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -151,6 +152,9 @@ export default function Profile() {
             <AlertDescription>Aggiungi il tuo Epic Games Username per creare o unirti ai match.</AlertDescription>
           </Alert>
         )}
+
+        {/* Avatar Section */}
+        <ProfileAvatarSection />
 
         {/* Username Card (VIP Feature) */}
         <Card className="bg-card border-border">

@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      avatars: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          price_xp: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          price_xp?: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          price_xp?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
       challenge_anti_abuse: {
         Row: {
           id: string
@@ -803,6 +836,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_id: string | null
           avatar_url: string | null
           created_at: string | null
           email: string
@@ -819,6 +853,7 @@ export type Database = {
           username: string
         }
         Insert: {
+          avatar_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
           email: string
@@ -835,6 +870,7 @@ export type Database = {
           username: string
         }
         Update: {
+          avatar_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
           email?: string
@@ -850,7 +886,15 @@ export type Database = {
           user_id?: string
           username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_avatar_id_fkey"
+            columns: ["avatar_id"]
+            isOneToOne: false
+            referencedRelation: "avatars"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       team_members: {
         Row: {
@@ -1109,6 +1153,35 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles_public"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      user_avatars: {
+        Row: {
+          acquired_at: string
+          avatar_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          avatar_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          avatar_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_avatars_avatar_id_fkey"
+            columns: ["avatar_id"]
+            isOneToOne: false
+            referencedRelation: "avatars"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1596,6 +1669,7 @@ export type Database = {
         Returns: Json
       }
       delete_team: { Args: { p_team_id: string }; Returns: Json }
+      equip_avatar: { Args: { p_avatar_id: string }; Returns: Json }
       expire_stale_matches: { Args: never; Returns: Json }
       finalize_match_payout: {
         Args: { p_match_id: string; p_winner_side: string }
@@ -1606,6 +1680,19 @@ export type Database = {
         Returns: Json
       }
       get_admin_issue_stats: { Args: never; Returns: Json }
+      get_avatar_shop: {
+        Args: never
+        Returns: {
+          id: string
+          image_url: string
+          is_default: boolean
+          is_equipped: boolean
+          is_owned: boolean
+          name: string
+          price_xp: number
+          sort_order: number
+        }[]
+      }
       get_current_period_key: { Args: { p_type: string }; Returns: string }
       get_leaderboard: {
         Args: { p_limit?: number; p_offset?: number }
@@ -1694,6 +1781,7 @@ export type Database = {
         }
         Returns: Json
       }
+      purchase_avatar: { Args: { p_avatar_id: string }; Returns: Json }
       purchase_vip: { Args: never; Returns: Json }
       record_challenge_event:
         | {

@@ -3,12 +3,14 @@ import { Navigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChallenges } from '@/hooks/useChallenges';
+import { useAvatarShop } from '@/hooks/useAvatarShop';
 import { ChallengeCard } from '@/components/challenges/ChallengeCard';
 import { ChallengeCountdown } from '@/components/challenges/ChallengeCountdown';
+import { AvatarGrid } from '@/components/avatars/AvatarGrid';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy, Zap, Calendar, Star } from 'lucide-react';
+import { Trophy, Zap, Calendar, Star, ShoppingBag } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Challenges() {
@@ -23,7 +25,16 @@ export default function Challenges() {
     getResetTimes,
   } = useChallenges();
 
-  const [activeTab, setActiveTab] = useState<'daily' | 'weekly'>('daily');
+  const {
+    avatars,
+    isLoading: avatarsLoading,
+    purchaseAvatar,
+    equipAvatar,
+    isPurchasing,
+    isEquipping,
+  } = useAvatarShop();
+
+  const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'shop'>('daily');
 
   const resetTimes = useMemo(() => getResetTimes(), [getResetTimes]);
 
@@ -32,6 +43,7 @@ export default function Challenges() {
   const weeklyCompleted = weeklyChallenges.filter((c) => c.is_claimed).length;
   const dailyTotal = dailyChallenges.length;
   const weeklyTotal = weeklyChallenges.length;
+  const ownedAvatarsCount = avatars.filter((a) => a.is_owned).length;
 
   if (!authLoading && !user) {
     return <Navigate to="/auth?next=/challenges" replace />;
@@ -57,7 +69,7 @@ export default function Challenges() {
               {/* XP Badge */}
               <div className="flex items-center gap-3">
                 <Badge variant="secondary" className="px-3 py-1.5 text-sm font-semibold">
-                  <Zap className="w-4 h-4 mr-1.5 text-yellow-500" />
+                  <Zap className="w-4 h-4 mr-1.5 text-accent" />
                   {userXp.toLocaleString()} XP
                 </Badge>
               </div>
@@ -81,10 +93,10 @@ export default function Challenges() {
         <div className="max-w-5xl mx-auto px-4">
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'daily' | 'weekly')}
+            onValueChange={(v) => setActiveTab(v as 'daily' | 'weekly' | 'shop')}
             className="space-y-6"
           >
-            <TabsList className="grid w-full max-w-md grid-cols-2 mx-auto">
+            <TabsList className="grid w-full max-w-lg grid-cols-3 mx-auto">
               <TabsTrigger value="daily" className="gap-2">
                 <Calendar className="w-4 h-4" />
                 Daily
@@ -92,7 +104,7 @@ export default function Challenges() {
                   variant="secondary"
                   className={cn(
                     'ml-1 text-xs',
-                    dailyCompleted === dailyTotal && dailyTotal > 0 && 'bg-green-500/20 text-green-500'
+                    dailyCompleted === dailyTotal && dailyTotal > 0 && 'bg-primary/20 text-primary'
                   )}
                 >
                   {dailyCompleted}/{dailyTotal}
@@ -105,10 +117,17 @@ export default function Challenges() {
                   variant="secondary"
                   className={cn(
                     'ml-1 text-xs',
-                    weeklyCompleted === weeklyTotal && weeklyTotal > 0 && 'bg-green-500/20 text-green-500'
+                    weeklyCompleted === weeklyTotal && weeklyTotal > 0 && 'bg-primary/20 text-primary'
                   )}
                 >
                   {weeklyCompleted}/{weeklyTotal}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="shop" className="gap-2">
+                <ShoppingBag className="w-4 h-4" />
+                Shop
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {ownedAvatarsCount}/{avatars.length}
                 </Badge>
               </TabsTrigger>
             </TabsList>
@@ -169,6 +188,26 @@ export default function Challenges() {
                   </div>
                 </>
               )}
+            </TabsContent>
+
+            {/* Shop Tab */}
+            <TabsContent value="shop" className="mt-6">
+              <div className="mb-4 p-3 rounded-lg bg-accent/10 border border-accent/20 text-sm">
+                <span className="font-medium text-accent">Avatar Shop:</span>{' '}
+                <span className="text-muted-foreground">
+                  Usa i tuoi XP per sbloccare nuovi avatar. Hai {userXp.toLocaleString()} XP disponibili.
+                </span>
+              </div>
+
+              <AvatarGrid
+                avatars={avatars}
+                userXp={userXp}
+                onPurchase={purchaseAvatar}
+                onEquip={equipAvatar}
+                isPurchasing={isPurchasing}
+                isEquipping={isEquipping}
+                isLoading={avatarsLoading}
+              />
             </TabsContent>
           </Tabs>
         </div>

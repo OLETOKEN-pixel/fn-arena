@@ -260,6 +260,30 @@ export type Database = {
           },
         ]
       }
+      epic_oauth_states: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       highlights: {
         Row: {
           created_at: string | null
@@ -840,6 +864,8 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           email: string
+          epic_account_id: string | null
+          epic_linked_at: string | null
           epic_username: string | null
           iban: string | null
           id: string
@@ -857,6 +883,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           email: string
+          epic_account_id?: string | null
+          epic_linked_at?: string | null
           epic_username?: string | null
           iban?: string | null
           id?: string
@@ -874,6 +902,8 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           email?: string
+          epic_account_id?: string | null
+          epic_linked_at?: string | null
           epic_username?: string | null
           iban?: string | null
           id?: string

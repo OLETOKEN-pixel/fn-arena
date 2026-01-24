@@ -8,7 +8,9 @@ import {
   Crown,
   Check,
   ExternalLink,
-  Save
+  Save,
+  Loader2,
+  Unlink
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +20,16 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Select,
   SelectContent,
@@ -83,11 +95,19 @@ export default function Profile() {
   const [paypalEmail, setPaypalEmail] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [usernameError, setUsernameError] = useState('');
+  
+  // Epic OAuth state
+  const [isConnectingEpic, setIsConnectingEpic] = useState(false);
+  const [showDisconnectEpicDialog, setShowDisconnectEpicDialog] = useState(false);
+  const [isDisconnectingEpic, setIsDisconnectingEpic] = useState(false);
 
   const redirectAfterComplete = searchParams.get('next');
   const linkedProviders = user?.identities?.map(i => i.provider) || [];
   const googleIdentity = user?.identities?.find(i => i.provider === 'google');
   const googleEmail = googleIdentity?.identity_data?.email as string | undefined;
+  
+  // Check if Epic is connected via OAuth (has epic_account_id)
+  const isEpicConnected = !!profile?.epic_account_id;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -177,6 +197,56 @@ export default function Profile() {
       provider: 'google',
       options: { redirectTo },
     });
+  };
+
+  const handleConnectEpic = async () => {
+    setIsConnectingEpic(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('epic-auth-start');
+      
+      if (error) {
+        throw new Error(error.message || 'Errore durante la connessione');
+      }
+      
+      if (!data?.authUrl) {
+        throw new Error('URL di autorizzazione non ricevuto');
+      }
+      
+      // Redirect to Epic OAuth
+      window.location.href = data.authUrl;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Errore durante la connessione a Epic Games';
+      toast.error(message);
+      setIsConnectingEpic(false);
+    }
+  };
+
+  const handleDisconnectEpic = async () => {
+    if (!user) return;
+    
+    setIsDisconnectingEpic(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          epic_account_id: null,
+          epic_username: null,
+          epic_linked_at: null,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      await refreshProfile();
+      toast.success('Epic Games scollegato');
+      setShowDisconnectEpicDialog(false);
+      setEpicUsername('');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Errore durante lo scollegamento';
+      toast.error(message);
+    } finally {
+      setIsDisconnectingEpic(false);
+    }
   };
 
   if (loading) return <MainLayout><LoadingPage /></MainLayout>;
@@ -351,43 +421,92 @@ export default function Profile() {
                 <div className="space-y-5">
                   <h2 className="text-lg font-semibold">Account di Gioco</h2>
                   
-                  {/* Epic Username Card */}
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                        <Gamepad2 className="w-5 h-5 text-white" />
+                  {/* Epic Games Card */}
+                  <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                          <Gamepad2 className="w-5 h-5 text-primary-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Epic Games</p>
+                          <p className="text-sm text-muted-foreground">
+                            {isEpicConnected ? profile.epic_username : 'Non connesso'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">Epic Games</p>
-                        <p className="text-sm text-muted-foreground">
-                          {epicUsername || 'Non connesso'}
-                        </p>
-                      </div>
+                      
+                      {isEpicConnected ? (
+                        <Badge variant="outline" className="text-green-500 border-green-500/50">
+                          <Check className="w-3 h-3 mr-1" /> Verificato
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          Non connesso
+                        </Badge>
+                      )}
                     </div>
-                    {epicUsername && (
-                      <Badge variant="outline" className="text-green-500 border-green-500/50">
-                        <Check className="w-3 h-3 mr-1" /> Connesso
-                      </Badge>
+                    
+                    {/* If NOT connected: show Connect button */}
+                    {!isEpicConnected && (
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Collega il tuo account Epic Games per importare automaticamente il tuo Epic Username e partecipare ai match.
+                        </p>
+                        <Button 
+                          onClick={handleConnectEpic}
+                          className="w-full"
+                          disabled={isConnectingEpic}
+                        >
+                          {isConnectingEpic ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Collegamento in corso...
+                            </>
+                          ) : (
+                            <>
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Collega Epic Games
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                    
+                    {/* If connected: show verified username + Disconnect */}
+                    {isEpicConnected && (
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-muted-foreground text-xs">Epic Username (verificato)</Label>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input 
+                              value={profile.epic_username || ''} 
+                              readOnly 
+                              className="bg-muted/50 cursor-not-allowed flex-1"
+                            />
+                            <Badge className="shrink-0 bg-green-500/20 text-green-500 border-green-500/30">
+                              <Check className="w-3 h-3 mr-1" /> Verificato
+                            </Badge>
+                          </div>
+                          {profile.epic_linked_at && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Collegato il {new Date(profile.epic_linked_at).toLocaleDateString('it-IT')}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setShowDisconnectEpicDialog(true)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Unlink className="w-4 h-4 mr-2" />
+                          Scollega Epic Games
+                        </Button>
+                      </div>
                     )}
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="epicUsername">Epic Username <span className="text-destructive">*</span></Label>
-                    <Input
-                      id="epicUsername"
-                      value={epicUsername}
-                      onChange={(e) => setEpicUsername(e.target.value)}
-                      placeholder="Il tuo username Epic Games"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Questo username verrà mostrato agli avversari per aggiungerti in gioco
-                    </p>
-                  </div>
-                  
-                  <Button onClick={handleSave} disabled={isSaving}>
-                    <Save className="w-4 h-4 mr-2" />
-                    {isSaving ? 'Salvataggio...' : 'Salva'}
-                  </Button>
                   
                   {/* Avatar Section */}
                   <div className="pt-4 border-t border-border">
@@ -517,6 +636,36 @@ export default function Profile() {
           </Card>
         </div>
       )}
+
+      {/* Epic Games Disconnect Confirmation Dialog */}
+      <AlertDialog open={showDisconnectEpicDialog} onOpenChange={setShowDisconnectEpicDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Scollegare Epic Games?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dovrai ricollegare il tuo account Epic Games per partecipare ai match.
+              Il tuo Epic Username verificato verrà rimosso dal profilo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDisconnectingEpic}>Annulla</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDisconnectEpic}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDisconnectingEpic}
+            >
+              {isDisconnectingEpic ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Scollegamento...
+                </>
+              ) : (
+                'Scollega'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }

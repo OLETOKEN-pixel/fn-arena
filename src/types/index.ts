@@ -57,6 +57,8 @@ export interface Profile {
   email: string;
   avatar_url: string | null;
   epic_username: string | null;
+  epic_account_id: string | null;
+  epic_linked_at: string | null;
   preferred_region: Region;
   preferred_platform: Platform;
   role: UserRole;

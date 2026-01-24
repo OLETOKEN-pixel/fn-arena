@@ -27,6 +27,9 @@ import AdminUserDetail from "./pages/AdminUserDetail";
 import Highlights from "./pages/Highlights";
 import Leaderboard from "./pages/Leaderboard";
 import Challenges from "./pages/Challenges";
+import Rules from "./pages/Rules";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +75,9 @@ function App() {
                 <Route path="/highlights" element={<Highlights />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/challenges" element={<Challenges />} />
+                <Route path="/rules" element={<Rules />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLoadingGuard>

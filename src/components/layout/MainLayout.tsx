@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { Footer } from './Footer';
 import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
@@ -39,6 +40,9 @@ export function MainLayout({ children }: MainLayoutProps) {
               {children}
             </div>
           </main>
+          
+          {/* Global Footer */}
+          <Footer />
         </div>
       </div>
     </div>

@@ -17,6 +17,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Clean up legacy localStorage keys from old auth methods
+const cleanupLegacyStorage = () => {
+  const legacyKeys = [
+    'sb-auth-token',
+    'supabase.auth.token',
+    'auth_redirect',
+    'lovable_auth_version',
+  ];
+  legacyKeys.forEach(key => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore storage errors
+    }
+  });
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -74,6 +91,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Effect 1: Auth state listener (SYNC ONLY - no async operations)
   useEffect(() => {
+    // Clean up legacy storage on mount
+    cleanupLegacyStorage();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         // SYNC state updates only - never await here
@@ -93,13 +113,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        setPendingUserId(session.user.id);
+    // Check for existing session and validate it
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        // Try to refresh the session to ensure it's still valid
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshError || !refreshData.session) {
+          // Session is invalid, force sign out
+          console.log('Invalid session detected, signing out');
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setWallet(null);
+          setLoading(false);
+        } else {
+          // Session is valid
+          setSession(refreshData.session);
+          setUser(refreshData.session.user);
+          setPendingUserId(refreshData.session.user.id);
+        }
       } else {
         setLoading(false);
       }

@@ -48,22 +48,11 @@ import { cn } from '@/lib/utils';
 import { REGIONS, PLATFORMS, type Region, type Platform } from '@/types';
 import { AlertTriangle } from 'lucide-react';
 
-// Inline icons for linked accounts
-function GoogleIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
-  );
-}
-
+// Discord Icon
 function DiscordIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24">
-      <path fill="#5865F2" d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026 13.83 13.83 0 0 0 1.226-1.963.074.074 0 0 0-.041-.104 13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z"/>
+      <path fill="currentColor" d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.369-.444.85-.608 1.23a18.566 18.566 0 0 0-5.487 0 12.36 12.36 0 0 0-.617-1.23A.077.077 0 0 0 8.562 3c-1.714.29-3.354.8-4.885 1.491a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055 20.03 20.03 0 0 0 5.993 2.98.078.078 0 0 0 .084-.026 13.83 13.83 0 0 0 1.226-1.963.074.074 0 0 0-.041-.104 13.201 13.201 0 0 1-1.872-.878.075.075 0 0 1-.008-.125c.126-.093.252-.19.372-.287a.075.075 0 0 1 .078-.01c3.927 1.764 8.18 1.764 12.061 0a.075.075 0 0 1 .079.009c.12.098.245.195.372.288a.075.075 0 0 1-.006.125c-.598.344-1.22.635-1.873.877a.075.075 0 0 0-.041.105c.36.687.772 1.341 1.225 1.962a.077.077 0 0 0 .084.028 19.963 19.963 0 0 0 6.002-2.981.076.076 0 0 0 .032-.054c.5-5.094-.838-9.52-3.549-13.442a.06.06 0 0 0-.031-.028zM8.02 15.278c-1.182 0-2.157-1.069-2.157-2.38 0-1.312.956-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.956 2.38-2.157 2.38zm7.975 0c-1.183 0-2.157-1.069-2.157-2.38 0-1.312.955-2.38 2.157-2.38 1.21 0 2.176 1.077 2.157 2.38 0 1.312-.946 2.38-2.157 2.38z"/>
     </svg>
   );
 }
@@ -102,12 +91,12 @@ export default function Profile() {
   const [isDisconnectingEpic, setIsDisconnectingEpic] = useState(false);
 
   const redirectAfterComplete = searchParams.get('next');
-  const linkedProviders = user?.identities?.map(i => i.provider) || [];
-  const googleIdentity = user?.identities?.find(i => i.provider === 'google');
-  const googleEmail = googleIdentity?.identity_data?.email as string | undefined;
   
   // Check if Epic is connected via OAuth (has epic_account_id)
   const isEpicConnected = !!profile?.epic_account_id;
+  
+  // Check if Discord is connected
+  const isDiscordConnected = !!profile?.discord_user_id;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -151,8 +140,9 @@ export default function Profile() {
       if (!isProfileComplete && !!epicUsername && redirectAfterComplete) {
         navigate(redirectAfterComplete, { replace: true });
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Errore durante il salvataggio');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Errore durante il salvataggio';
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
@@ -184,19 +174,12 @@ export default function Profile() {
       } else {
         setUsernameError(result.error || 'Errore durante il cambio username');
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Errore');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Errore';
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleLinkGoogle = async () => {
-    const redirectTo = `${window.location.origin}/profile`;
-    await supabase.auth.linkIdentity({
-      provider: 'google',
-      options: { redirectTo },
-    });
   };
 
   const handleConnectEpic = async () => {
@@ -252,6 +235,10 @@ export default function Profile() {
   if (loading) return <MainLayout><LoadingPage /></MainLayout>;
   if (!user || !profile) return null;
 
+  // Get Discord display info
+  const discordDisplayName = profile.discord_display_name || profile.discord_username || profile.username;
+  const discordAvatarUrl = profile.discord_avatar_url;
+
   return (
     <MainLayout>
       <div className="h-[calc(100vh-120px)] flex flex-col gap-4">
@@ -275,7 +262,7 @@ export default function Profile() {
                 >
                   <Avatar className="w-16 h-16 border-2 border-primary/30 group-hover:border-primary transition-colors">
                     <AvatarImage 
-                      src={profile.avatar_url || undefined} 
+                      src={discordAvatarUrl || profile.avatar_url || undefined} 
                       alt={profile.username}
                       className="object-cover"
                     />
@@ -289,7 +276,7 @@ export default function Profile() {
                 </button>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-bold">{profile.username}</h1>
+                    <h1 className="text-xl font-bold">{discordDisplayName}</h1>
                     {isVip && (
                       <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-black text-xs">
                         <Crown className="w-3 h-3 mr-1" /> VIP
@@ -297,6 +284,12 @@ export default function Profile() {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">{profile.email}</p>
+                  {isDiscordConnected && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <DiscordIcon className="w-3 h-3" />
+                      Username sincronizzato da Discord
+                    </p>
+                  )}
                 </div>
               </div>
               
@@ -351,7 +344,7 @@ export default function Profile() {
                 <div className="space-y-5">
                   <h2 className="text-lg font-semibold">Impostazioni Account</h2>
                   
-                  {/* Username */}
+                  {/* Username (from Discord) */}
                   <div className="space-y-2">
                     <Label htmlFor="username" className="flex items-center gap-2">
                       Username
@@ -377,7 +370,7 @@ export default function Profile() {
                     {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
                     {!isVip && (
                       <p className="text-xs text-muted-foreground">
-                        🔒 Solo i membri VIP possono cambiare username
+                        🔒 Solo i membri VIP possono cambiare username. Il tuo username proviene da Discord.
                       </p>
                     )}
                   </div>
@@ -558,53 +551,43 @@ export default function Profile() {
                 </div>
               )}
               
-              {/* Connections Section */}
+              {/* Connections Section - ONLY DISCORD */}
               {activeSection === 'connections' && (
                 <div className="space-y-5">
-                  <h2 className="text-lg font-semibold">Account Collegati</h2>
+                  <h2 className="text-lg font-semibold">Account Collegato</h2>
                   
-                  <div className="space-y-3">
-                    {/* Google */}
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
-                          <GoogleIcon className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Google</p>
-                          <p className="text-sm text-muted-foreground">
-                            {linkedProviders.includes('google') ? googleEmail : 'Non collegato'}
-                          </p>
-                        </div>
-                      </div>
-                      {linkedProviders.includes('google') ? (
-                        <Badge variant="outline" className="text-green-500 border-green-500/50">
-                          <Check className="w-3 h-3 mr-1" /> Connesso
-                        </Badge>
-                      ) : (
-                        <Button size="sm" variant="outline" onClick={handleLinkGoogle}>
-                          <ExternalLink className="w-4 h-4 mr-1" /> Collega
-                        </Button>
-                      )}
-                    </div>
-                    
-                    {/* Discord */}
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border opacity-60">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-[#5865F2] flex items-center justify-center">
+                  {/* Discord - Always Connected (it's the only auth method) */}
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={discordAvatarUrl || undefined} />
+                        <AvatarFallback className="bg-[#5865F2]">
                           <DiscordIcon className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Discord</p>
-                          <p className="text-sm text-muted-foreground">
-                            Coming soon
-                          </p>
-                        </div>
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">Discord</p>
+                        <p className="text-sm text-muted-foreground">
+                          {profile.discord_username || discordDisplayName}
+                        </p>
                       </div>
-                      <Badge variant="outline" className="text-muted-foreground">
-                        Prossimamente
-                      </Badge>
                     </div>
+                    <Badge variant="outline" className="text-green-500 border-green-500/50">
+                      <Check className="w-3 h-3 mr-1" /> Connesso
+                    </Badge>
+                  </div>
+                  
+                  {profile.discord_linked_at && (
+                    <p className="text-sm text-muted-foreground">
+                      Account collegato il {new Date(profile.discord_linked_at).toLocaleDateString('it-IT')}
+                    </p>
+                  )}
+                  
+                  <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
+                    <p className="text-sm text-muted-foreground">
+                      Il tuo account OLEBOY TOKEN è collegato a Discord. 
+                      Per accedere con un altro account, effettua il logout e accedi nuovamente con un diverso account Discord.
+                    </p>
                   </div>
                 </div>
               )}

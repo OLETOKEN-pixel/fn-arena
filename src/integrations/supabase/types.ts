@@ -1643,6 +1643,10 @@ export type Database = {
         Args: { p_action: string; p_match_id: string; p_notes?: string }
         Returns: Json
       }
+      admin_set_user_role: {
+        Args: { p_role: string; p_user_id: string }
+        Returns: Json
+      }
       auto_refund_expired_matches: { Args: never; Returns: Json }
       cancel_match_v2: { Args: { p_match_id: string }; Returns: Json }
       change_username_vip: { Args: { p_new_username: string }; Returns: Json }

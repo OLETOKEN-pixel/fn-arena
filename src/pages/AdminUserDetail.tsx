@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Wallet, Swords, DollarSign, AlertTriangle, Ban, CheckCircle, Plus, Minus, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Wallet, Swords, DollarSign, AlertTriangle, Ban, CheckCircle, Plus, Minus, Loader2, Shield, ShieldCheck } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -38,6 +38,10 @@ export default function AdminUserDetail() {
   const [adjusting, setAdjusting] = useState(false);
   const [banning, setBanning] = useState(false);
 
+  // Role management state
+  const [userRole, setUserRole] = useState<'admin' | 'user'>('user');
+  const [changingRole, setChangingRole] = useState(false);
+
   // Check admin status
   useEffect(() => {
     const checkAdmin = async () => {
@@ -62,7 +66,7 @@ export default function AdminUserDetail() {
     if (!id) return;
     setLoading(true);
 
-    const [profileRes, walletRes, matchesRes, txRes] = await Promise.all([
+    const [profileRes, walletRes, matchesRes, txRes, roleRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('user_id', id).maybeSingle(),
       supabase.from('wallets').select('*').eq('user_id', id).maybeSingle(),
       supabase
@@ -83,6 +87,13 @@ export default function AdminUserDetail() {
         .eq('user_id', id)
         .order('created_at', { ascending: false })
         .limit(50),
+      // Check if user has admin role in user_roles table
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', id)
+        .eq('role', 'admin')
+        .maybeSingle(),
     ]);
 
     if (profileRes.error || !profileRes.data) {
@@ -106,6 +117,9 @@ export default function AdminUserDetail() {
     if (txRes.data) {
       setTransactions(txRes.data as Transaction[]);
     }
+
+    // Set user role based on user_roles table (source of truth)
+    setUserRole(roleRes.data ? 'admin' : 'user');
 
     setLoading(false);
   };
@@ -140,6 +154,35 @@ export default function AdminUserDetail() {
     }
 
     setBanning(false);
+  };
+
+  const handleRoleChange = async () => {
+    if (!profile) return;
+    setChangingRole(true);
+
+    const newRole = userRole === 'admin' ? 'user' : 'admin';
+    const { data, error } = await supabase.rpc('admin_set_user_role', {
+      p_user_id: profile.user_id,
+      p_role: newRole,
+    });
+
+    const result = data as { success: boolean; error?: string; role?: string } | null;
+
+    if (error || (result && !result.success)) {
+      toast({
+        title: 'Errore',
+        description: result?.error || 'Impossibile cambiare il ruolo.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Ruolo aggiornato',
+        description: `L'utente ora è ${newRole === 'admin' ? 'Admin' : 'User'}.`,
+      });
+      fetchUserData();
+    }
+
+    setChangingRole(false);
   };
 
   const handleAdjustBalance = async (positive: boolean) => {
@@ -244,7 +287,7 @@ export default function AdminUserDetail() {
             </div>
           </div>
           <div className="flex gap-2">
-            {profile.role === 'admin' && (
+            {userRole === 'admin' && (
               <Badge variant="destructive">Admin</Badge>
             )}
             {profile.is_banned ? (
@@ -352,8 +395,33 @@ export default function AdminUserDetail() {
               </div>
             </div>
 
+            {/* Role Management */}
+            <div className="pt-4 border-t border-border space-y-3">
+              <p className="text-sm font-medium">Gestione Ruolo</p>
+              <div className="flex items-center gap-3">
+                <Badge variant={userRole === 'admin' ? 'destructive' : 'outline'}>
+                  {userRole === 'admin' ? 'Admin' : 'User'}
+                </Badge>
+                <Button
+                  onClick={handleRoleChange}
+                  disabled={changingRole}
+                  variant={userRole === 'admin' ? 'outline' : 'default'}
+                  className={userRole !== 'admin' ? 'bg-red-600 hover:bg-red-700' : ''}
+                >
+                  {changingRole ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : userRole === 'admin' ? (
+                    <Shield className="w-4 h-4 mr-2" />
+                  ) : (
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                  )}
+                  {userRole === 'admin' ? 'Rimuovi Admin' : 'Promuovi Admin'}
+                </Button>
+              </div>
+            </div>
+
             {/* Ban/Unban */}
-            {profile.role !== 'admin' && (
+            {userRole !== 'admin' && (
               <div className="pt-4 border-t border-border">
                 <Button
                   onClick={handleBanToggle}

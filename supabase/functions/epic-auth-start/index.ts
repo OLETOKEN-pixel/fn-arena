@@ -95,10 +95,16 @@ serve(async (req) => {
     authUrl.searchParams.set("scope", "basic_profile");
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("state", state);
+    
+    // CRITICAL: Force login UI every time - prevents auto-login with existing Epic session
+    authUrl.searchParams.set("prompt", "login");
+    authUrl.searchParams.set("max_age", "0");
 
     logStep("Authorization URL built", { 
       url: authUrl.toString().replace(clientId, "***"),
-      redirectUri 
+      redirectUri,
+      prompt: "login",
+      maxAge: "0"
     });
 
     return new Response(

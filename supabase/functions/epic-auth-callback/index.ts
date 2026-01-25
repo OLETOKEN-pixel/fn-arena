@@ -90,15 +90,28 @@ serve(async (req) => {
       }),
     });
 
-    const tokenData = await tokenResponse.json();
+    const tokenText = await tokenResponse.text();
+    let tokenData;
+    try {
+      tokenData = JSON.parse(tokenText);
+    } catch {
+      logStep("Token response not JSON", { status: tokenResponse.status, body: tokenText.substring(0, 500) });
+      return new Response(
+        JSON.stringify({ error: "Invalid response from Epic token endpoint" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!tokenResponse.ok || !tokenData.access_token) {
-      logStep("Token exchange failed", { 
-        status: tokenResponse.status, 
-        error: tokenData.error_description || tokenData.error 
+      logStep("Token exchange failed - FULL ERROR", { 
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        error: tokenData.error,
+        errorDescription: tokenData.error_description,
+        redirectUri // Log to verify match
       });
       return new Response(
-        JSON.stringify({ error: tokenData.error_description || "Failed to exchange code for token" }),
+        JSON.stringify({ error: tokenData.error_description || tokenData.error || "Failed to exchange code for token" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -113,28 +126,46 @@ serve(async (req) => {
     let epicAccountId = tokenData.account_id;
     let epicDisplayName = tokenData.displayName;
 
-    // If not in token response, fetch from account endpoint
+    // If not in token response, fetch from userInfo endpoint (standard OAuth2)
     if (!epicAccountId || !epicDisplayName) {
-      logStep("Fetching account info from API");
+      logStep("Fetching account info from userInfo endpoint");
       
-      // Try the accounts endpoint
-      const accountResponse = await fetch("https://api.epicgames.dev/epic/id/v2/accounts?accountId=me", {
+      // Try the standard OAuth2 userInfo endpoint first
+      const userInfoResponse = await fetch("https://api.epicgames.dev/epic/oauth/v2/userInfo", {
         headers: {
           "Authorization": `Bearer ${tokenData.access_token}`,
         },
       });
 
-      if (accountResponse.ok) {
-        const accountData = await accountResponse.json();
-        logStep("Account data received", { data: accountData });
+      if (userInfoResponse.ok) {
+        const userInfoData = await userInfoResponse.json();
+        logStep("UserInfo data received", { data: userInfoData });
         
-        // The response could be an array or object
-        if (Array.isArray(accountData) && accountData.length > 0) {
-          epicAccountId = accountData[0].accountId || epicAccountId;
-          epicDisplayName = accountData[0].displayName || epicDisplayName;
-        } else if (accountData.accountId) {
-          epicAccountId = accountData.accountId;
-          epicDisplayName = accountData.displayName;
+        // Standard OAuth2 claims
+        epicAccountId = userInfoData.sub || userInfoData.account_id || epicAccountId;
+        epicDisplayName = userInfoData.preferred_username || userInfoData.displayName || userInfoData.name || epicDisplayName;
+      } else {
+        logStep("UserInfo endpoint failed, trying accounts endpoint", { status: userInfoResponse.status });
+        
+        // Fallback to accounts endpoint
+        const accountResponse = await fetch("https://api.epicgames.dev/epic/id/v2/accounts?accountId=me", {
+          headers: {
+            "Authorization": `Bearer ${tokenData.access_token}`,
+          },
+        });
+
+        if (accountResponse.ok) {
+          const accountData = await accountResponse.json();
+          logStep("Account data received", { data: accountData });
+          
+          // The response could be an array or object
+          if (Array.isArray(accountData) && accountData.length > 0) {
+            epicAccountId = accountData[0].accountId || epicAccountId;
+            epicDisplayName = accountData[0].displayName || epicDisplayName;
+          } else if (accountData.accountId) {
+            epicAccountId = accountData.accountId;
+            epicDisplayName = accountData.displayName;
+          }
         }
       }
     }

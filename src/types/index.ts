@@ -67,6 +67,12 @@ export interface Profile {
   iban: string | null;
   created_at: string;
   updated_at: string;
+  // Discord fields
+  discord_user_id: string | null;
+  discord_username: string | null;
+  discord_display_name: string | null;
+  discord_avatar_url: string | null;
+  discord_linked_at: string | null;
 }
 
 // Partial profile for list views (returned by joins with limited fields)

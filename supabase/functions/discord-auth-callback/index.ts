@@ -158,12 +158,14 @@ serve(async (req) => {
     let userId: string;
 
     if (existingProfile) {
-      // Update existing profile with Discord data
+      // Update existing profile with Discord data + sync username
       userId = existingProfile.user_id;
+      const displayName = (discordUser.global_name || discordUser.username).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'user';
       
       const { error: updateError } = await supabaseAdmin
         .from("profiles")
         .update({
+          username: displayName, // Sync platform username with Discord
           discord_user_id: discordUser.id,
           discord_username: discordUser.username,
           discord_display_name: discordUser.global_name || discordUser.username,

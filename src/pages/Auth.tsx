@@ -1,40 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import logoOleboy from '@/assets/logo-oleboy.png';
-import { z } from 'zod';
 
-const emailSchema = z.string().email('Invalid email address');
-const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
-const usernameSchema = z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username too long');
+// Discord Icon component
+function DiscordIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+    </svg>
+  );
+}
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, profile, signIn, signUp, signInWithGoogle, loading, isProfileComplete } = useAuth();
+  const { user, profile, loading, isProfileComplete } = useAuth();
 
   // Get redirect URL from "next" parameter or localStorage (for OAuth callback)
   const urlRedirect = searchParams.get('next') || '/';
   const storedRedirect = typeof window !== 'undefined' ? localStorage.getItem('auth_redirect') : null;
   const redirectTo = storedRedirect || urlRedirect;
 
-  const [mode, setMode] = useState<'signin' | 'signup'>(
-    searchParams.get('mode') === 'signup' ? 'signup' : 'signin'
-  );
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; username?: string }>({});
 
   // Redirect if already logged in
   useEffect(() => {
@@ -44,7 +37,6 @@ export default function Auth() {
       
       // If profile is incomplete, redirect to profile first
       if (!isProfileComplete) {
-        // Pass the original redirect as next param to profile
         const profileRedirect = redirectTo !== '/' ? `/profile?next=${encodeURIComponent(redirectTo)}` : '/profile';
         navigate(profileRedirect, { replace: true });
       } else {
@@ -53,126 +45,6 @@ export default function Auth() {
       }
     }
   }, [user, profile, loading, isProfileComplete, navigate, redirectTo]);
-
-  const validate = () => {
-    const newErrors: typeof errors = {};
-
-    const emailResult = emailSchema.safeParse(email);
-    if (!emailResult.success) {
-      newErrors.email = emailResult.error.errors[0].message;
-    }
-
-    const passwordResult = passwordSchema.safeParse(password);
-    if (!passwordResult.success) {
-      newErrors.password = passwordResult.error.errors[0].message;
-    }
-
-    if (mode === 'signup') {
-      const usernameResult = usernameSchema.safeParse(username);
-      if (!usernameResult.success) {
-        newErrors.username = usernameResult.error.errors[0].message;
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validate()) return;
-
-    setIsSubmitting(true);
-
-    try {
-      if (mode === 'signup') {
-        const { error } = await signUp(email, password, username);
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast({
-              title: 'Account exists',
-              description: 'This email is already registered. Please sign in.',
-              variant: 'destructive',
-            });
-          } else if (error.message.includes('Username is already taken')) {
-            toast({
-              title: 'Username not available',
-              description: 'This username is already taken. Please choose a different one.',
-              variant: 'destructive',
-            });
-            setErrors({ ...errors, username: 'Username already taken' });
-          } else {
-            toast({
-              title: 'Sign up failed',
-              description: error.message,
-              variant: 'destructive',
-            });
-          }
-        } else {
-          toast({
-            title: 'Welcome!',
-            description: 'Account created successfully.',
-          });
-          // Navigation will be handled by useEffect when user/profile loads
-        }
-      } else {
-        const { error } = await signIn(email, password);
-        if (error) {
-          toast({
-            title: 'Sign in failed',
-            description: 'Invalid email or password.',
-            variant: 'destructive',
-          });
-        } else {
-          toast({
-            title: 'Welcome back!',
-            description: 'You are now signed in.',
-          });
-          // Navigation will be handled by useEffect when user/profile loads
-        }
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setIsSubmitting(true);
-    try {
-      // Store redirect for after OAuth callback
-      const { error } = await signInWithGoogle(redirectTo);
-      if (error) {
-        console.error('Google sign-in error:', error);
-        let errorMessage = 'Failed to sign in with Google. Please try again.';
-        
-        // Provide more specific error messages
-        if (error.message?.includes('access_denied')) {
-          errorMessage = 'Access denied. Please check your Google account permissions.';
-        } else if (error.message?.includes('popup_closed')) {
-          errorMessage = 'Sign-in popup was closed. Please try again.';
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
-        
-        toast({
-          title: 'Google Sign-In Failed',
-          description: errorMessage,
-          variant: 'destructive',
-        });
-        setIsSubmitting(false);
-      }
-      // Don't set isSubmitting to false on success - we're redirecting
-    } catch (err) {
-      console.error('Google sign-in exception:', err);
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
-      });
-      setIsSubmitting(false);
-    }
-  };
 
   const handleDiscordSignIn = async () => {
     setIsSubmitting(true);
@@ -217,198 +89,96 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      {/* Background effects */}
-      <div className="fixed inset-0 gradient-radial opacity-20 pointer-events-none" />
+    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4">
+      {/* Animated Gaming Background */}
+      <div className="fixed inset-0 bg-background" />
+      
+      {/* Gaming pattern layer */}
+      <div className="fixed inset-0 gaming-pattern-bg opacity-[0.03]" />
+      
+      {/* Animated neon circles */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {/* Large circle - top right */}
+        <div className="absolute -top-1/4 -right-1/4 w-[600px] h-[600px] rounded-full border-2 border-primary/20 animate-neon-pulse-slow" />
+        {/* Medium circle - bottom left */}
+        <div className="absolute -bottom-1/3 -left-1/4 w-[500px] h-[500px] rounded-full border border-primary/15 animate-neon-pulse-medium" />
+        {/* Small circle - center accent */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-primary/10 animate-neon-pulse-fast" />
+      </div>
+      
+      {/* Gradient overlay */}
+      <div className="fixed inset-0 bg-gradient-radial from-primary/5 via-transparent to-transparent opacity-50" />
+      
+      {/* Floating particles */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute w-2 h-2 bg-primary/30 rounded-full animate-float-1 top-1/4 left-1/4" />
+        <div className="absolute w-1.5 h-1.5 bg-accent/40 rounded-full animate-float-2 top-3/4 right-1/4" />
+        <div className="absolute w-1 h-1 bg-primary/40 rounded-full animate-float-3 top-1/2 left-3/4" />
+        <div className="absolute w-2 h-2 bg-accent/30 rounded-full animate-float-4 bottom-1/4 left-1/3" />
+      </div>
 
       {/* Back button */}
       <Link
         to="/"
-        className="absolute top-4 left-4 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+        className="absolute top-4 left-4 z-10 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Home
+        Torna alla Home
       </Link>
 
-      <Card className="w-full max-w-md bg-card border-border relative">
-        <CardHeader className="text-center">
+      {/* Auth Card */}
+      <Card className="w-full max-w-md relative z-10 bg-card/95 backdrop-blur-sm border-border/50 shadow-2xl shadow-primary/5">
+        <CardContent className="text-center py-10 px-8">
+          {/* Logo */}
           <img
             src={logoOleboy}
             alt="OLEBOY TOKEN"
-            className="w-16 h-16 mx-auto mb-4"
+            className="w-20 h-20 mx-auto mb-6 drop-shadow-lg"
           />
-          <CardTitle className="font-display text-2xl">
-            {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
-          </CardTitle>
-          <CardDescription>
-            {mode === 'signin'
-              ? 'Sign in to your account to continue'
-              : 'Join the OLEBOY TOKEN gaming platform'}
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          {/* OAuth Buttons */}
-          <div className="space-y-3">
-            {/* Google OAuth */}
-            <Button
-              variant="outline"
-              onClick={handleGoogleSignIn}
-              disabled={isSubmitting}
-              className="w-full"
-            >
-              <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                <path
-                  fill="currentColor"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-              Continua con Google
-            </Button>
-
-            {/* Discord OAuth */}
-            <Button
-              variant="outline"
-              onClick={handleDiscordSignIn}
-              disabled={isSubmitting}
-              className="w-full"
-            >
-              <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                <path
-                  fill="currentColor"
-                  d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"
-                />
-              </svg>
-              Continua con Discord
-            </Button>
-          </div>
-
-          <div className="relative">
-            <Separator />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-              or continue with email
-            </span>
-          </div>
-
-          {/* Email form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Choose a username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="pl-10"
-                    disabled={isSubmitting}
-                  />
-                </div>
-                {errors.username && (
-                  <p className="text-xs text-destructive">{errors.username}</p>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  disabled={isSubmitting}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  disabled={isSubmitting}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-xs text-destructive">{errors.password}</p>
-              )}
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting
-                ? 'Loading...'
-                : mode === 'signin'
-                ? 'Sign In'
-                : 'Create Account'}
-            </Button>
-          </form>
-
-          {/* Toggle mode */}
-          <p className="text-center text-sm text-muted-foreground">
-            {mode === 'signin' ? (
+          
+          {/* Title */}
+          <h1 className="font-display text-2xl font-bold mb-2 text-foreground">
+            Accedi a OLEBOY TOKEN
+          </h1>
+          <p className="text-muted-foreground mb-8">
+            La piattaforma gaming per veri campioni
+          </p>
+          
+          {/* Discord Button - Primary CTA */}
+          <Button
+            onClick={handleDiscordSignIn}
+            disabled={isSubmitting}
+            className="w-full py-6 text-lg font-semibold bg-[#5865F2] hover:bg-[#4752C4] text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#5865F2]/25"
+          >
+            {isSubmitting ? (
               <>
-                Don't have an account?{' '}
-                <button
-                  onClick={() => setMode('signup')}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Sign up
-                </button>
+                <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                Connessione...
               </>
             ) : (
               <>
-                Already have an account?{' '}
-                <button
-                  onClick={() => setMode('signin')}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Sign in
-                </button>
+                <DiscordIcon className="w-5 h-5 mr-3" />
+                Continua con Discord
               </>
             )}
+          </Button>
+          
+          {/* Terms and Privacy */}
+          <p className="text-xs text-muted-foreground mt-8">
+            Accedendo accetti i nostri{' '}
+            <Link to="/terms" className="text-primary hover:underline">
+              Termini di Servizio
+            </Link>{' '}
+            e la{' '}
+            <Link to="/privacy" className="text-primary hover:underline">
+              Privacy Policy
+            </Link>
           </p>
         </CardContent>
       </Card>
+      
+      {/* Bottom decoration */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
     </div>
   );
 }

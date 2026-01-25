@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.expire-matches]
 verify_jwt = false
+
+[functions.discord-auth-start]
+verify_jwt = false
+
+[functions.discord-auth-callback]
+verify_jwt = false

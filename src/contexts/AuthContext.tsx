@@ -123,17 +123,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Session is invalid, force sign out
           console.log('Invalid session detected, signing out');
           await supabase.auth.signOut();
+          cleanupLegacyStorage();
           setSession(null);
           setUser(null);
           setProfile(null);
           setWallet(null);
           setLoading(false);
-        } else {
-          // Session is valid
-          setSession(refreshData.session);
-          setUser(refreshData.session.user);
-          setPendingUserId(refreshData.session.user.id);
+          return;
         }
+
+        // Session is valid - now check if profile exists (ghost user detection)
+        const { data: profileCheck, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .eq('user_id', refreshData.session.user.id)
+          .maybeSingle();
+
+        if (profileError || !profileCheck) {
+          // Ghost user: has session but no profile - force logout
+          console.log('Ghost user detected (no profile), signing out');
+          await supabase.auth.signOut();
+          cleanupLegacyStorage();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setWallet(null);
+          setLoading(false);
+          return;
+        }
+
+        // Session is valid AND profile exists
+        setSession(refreshData.session);
+        setUser(refreshData.session.user);
+        setPendingUserId(refreshData.session.user.id);
       } else {
         setLoading(false);
       }

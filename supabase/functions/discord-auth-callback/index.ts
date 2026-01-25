@@ -171,16 +171,25 @@ serve(async (req) => {
     let userId: string;
     let userEmail: string;
 
+    // Require email for Discord auth
+    if (!discordUser.email) {
+      return new Response(
+        JSON.stringify({ error: "Email is required. Please authorize email access on Discord." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    userEmail = discordUser.email;
+    const displayName = (discordUser.global_name || discordUser.username).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'user';
+
     if (existingProfile) {
-      // Update existing profile with Discord data + sync username
+      // CASE 1: Profile exists - update with Discord data
       userId = existingProfile.user_id;
-      userEmail = existingProfile.email;
-      const displayName = (discordUser.global_name || discordUser.username).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'user';
       
       const { error: updateError } = await supabaseAdmin
         .from("profiles")
         .update({
-          username: displayName, // Sync platform username with Discord
+          username: displayName,
           discord_user_id: discordUser.id,
           discord_username: discordUser.username,
           discord_display_name: discordUser.global_name || discordUser.username,
@@ -194,101 +203,95 @@ serve(async (req) => {
         throw updateError;
       }
 
-      // Update auth user password to the deterministic one for session login
-      const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      // Update password for session login
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
         password: userPassword,
       });
 
-      if (updateAuthError) {
-        logStep("Auth password update error", { error: updateAuthError.message });
-        // Non-fatal, continue
-      }
-
-      logStep("Profile updated with Discord data");
+      logStep("Profile updated with Discord data", { userId });
     } else {
-      // Create new user
-      logStep("Creating new user");
+      // No profile found - check if auth user exists by email
+      const { data: { users: existingAuthUsers } } = await supabaseAdmin.auth.admin.listUsers();
+      const matchingAuthUser = existingAuthUsers.find(u => u.email === discordUser.email);
 
-      if (!discordUser.email) {
-        return new Response(
-          JSON.stringify({ error: "Email is required. Please authorize email access on Discord." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      if (matchingAuthUser) {
+        // CASE 2: Auth user exists but NO profile - create profile
+        userId = matchingAuthUser.id;
+        logStep("Found auth user without profile, creating profile", { userId, email: userEmail });
 
-      userEmail = discordUser.email;
-
-      // Generate a unique username
-      let baseUsername = discordUser.username.replace(/[^a-zA-Z0-9_]/g, "");
-      if (baseUsername.length < 3) {
-        baseUsername = "user" + discordUser.id.substring(0, 6);
-      }
-
-      let finalUsername = baseUsername;
-      let counter = 1;
-      while (true) {
-        const { data: existingUsername } = await supabaseAdmin
+        const { error: insertError } = await supabaseAdmin
           .from("profiles")
-          .select("id")
-          .eq("username", finalUsername)
-          .maybeSingle();
+          .insert({
+            user_id: userId,
+            email: discordUser.email,
+            username: displayName,
+            discord_user_id: discordUser.id,
+            discord_username: discordUser.username,
+            discord_display_name: discordUser.global_name || discordUser.username,
+            discord_avatar_url: discordAvatarUrl,
+            discord_linked_at: new Date().toISOString(),
+          });
 
-        if (!existingUsername) break;
-        finalUsername = `${baseUsername}${counter}`;
-        counter++;
-        if (counter > 100) {
-          finalUsername = `${baseUsername}${Date.now().toString().slice(-6)}`;
-          break;
+        if (insertError) {
+          logStep("Profile insert error", { error: insertError.message });
+          throw insertError;
         }
-      }
 
-      // Create auth user with deterministic password
-      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: discordUser.email,
-        password: userPassword,
-        email_confirm: true,
-        user_metadata: { 
-          discord_id: discordUser.id,
-          discord_username: discordUser.username 
-        },
-      });
+        // Create wallet if missing
+        await supabaseAdmin
+          .from("wallets")
+          .upsert({ user_id: userId, balance: 0, locked_balance: 0 }, { onConflict: 'user_id' });
 
-      if (authError) {
-        logStep("Auth user creation error", { error: authError.message });
-        
-        // If email already exists, try to link the account
-        if (authError.message.includes("already been registered")) {
-          const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-          const matchingUser = users.find(u => u.email === discordUser.email);
-          
-          if (matchingUser) {
-            userId = matchingUser.id;
-            
-            // Update the existing profile with Discord data
-            await supabaseAdmin
-              .from("profiles")
-              .update({
-                discord_user_id: discordUser.id,
-                discord_username: discordUser.username,
-                discord_display_name: discordUser.global_name || discordUser.username,
-                discord_avatar_url: discordAvatarUrl,
-                discord_linked_at: new Date().toISOString(),
-              })
-              .eq("user_id", userId);
+        // Update password for session login
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          password: userPassword,
+        });
 
-            // Update password for session login
-            await supabaseAdmin.auth.admin.updateUserById(userId, {
-              password: userPassword,
-            });
+        logStep("Created profile for existing auth user", { userId });
+      } else {
+        // CASE 3: Completely new user - create auth user and profile
+        logStep("Creating new user");
 
-            logStep("Linked Discord to existing user by email");
-          } else {
-            throw authError;
+        // Generate a unique username
+        let baseUsername = discordUser.username.replace(/[^a-zA-Z0-9_]/g, "");
+        if (baseUsername.length < 3) {
+          baseUsername = "user" + discordUser.id.substring(0, 6);
+        }
+
+        let finalUsername = baseUsername;
+        let counter = 1;
+        while (true) {
+          const { data: existingUsername } = await supabaseAdmin
+            .from("profiles")
+            .select("id")
+            .eq("username", finalUsername)
+            .maybeSingle();
+
+          if (!existingUsername) break;
+          finalUsername = `${baseUsername}${counter}`;
+          counter++;
+          if (counter > 100) {
+            finalUsername = `${baseUsername}${Date.now().toString().slice(-6)}`;
+            break;
           }
-        } else {
+        }
+
+        // Create auth user with deterministic password
+        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: discordUser.email,
+          password: userPassword,
+          email_confirm: true,
+          user_metadata: {
+            discord_id: discordUser.id,
+            discord_username: discordUser.username,
+          },
+        });
+
+        if (authError) {
+          logStep("Auth user creation error", { error: authError.message });
           throw authError;
         }
-      } else {
+
         userId = authUser.user.id;
 
         // Create profile

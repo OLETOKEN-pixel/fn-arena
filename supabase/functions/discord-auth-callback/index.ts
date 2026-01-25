@@ -10,6 +10,17 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[DISCORD-AUTH-CALLBACK] ${step}`, details ? JSON.stringify(details) : "");
 };
 
+// Generate a deterministic password for Discord users
+async function generateUserPassword(discordId: string, serviceKey: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`discord-auth-${discordId}-${serviceKey}`);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashBase64 = btoa(String.fromCharCode(...hashArray));
+  // Use first 32 chars as password (secure enough)
+  return hashBase64.slice(0, 32);
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -127,9 +138,11 @@ serve(async (req) => {
       ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png?size=256`
       : null;
 
+    // Generate the deterministic password for this Discord user
+    const userPassword = await generateUserPassword(discordUser.id, serviceRoleKey);
+
     // Check if user already exists by discord_user_id or email
     let existingProfile = null;
-    let existingUser = null;
 
     // First, check by discord_user_id
     const { data: profileByDiscord } = await supabaseAdmin
@@ -156,10 +169,12 @@ serve(async (req) => {
     }
 
     let userId: string;
+    let userEmail: string;
 
     if (existingProfile) {
       // Update existing profile with Discord data + sync username
       userId = existingProfile.user_id;
+      userEmail = existingProfile.email;
       const displayName = (discordUser.global_name || discordUser.username).replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'user';
       
       const { error: updateError } = await supabaseAdmin
@@ -179,6 +194,16 @@ serve(async (req) => {
         throw updateError;
       }
 
+      // Update auth user password to the deterministic one for session login
+      const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: userPassword,
+      });
+
+      if (updateAuthError) {
+        logStep("Auth password update error", { error: updateAuthError.message });
+        // Non-fatal, continue
+      }
+
       logStep("Profile updated with Discord data");
     } else {
       // Create new user
@@ -190,6 +215,8 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      userEmail = discordUser.email;
 
       // Generate a unique username
       let baseUsername = discordUser.username.replace(/[^a-zA-Z0-9_]/g, "");
@@ -215,9 +242,10 @@ serve(async (req) => {
         }
       }
 
-      // Create auth user
+      // Create auth user with deterministic password
       const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: discordUser.email,
+        password: userPassword,
         email_confirm: true,
         user_metadata: { 
           discord_id: discordUser.id,
@@ -247,6 +275,11 @@ serve(async (req) => {
                 discord_linked_at: new Date().toISOString(),
               })
               .eq("user_id", userId);
+
+            // Update password for session login
+            await supabaseAdmin.auth.admin.updateUserById(userId, {
+              password: userPassword,
+            });
 
             logStep("Linked Discord to existing user by email");
           } else {
@@ -321,35 +354,30 @@ serve(async (req) => {
       logStep("Skipping auto-join - bot token or guild ID not configured");
     }
 
-    // Generate a magic link for the user to sign in
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email: existingProfile?.email || discordUser.email,
-      options: {
-        redirectTo: stateRecord.redirect_after || "/",
-      },
+    // Sign in with password to get a REAL persistent session
+    logStep("Generating persistent session with password sign-in");
+    
+    const { data: sessionData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+      email: userEmail!,
+      password: userPassword,
     });
 
-    if (linkError) {
-      logStep("Magic link generation error", { error: linkError.message });
-      throw linkError;
+    if (signInError || !sessionData.session) {
+      logStep("Session sign-in error", { error: signInError?.message });
+      return new Response(
+        JSON.stringify({ error: "Failed to create session. Please try again." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Extract the token from the link
-    const linkUrl = new URL(linkData.properties.action_link);
-    const token = linkUrl.hash.replace("#", "");
-    const tokenParams = new URLSearchParams(token);
-
-    logStep("Login successful", { userId, redirectTo: stateRecord.redirect_after });
+    logStep("Login successful with persistent session", { userId, redirectTo: stateRecord.redirect_after });
 
     return new Response(
       JSON.stringify({
         success: true,
         redirectTo: stateRecord.redirect_after || "/",
-        // Return the magic link parameters for the frontend to use
-        accessToken: tokenParams.get("access_token"),
-        refreshToken: tokenParams.get("refresh_token"),
-        type: tokenParams.get("type"),
+        accessToken: sessionData.session.access_token,
+        refreshToken: sessionData.session.refresh_token,
         userId,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

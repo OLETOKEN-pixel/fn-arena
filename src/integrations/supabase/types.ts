@@ -260,6 +260,33 @@ export type Database = {
           },
         ]
       }
+      discord_oauth_states: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_login: boolean | null
+          redirect_after: string | null
+          state: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_login?: boolean | null
+          redirect_after?: string | null
+          state: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_login?: boolean | null
+          redirect_after?: string | null
+          state?: string
+        }
+        Relationships: []
+      }
       epic_oauth_states: {
         Row: {
           created_at: string | null
@@ -863,6 +890,11 @@ export type Database = {
           avatar_id: string | null
           avatar_url: string | null
           created_at: string | null
+          discord_avatar_url: string | null
+          discord_display_name: string | null
+          discord_linked_at: string | null
+          discord_user_id: string | null
+          discord_username: string | null
           email: string
           epic_account_id: string | null
           epic_linked_at: string | null
@@ -882,6 +914,11 @@ export type Database = {
           avatar_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
+          discord_avatar_url?: string | null
+          discord_display_name?: string | null
+          discord_linked_at?: string | null
+          discord_user_id?: string | null
+          discord_username?: string | null
           email: string
           epic_account_id?: string | null
           epic_linked_at?: string | null
@@ -901,6 +938,11 @@ export type Database = {
           avatar_id?: string | null
           avatar_url?: string | null
           created_at?: string | null
+          discord_avatar_url?: string | null
+          discord_display_name?: string | null
+          discord_linked_at?: string | null
+          discord_user_id?: string | null
+          discord_username?: string | null
           email?: string
           epic_account_id?: string | null
           epic_linked_at?: string | null

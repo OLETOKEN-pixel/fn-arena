@@ -23,6 +23,7 @@ import BuyCoins from "./pages/BuyCoins";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCancel from "./pages/PaymentCancel";
 import EpicCallback from "./pages/EpicCallback";
+import DiscordCallback from "./pages/DiscordCallback";
 import Admin from "./pages/Admin";
 import AdminMatchDetail from "./pages/AdminMatchDetail";
 import AdminUserDetail from "./pages/AdminUserDetail";
@@ -73,6 +74,7 @@ function App() {
                 <Route path="/payment/success" element={<PaymentSuccess />} />
                 <Route path="/payment/cancel" element={<PaymentCancel />} />
                 <Route path="/auth/epic/callback" element={<EpicCallback />} />
+                <Route path="/auth/discord/callback" element={<DiscordCallback />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/matches/:id" element={<AdminMatchDetail />} />
                 <Route path="/admin/users/:id" element={<AdminUserDetail />} />

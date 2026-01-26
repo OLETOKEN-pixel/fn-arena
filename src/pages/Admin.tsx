@@ -162,10 +162,10 @@ export default function Admin() {
   const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending');
   const disputedCount = matches.filter(m => m.status === 'disputed').length;
 
-  // Payment logs - filter deposit transactions from Stripe/PayPal
+  // Payment logs - filter deposit transactions from Stripe
   const paymentLogs = transactions.filter(t => {
-    const tx = t as Transaction & { provider?: string; paypal_order_id?: string };
-    return t.type === 'deposit' && (tx.provider === 'stripe' || tx.provider === 'paypal' || t.stripe_session_id || tx.paypal_order_id);
+    const tx = t as Transaction & { provider?: string };
+    return t.type === 'deposit' && (tx.provider === 'stripe' || t.stripe_session_id);
   });
 
   if (authLoading || isAdmin === null) return <MainLayout><LoadingPage /></MainLayout>;
@@ -269,7 +269,7 @@ export default function Admin() {
               <CardHeader className="py-3">
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-accent" />
-                  Payment Logs (Stripe/PayPal)
+                  Payment Logs (Stripe)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -290,9 +290,9 @@ export default function Admin() {
                       </TableHeader>
                       <TableBody>
                         {paymentLogs.slice(0, 50).map((tx) => {
-                          const extTx = tx as Transaction & { provider?: string; paypal_order_id?: string };
-                          const externalId = tx.stripe_session_id || extTx.paypal_order_id || '-';
-                          const provider = extTx.provider || (tx.stripe_session_id ? 'stripe' : extTx.paypal_order_id ? 'paypal' : 'unknown');
+                          const extTx = tx as Transaction & { provider?: string };
+                          const externalId = tx.stripe_session_id || '-';
+                          const provider = extTx.provider || 'stripe';
                           
                           return (
                             <TableRow key={tx.id}>

@@ -95,16 +95,16 @@ export default function Terms() {
               <li>If a match is canceled due to technical issues or rule violations, we may refund the entry fee to the wallet and/or manage the match according to the integrity rules in Section 11.</li>
             </ul>
 
-            <h2>9. Withdrawals (PayPal Only)</h2>
+            <h2>9. Withdrawals (Stripe Connect)</h2>
             <ul className="space-y-2">
-              <li>Withdrawals are available exclusively via PayPal.</li>
-              <li>Withdrawal fee: 5% of the requested withdrawal amount.</li>
-              <li>Processing time: withdrawals are normally processed within 24 hours. Delays may occur due to anti-fraud checks, verification requirements, PayPal/provider issues, holidays, or technical problems.</li>
-              <li>Verification: to protect users and the Platform, we may require additional checks before approving a withdrawal, including:
+              <li>Withdrawals are processed via Stripe Connect directly to your bank account.</li>
+              <li>Minimum withdrawal: €10. Withdrawal fee: €0.50 per transaction.</li>
+              <li>Processing time: withdrawals are normally processed within 1-3 business days. Delays may occur due to anti-fraud checks, verification requirements, Stripe/bank issues, holidays, or technical problems.</li>
+              <li>Verification: to protect users and the Platform, Stripe may require identity verification (KYC) before enabling payouts, including:
                 <ul className="mt-2 space-y-1">
-                  <li>confirming email and PayPal account ownership;</li>
-                  <li>identity verification (ID) for higher amounts, anomalies, suspected fraud, chargebacks, or multi-account activity;</li>
-                  <li>proof of fair match completion in case of disputes.</li>
+                  <li>confirming identity via government-issued ID;</li>
+                  <li>verifying bank account ownership;</li>
+                  <li>additional checks for higher amounts or suspicious activity.</li>
                 </ul>
               </li>
               <li>We may block, delay, or deny withdrawals if we detect suspicious activity, Terms violations, or non-cooperation with verification.</li>

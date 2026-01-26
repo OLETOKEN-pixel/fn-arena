@@ -63,7 +63,7 @@ serve(async (req) => {
       return new Response("Missing metadata", { status: 400 });
     }
 
-    // Idempotency check - see if we already processed this session
+    // Idempotency check
     const { data: existingTx } = await supabase
       .from("transactions")
       .select("id")
@@ -124,6 +124,42 @@ serve(async (req) => {
     logStep("Transaction record created", { sessionId: session.id, coins });
   }
 
+  // Handle account.updated (Stripe Connect)
+  if (event.type === "account.updated") {
+    const account = event.data.object as Stripe.Account;
+    
+    logStep("Processing account.updated", { 
+      accountId: account.id,
+      chargesEnabled: account.charges_enabled,
+      payoutsEnabled: account.payouts_enabled
+    });
+
+    const chargesEnabled = account.charges_enabled ?? false;
+    const payoutsEnabled = account.payouts_enabled ?? false;
+    const requirementsDue = account.requirements?.currently_due || [];
+
+    // Update connected account status
+    const { error: updateError } = await supabase
+      .from("stripe_connected_accounts")
+      .update({
+        onboarding_complete: chargesEnabled && payoutsEnabled,
+        charges_enabled: chargesEnabled,
+        payouts_enabled: payoutsEnabled,
+        requirements_due: requirementsDue,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("stripe_account_id", account.id);
+
+    if (updateError) {
+      logStep("Error updating connected account", { error: updateError });
+    } else {
+      logStep("Connected account updated", { 
+        accountId: account.id, 
+        onboardingComplete: chargesEnabled && payoutsEnabled 
+      });
+    }
+  }
+
   // Handle charge.refunded
   if (event.type === "charge.refunded") {
     const charge = event.data.object as Stripe.Charge;
@@ -134,8 +170,6 @@ serve(async (req) => {
       paymentIntentId: charge.payment_intent
     });
 
-    // Find the original transaction by looking up via payment intent
-    // The checkout session has a payment_intent, and charges are linked to it
     const paymentIntentId = charge.payment_intent as string;
     
     if (!paymentIntentId) {
@@ -143,7 +177,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ received: true }), { status: 200 });
     }
 
-    // Get the session associated with this payment intent
     const sessions = await stripe.checkout.sessions.list({
       payment_intent: paymentIntentId,
       limit: 1,
@@ -156,7 +189,7 @@ serve(async (req) => {
 
     const session = sessions.data[0];
     const userId = session.metadata?.user_id;
-    const refundedAmount = charge.amount_refunded / 100; // Convert from cents to EUR
+    const refundedAmount = charge.amount_refunded / 100;
 
     if (!userId) {
       logStep("No user_id in session metadata");
@@ -208,13 +241,24 @@ serve(async (req) => {
     logStep("Refund transaction created", { chargeId: charge.id, refundedAmount });
   }
 
-  // Handle payment_intent.succeeded (optional, for logging)
+  // Handle payment_intent.succeeded (logging)
   if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
     logStep("Payment intent succeeded", { 
       paymentIntentId: paymentIntent.id,
       amount: paymentIntent.amount / 100,
       currency: paymentIntent.currency
+    });
+  }
+
+  // Handle transfer events (Stripe Connect payouts)
+  if (event.type === "transfer.created" || event.type === "transfer.paid" || event.type === "transfer.failed") {
+    const transfer = event.data.object as Stripe.Transfer;
+    logStep(`Transfer ${event.type}`, {
+      transferId: transfer.id,
+      amount: transfer.amount / 100,
+      destination: transfer.destination,
+      status: event.type.replace("transfer.", "")
     });
   }
 

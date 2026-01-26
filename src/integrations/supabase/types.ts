@@ -968,6 +968,42 @@ export type Database = {
           },
         ]
       }
+      stripe_connected_accounts: {
+        Row: {
+          charges_enabled: boolean | null
+          created_at: string | null
+          id: string
+          onboarding_complete: boolean | null
+          payouts_enabled: boolean | null
+          requirements_due: Json | null
+          stripe_account_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          charges_enabled?: boolean | null
+          created_at?: string | null
+          id?: string
+          onboarding_complete?: boolean | null
+          payouts_enabled?: boolean | null
+          requirements_due?: Json | null
+          stripe_account_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          charges_enabled?: boolean | null
+          created_at?: string | null
+          id?: string
+          onboarding_complete?: boolean | null
+          payouts_enabled?: boolean | null
+          requirements_due?: Json | null
+          stripe_account_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           created_at: string | null

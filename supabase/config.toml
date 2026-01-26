@@ -6,15 +6,6 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
-[functions.create-paypal-order]
-verify_jwt = false
-
-[functions.capture-paypal-order]
-verify_jwt = false
-
-[functions.paypal-webhook]
-verify_jwt = false
-
 [functions.expire-matches]
 verify_jwt = false
 
@@ -22,4 +13,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.discord-auth-callback]
+verify_jwt = false
+
+[functions.create-stripe-connect-account]
+verify_jwt = false
+
+[functions.create-stripe-payout]
 verify_jwt = false

@@ -144,11 +144,19 @@ export default function Wallet() {
           description: 'Puoi effettuare prelievi.',
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Stripe connect error:', error);
+      
+      // Extract error message from response
+      let errorMessage = 'Impossibile avviare la verifica Stripe. Riprova.';
+      if (error && typeof error === 'object' && 'message' in error) {
+        const errObj = error as { message?: string; context?: { body?: { error?: string } } };
+        errorMessage = errObj.context?.body?.error || errObj.message || errorMessage;
+      }
+      
       toast({
-        title: 'Errore',
-        description: 'Impossibile avviare la verifica Stripe. Riprova.',
+        title: 'Errore Stripe',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

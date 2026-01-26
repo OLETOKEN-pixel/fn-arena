@@ -24,9 +24,32 @@ serve(async (req) => {
     logStep("Function started");
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    
     if (!stripeKey) {
+      logStep("CRITICAL: STRIPE_SECRET_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Payment system not configured" }),
+        JSON.stringify({ error: "Sistema pagamenti non configurato. Contatta il supporto." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify it's a valid secret key (sk_live_ or sk_test_)
+    const keyPrefix = stripeKey.substring(0, 8);
+    logStep("Key prefix check", { prefix: keyPrefix });
+
+    if (!stripeKey.startsWith("sk_live_") && !stripeKey.startsWith("sk_test_")) {
+      logStep("CRITICAL: Invalid key type", { 
+        prefix: keyPrefix,
+        expected: "sk_live_ or sk_test_",
+        isRestricted: stripeKey.startsWith("rk_"),
+        isPublishable: stripeKey.startsWith("pk_")
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "Configurazione Stripe non valida. Contatta il supporto.",
+          code: "INVALID_KEY_TYPE"
+        }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -193,9 +216,28 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    logStep("ERROR", { message: errorMessage });
+    const stripeError = error as { type?: string; code?: string; requestId?: string };
+    
+    logStep("ERROR", { 
+      message: errorMessage,
+      type: stripeError.type,
+      code: stripeError.code,
+      requestId: stripeError.requestId
+    });
+    
+    // User-friendly message based on error type
+    let userMessage = "Impossibile completare il prelievo. Riprova più tardi.";
+    
+    if (errorMessage.includes("does not have the required permissions")) {
+      userMessage = "Configurazione Stripe incompleta. Contatta il supporto.";
+    } else if (errorMessage.includes("Invalid API Key")) {
+      userMessage = "Chiave API Stripe non valida. Contatta il supporto.";
+    } else if (errorMessage.includes("insufficient")) {
+      userMessage = "Fondi insufficienti per il trasferimento.";
+    }
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: userMessage, details: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -89,7 +89,7 @@ export interface WithdrawalRequest {
   id: string;
   user_id: string;
   amount: number;
-  payment_method: 'paypal' | 'bank';
+  payment_method: 'stripe';
   payment_details: string;
   status: WithdrawalStatus;
   admin_notes: string | null;

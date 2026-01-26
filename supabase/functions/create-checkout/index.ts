@@ -12,11 +12,11 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CREATE-CHECKOUT] ${step}${detailsStr}`);
 };
 
-// Production domain fallback
-const PRODUCTION_DOMAIN = "https://oleboytoken.lovable.app";
+const PROCESSING_FEE = 0.50; // Fixed €0.50 fee
+const MIN_COINS = 5; // Minimum purchase 5 coins
+const PRODUCTION_DOMAIN = "https://oleboytoken.com";
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -24,47 +24,34 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // SAFETY CHECK: Verify Stripe key is configured
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
       logStep("CRITICAL: STRIPE_SECRET_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Payment system not configured. Contact support. [ERR_NO_STRIPE_KEY]" }),
+        JSON.stringify({ error: "Payment system not configured. Contact support." }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Detect mode (LIVE vs TEST)
     const isLiveMode = stripeKey.startsWith("sk_live_");
-    logStep(`Mode: ${isLiveMode ? "LIVE" : "TEST"}`, { keyPrefix: stripeKey.substring(0, 8) });
+    logStep(`Mode: ${isLiveMode ? "LIVE" : "TEST"}`);
 
-    // In production, warn if using test keys (but allow for now)
-    const origin = req.headers.get("origin") || PRODUCTION_DOMAIN;
-    const isProductionOrigin = origin.includes("oleboytoken.lovable.app");
-    
-    if (isProductionOrigin && !isLiveMode) {
-      logStep("WARNING: Production origin detected but using TEST Stripe key");
-    }
-
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: "2023-10-16",
-    });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get the authorization header to identify the user
+    // Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      logStep("No authorization header provided");
+      logStep("No authorization header");
       return new Response(
         JSON.stringify({ error: "No authorization header" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Verify the JWT token
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
@@ -78,45 +65,35 @@ serve(async (req) => {
 
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Get the amount from the request body
     const { amount } = await req.json();
     
-    if (!amount || amount < 1) {
-      logStep("Invalid amount", { amount });
+    // Validation: minimum 5 coins
+    if (!amount || amount < MIN_COINS) {
+      logStep("Invalid amount", { amount, minRequired: MIN_COINS });
       return new Response(
-        JSON.stringify({ error: "Invalid amount. Minimum is 1 Coin (€1)" }),
+        JSON.stringify({ error: `Minimo acquisto: ${MIN_COINS} Coins (€${MIN_COINS})` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    logStep("Creating checkout session", { amount, origin });
+    const origin = req.headers.get("origin") || PRODUCTION_DOMAIN;
+    const totalAmount = amount + PROCESSING_FEE;
 
-    // Get or create Stripe customer
-    let customerId: string | undefined;
-    
-    const existingCustomers = await stripe.customers.list({
-      email: user.email,
-      limit: 1,
+    logStep("Creating checkout session", { 
+      coins: amount, 
+      fee: PROCESSING_FEE, 
+      total: totalAmount,
+      origin 
     });
 
-    if (existingCustomers.data.length > 0) {
-      customerId = existingCustomers.data[0].id;
-      logStep("Found existing customer", { customerId });
-    } else {
-      const newCustomer = await stripe.customers.create({
-        email: user.email,
-        metadata: {
-          supabase_user_id: user.id,
-        },
-      });
-      customerId = newCustomer.id;
-      logStep("Created new customer", { customerId });
-    }
-
-    // Create a Stripe checkout session
+    // Create Stripe checkout session
+    // Using customer_email to prefill but allowing modification
+    // NOT passing customer ID to allow email change
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ["card"],
+      customer_email: user.email, // Prefill but editable
+      // Enable card and PayPal (if configured in Stripe dashboard)
+      payment_method_types: ["card", "paypal"],
+      
       line_items: [
         {
           price_data: {
@@ -125,7 +102,18 @@ serve(async (req) => {
               name: `${amount} Coins`,
               description: "OLEBOY TOKEN Gaming Coins",
             },
-            unit_amount: Math.round(amount * 100), // Convert to cents
+            unit_amount: Math.round(amount * 100), // Cents
+          },
+          quantity: 1,
+        },
+        {
+          price_data: {
+            currency: "eur",
+            product_data: {
+              name: "Commissione di servizio",
+              description: "Processing fee",
+            },
+            unit_amount: Math.round(PROCESSING_FEE * 100), // 50 cents
           },
           quantity: 1,
         },
@@ -136,10 +124,15 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
         coins: amount.toString(),
+        fee: PROCESSING_FEE.toString(),
       },
     });
 
-    logStep("Checkout session created", { sessionId: session.id, mode: isLiveMode ? "LIVE" : "TEST" });
+    logStep("Checkout session created", { 
+      sessionId: session.id, 
+      mode: isLiveMode ? "LIVE" : "TEST",
+      paymentMethods: ["card", "paypal"]
+    });
 
     return new Response(
       JSON.stringify({ url: session.url, sessionId: session.id }),

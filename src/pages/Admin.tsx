@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/custom-badge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,8 +45,7 @@ export default function Admin() {
   const [platformEarnings, setPlatformEarnings] = useState<{ id: string; match_id: string; amount: number; created_at: string }[]>([]);
   const [withdrawPlatformDialog, setWithdrawPlatformDialog] = useState(false);
   const [platformWithdrawAmount, setPlatformWithdrawAmount] = useState('');
-  const [platformPaymentMethod, setPlatformPaymentMethod] = useState<'paypal' | 'bank'>('paypal');
-  const [platformPaymentDetails, setPlatformPaymentDetails] = useState('');
+  const [platformPaymentNotes, setPlatformPaymentNotes] = useState('');
   const [withdrawingPlatform, setWithdrawingPlatform] = useState(false);
 
   // Dialog state for processing withdrawals
@@ -136,16 +136,16 @@ export default function Admin() {
 
   const handleWithdrawPlatformEarnings = async () => {
     const amount = parseFloat(platformWithdrawAmount);
-    if (isNaN(amount) || amount <= 0 || amount > platformBalance || !platformPaymentDetails.trim()) {
-      toast({ title: 'Errore', description: 'Verifica i dati inseriti.', variant: 'destructive' });
+    if (isNaN(amount) || amount <= 0 || amount > platformBalance) {
+      toast({ title: 'Errore', description: 'Verifica importo inserito.', variant: 'destructive' });
       return;
     }
 
     setWithdrawingPlatform(true);
     const { data, error } = await supabase.rpc('withdraw_platform_earnings', {
       p_amount: amount,
-      p_payment_method: platformPaymentMethod,
-      p_payment_details: platformPaymentDetails,
+      p_payment_method: 'stripe',
+      p_payment_details: platformPaymentNotes || 'Admin withdrawal',
     });
 
     const result = data as { success: boolean; error?: string } | null;
@@ -438,18 +438,21 @@ export default function Admin() {
       {/* Platform Withdraw Dialog */}
       <Dialog open={withdrawPlatformDialog} onOpenChange={setWithdrawPlatformDialog}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Preleva Guadagni</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Preleva Guadagni Platform</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <input type="number" step="0.01" max={platformBalance} value={platformWithdrawAmount} onChange={(e) => setPlatformWithdrawAmount(e.target.value)} className="w-full px-3 py-2 rounded-md border border-input bg-background" placeholder="Importo €" />
-            <div className="flex gap-2">
-              <Button type="button" variant={platformPaymentMethod === 'paypal' ? 'default' : 'outline'} onClick={() => setPlatformPaymentMethod('paypal')} className="flex-1">PayPal</Button>
-              <Button type="button" variant={platformPaymentMethod === 'bank' ? 'default' : 'outline'} onClick={() => setPlatformPaymentMethod('bank')} className="flex-1">Bonifico</Button>
+            <div>
+              <Label>Importo (€)</Label>
+              <input type="number" step="0.01" max={platformBalance} value={platformWithdrawAmount} onChange={(e) => setPlatformWithdrawAmount(e.target.value)} className="w-full px-3 py-2 rounded-md border border-input bg-background" placeholder="Importo €" />
+              <p className="text-xs text-muted-foreground mt-1">Disponibile: €{platformBalance.toFixed(2)}</p>
             </div>
-            <input type="text" value={platformPaymentDetails} onChange={(e) => setPlatformPaymentDetails(e.target.value)} className="w-full px-3 py-2 rounded-md border border-input bg-background" placeholder={platformPaymentMethod === 'paypal' ? 'Email PayPal' : 'IBAN'} />
+            <div>
+              <Label>Note / Riferimento</Label>
+              <input type="text" value={platformPaymentNotes} onChange={(e) => setPlatformPaymentNotes(e.target.value)} className="w-full px-3 py-2 rounded-md border border-input bg-background" placeholder="Note per questa operazione" />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWithdrawPlatformDialog(false)}>Annulla</Button>
-            <Button onClick={handleWithdrawPlatformEarnings} disabled={withdrawingPlatform}>{withdrawingPlatform ? '...' : 'Richiedi'}</Button>
+            <Button onClick={handleWithdrawPlatformEarnings} disabled={withdrawingPlatform}>{withdrawingPlatform ? '...' : 'Registra Prelievo'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

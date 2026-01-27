@@ -63,7 +63,9 @@ export interface Profile {
   preferred_platform: Platform;
   role: UserRole;
   is_banned: boolean;
+  /** @deprecated Legacy field, payouts now use Stripe Connect */
   paypal_email: string | null;
+  /** @deprecated Legacy field, payouts now use Stripe Connect */
   iban: string | null;
   created_at: string;
   updated_at: string;

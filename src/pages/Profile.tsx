@@ -81,7 +81,6 @@ export default function Profile() {
   const [epicUsername, setEpicUsername] = useState('');
   const [preferredRegion, setPreferredRegion] = useState<Region>('EU');
   const [preferredPlatform, setPreferredPlatform] = useState<Platform>('PC');
-  const [paypalEmail, setPaypalEmail] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   
@@ -112,7 +111,6 @@ export default function Profile() {
       setEpicUsername(profile.epic_username || '');
       setPreferredRegion((profile.preferred_region as Region) || 'EU');
       setPreferredPlatform((profile.preferred_platform as Platform) || 'PC');
-      setPaypalEmail(profile.paypal_email || '');
     }
   }, [profile]);
 
@@ -127,7 +125,6 @@ export default function Profile() {
           epic_username: epicUsername || null,
           preferred_region: preferredRegion,
           preferred_platform: preferredPlatform,
-          paypal_email: paypalEmail || null,
         })
         .eq('user_id', user.id);
 
@@ -509,45 +506,38 @@ export default function Profile() {
                 </div>
               )}
               
-              {/* Payments Section */}
+              {/* Payments Section - Stripe Only */}
               {activeSection === 'payments' && (
                 <div className="space-y-5">
-                  <h2 className="text-lg font-semibold">Metodi di Pagamento</h2>
+                  <h2 className="text-lg font-semibold">Pagamenti</h2>
                   
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center">
+                  <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-600 to-violet-400 flex items-center justify-center">
                         <CreditCard className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <p className="font-medium">PayPal</p>
+                        <p className="font-medium">Stripe Connect</p>
                         <p className="text-sm text-muted-foreground">
                           Per ricevere i pagamenti delle vincite
                         </p>
                       </div>
                     </div>
-                    {paypalEmail && (
-                      <Badge variant="outline" className="text-green-500 border-green-500/50">
-                        <Check className="w-3 h-3 mr-1" /> Configurato
-                      </Badge>
-                    )}
+                    
+                    <div className="p-3 bg-muted/30 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Configura e gestisci i prelievi dalla pagina Wallet.
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate('/wallet')}
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Vai al Wallet
+                      </Button>
+                    </div>
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="paypalEmail">Email PayPal</Label>
-                    <Input
-                      id="paypalEmail"
-                      type="email"
-                      value={paypalEmail}
-                      onChange={(e) => setPaypalEmail(e.target.value)}
-                      placeholder="La tua email PayPal per i prelievi"
-                    />
-                  </div>
-                  
-                  <Button onClick={handleSave} disabled={isSaving}>
-                    <Save className="w-4 h-4 mr-2" />
-                    {isSaving ? 'Salvataggio...' : 'Salva'}
-                  </Button>
                 </div>
               )}
               

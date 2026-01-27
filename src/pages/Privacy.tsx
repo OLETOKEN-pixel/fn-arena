@@ -68,7 +68,7 @@ export default function Privacy() {
               <li><strong>Account data:</strong> email address, username, password (stored in encrypted/hashed form where applicable).</li>
               <li><strong>Profile settings:</strong> region/platform preferences, linked gaming identifiers (e.g., Epic Games username) when you enter them.</li>
               <li><strong>Support communications:</strong> messages you send to us via email or other support channels, including attachments you provide as evidence in disputes.</li>
-              <li><strong>Payment/withdrawal information:</strong> PayPal address for withdrawals and payment-related identifiers needed for processing (note: we do not store full card details).</li>
+              <li><strong>Payment/withdrawal information:</strong> Stripe Connect account for withdrawals and payment-related identifiers needed for processing (note: we do not store full card details).</li>
             </ul>
 
             <h3>3.2. Data collected automatically</h3>

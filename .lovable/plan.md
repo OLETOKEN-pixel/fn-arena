@@ -1,177 +1,110 @@
 
-# Piano: Fix Errore 403 Stripe Connect - Chiave API Sbagliata
+# Piano: Fix Configurazione STRIPE_SECRET_KEY Errata
 
 ## Diagnosi
 
-Dall'analisi dei log, l'errore è chiaro:
+I test confermano che **la chiave attualmente configurata come `STRIPE_SECRET_KEY` NON è una chiave Stripe valida**:
 
 ```
-The provided key 'rk_live_*****...' does not have the required permissions
+Invalid API Key provided: mk_1Sqcj***************KAHg
 ```
 
-Il backend sta usando una **restricted key** (`rk_live_...`) invece della **secret key completa** (`sk_live_...`).
+| Prefisso | Tipo | Validità |
+|----------|------|----------|
+| `mk_` | **NON È UNA CHIAVE API** | ❌ Potrebbe essere un Meter Key o altro ID Stripe |
+| `sk_live_` | Secret Key Live | ✓ Corretta per produzione |
+| `sk_test_` | Secret Key Test | ✓ Corretta per test |
+| `rk_` | Restricted Key | ⚠️ Permessi limitati |
+| `pk_` | Publishable Key | ❌ Solo frontend |
 
-| Tipo Chiave | Prefisso | Permessi Connect | Uso Corretto |
-|-------------|----------|------------------|--------------|
-| Publishable | `pk_` | Nessuno | Solo frontend |
-| Secret | `sk_live_` / `sk_test_` | Tutti | Backend - operazioni complete |
-| Restricted | `rk_live_` / `rk_test_` | Limitati | Backend - scope specifici |
-
-Le restricted keys (`rk_`) non hanno i permessi per Stripe Connect (`accounts.create`, `accountLinks.create`, `transfers.create`) a meno che non siano stati esplicitamente aggiunti durante la creazione della chiave.
-
----
-
-## Soluzione
-
-### FASE 1: Aggiornare la Secret Key (Azione Manuale)
-
-**Devi aggiornare il secret `STRIPE_SECRET_KEY` con la chiave completa:**
-
-1. Vai sulla [Stripe Dashboard](https://dashboard.stripe.com/apikeys)
-2. Copia la **Secret key** (inizia con `sk_live_...` o `sk_test_...`)
-3. Aggiorna il secret nel progetto tramite Lovable Cloud
-
-**NON usare**:
-- Chiavi che iniziano con `rk_` (restricted)
-- Chiavi che iniziano con `pk_` (publishable)
+**Problema**: Quando hai aggiornato il secret, è stato inserito un valore errato (probabilmente un Meter Key o altro ID Stripe, non la Secret Key).
 
 ---
 
-### FASE 2: Validazione Chiave nel Backend
+## Soluzione Immediata
 
-Aggiungere controlli nelle edge functions per rilevare subito chiavi errate e loggare informazioni utili per debug:
+### Passo 1: Ottenere la Chiave Corretta dalla Dashboard Stripe
 
-**Modifiche a `create-stripe-connect-account/index.ts`:**
+1. Vai su [Stripe Dashboard → Developers → API Keys](https://dashboard.stripe.com/apikeys)
+2. Copia la **Secret key** (NON il Meter Key o altri ID)
 
-```typescript
-// Validazione chiave prima di usarla
-const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-
-if (!stripeKey) {
-  logStep("CRITICAL: STRIPE_SECRET_KEY not configured");
-  return new Response(
-    JSON.stringify({ error: "Sistema pagamenti non configurato" }),
-    { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
-}
-
-// Verifica che sia una secret key valida (sk_live_ o sk_test_)
-const keyPrefix = stripeKey.substring(0, 8);
-logStep("Key prefix check", { prefix: keyPrefix });
-
-if (!stripeKey.startsWith("sk_live_") && !stripeKey.startsWith("sk_test_")) {
-  logStep("CRITICAL: Invalid key type", { 
-    prefix: keyPrefix,
-    expected: "sk_live_ or sk_test_",
-    isRestricted: stripeKey.startsWith("rk_"),
-    isPublishable: stripeKey.startsWith("pk_")
-  });
-  
-  return new Response(
-    JSON.stringify({ 
-      error: "Configurazione Stripe non valida. Contatta il supporto.",
-      code: "INVALID_KEY_TYPE"
-    }),
-    { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
-}
-```
-
----
-
-### FASE 3: Migliorare Error Handling e UI
-
-**Modifiche a `create-stripe-connect-account/index.ts` - catch block:**
-
-```typescript
-} catch (error: unknown) {
-  const errorMessage = error instanceof Error ? error.message : "Unknown error";
-  const stripeError = error as { type?: string; code?: string; requestId?: string };
-  
-  logStep("ERROR", { 
-    message: errorMessage,
-    type: stripeError.type,
-    code: stripeError.code,
-    requestId: stripeError.requestId
-  });
-  
-  // Messaggio user-friendly basato sul tipo di errore
-  let userMessage = "Impossibile avviare la verifica. Riprova più tardi.";
-  
-  if (errorMessage.includes("does not have the required permissions")) {
-    userMessage = "Configurazione Stripe incompleta. Contatta il supporto.";
-  } else if (errorMessage.includes("Invalid API Key")) {
-    userMessage = "Chiave API Stripe non valida. Contatta il supporto.";
-  }
-  
-  return new Response(
-    JSON.stringify({ error: userMessage, details: errorMessage }),
-    { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
-}
-```
-
-**Modifiche a `src/pages/Wallet.tsx` - error handling:**
-
-```typescript
-} catch (error) {
-  console.error('Stripe connect error:', error);
-  
-  const errorData = error as { message?: string; details?: string };
-  const errorMessage = errorData.message || 'Impossibile avviare la verifica Stripe.';
-  
-  toast({
-    title: 'Errore Stripe',
-    description: errorMessage,
-    variant: 'destructive',
-  });
-}
-```
-
----
-
-### FASE 4: Applicare le stesse modifiche a tutte le edge functions
-
-Le stesse validazioni vanno applicate a:
-
-| File | Operazioni Connect |
-|------|-------------------|
-| `create-stripe-connect-account/index.ts` | `accounts.create`, `accountLinks.create` |
-| `create-stripe-payout/index.ts` | `transfers.create` |
-| `create-checkout/index.ts` | `checkout.sessions.create` (funziona anche con rk_, ma meglio unificare) |
-| `stripe-webhook/index.ts` | Lettura eventi (funziona con rk_) |
-
----
-
-## File da Modificare
-
-| File | Modifica |
-|------|----------|
-| `supabase/functions/create-stripe-connect-account/index.ts` | Aggiungere validazione chiave + logging migliorato |
-| `supabase/functions/create-stripe-payout/index.ts` | Aggiungere validazione chiave + logging migliorato |
-| `src/pages/Wallet.tsx` | Migliorare gestione errori e messaggi UI |
-
----
-
-## Azione Richiesta da Te
-
-**IMPORTANTE**: Prima di implementare il codice, devi aggiornare il secret `STRIPE_SECRET_KEY`:
-
-1. Ottieni la **Secret key** dalla [Stripe Dashboard](https://dashboard.stripe.com/apikeys)
-   - Deve iniziare con `sk_live_` (produzione) o `sk_test_` (test)
-   - **NON** usare restricted keys (`rk_...`)
+   **LIVE Mode**:
+   ```
+   sk_live_XXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   ```
    
-2. Aggiorna il secret nel progetto
+   **TEST Mode** (per testing):
+   ```
+   sk_test_XXXXXXXXXXXXXXXXXXXXXXXXXXXX
+   ```
 
-Una volta aggiornata la chiave, il codice funzionerà correttamente.
+   ![Stripe API Keys](https://docs.stripe.com/img/dashboard/api-keys.png)
+
+### Passo 2: Aggiornare il Secret
+
+Usa lo strumento per aggiornare `STRIPE_SECRET_KEY` con la chiave corretta.
+
+### Passo 3: Verificare STRIPE_WEBHOOK_SECRET
+
+Il `STRIPE_WEBHOOK_SECRET` deve corrispondere all'ambiente:
+- Se usi `sk_live_...` → usa il webhook secret **LIVE** (`whsec_...` dalla dashboard LIVE)
+- Se usi `sk_test_...` → usa il webhook secret **TEST** (`whsec_...` dalla dashboard TEST)
+
+Per ottenere il webhook secret:
+1. Stripe Dashboard → Developers → Webhooks
+2. Clicca sul tuo endpoint
+3. Copia "Signing secret" (`whsec_...`)
 
 ---
 
-## Verifica Finale
+## Cosa è Già Corretto nel Codice
 
-Dopo l'implementazione:
+| Componente | Stato | Note |
+|------------|-------|------|
+| `create-checkout/index.ts` | ✓ | Usa `price_data` (no price_id hardcodati) |
+| `create-stripe-connect-account/index.ts` | ✓ | Validazione chiave + gestione errori |
+| `create-stripe-payout/index.ts` | ✓ | Validazione chiave + gestione errori |
+| `stripe-webhook/index.ts` | ✓ | Gestisce eventi correttamente |
+| Frontend (BuyCoins) | ✓ | Non usa publishable key (redirect a Checkout) |
 
-- [ ] Click su "Configura Stripe" → parte onboarding senza errori
-- [ ] Nessun 403 su `/v1/accounts` nei log Stripe
-- [ ] Log mostrano `prefix: sk_live_` o `sk_test_`
-- [ ] Dopo onboarding, utente può richiedere payout
+**Il codice è pronto per LIVE** - serve solo configurare le chiavi corrette.
+
+---
+
+## Checklist Configurazione Live
+
+| Secret | Valore Richiesto | Come Verificare |
+|--------|------------------|-----------------|
+| `STRIPE_SECRET_KEY` | `sk_live_XXXXX...` | Dashboard → API Keys → Secret key |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_XXXXX...` (LIVE) | Dashboard → Webhooks → Endpoint → Signing secret |
+
+---
+
+## Dopo l'Aggiornamento
+
+Una volta configurate le chiavi corrette:
+
+1. **Test Acquisto Coins**: 
+   - Vai su `/buy`
+   - Seleziona 5 coins
+   - Clicca "Paga ora"
+   - Deve aprirsi Stripe Checkout in modalità LIVE
+   - Metodi pagamento: Carta + PayPal (se configurato in Stripe)
+
+2. **Test Payout (Stripe Connect)**:
+   - Vai su `/wallet`
+   - Clicca "Configura Stripe"
+   - Deve aprirsi l'onboarding Stripe Express
+   - Dopo completamento, pulsante "Preleva" attivo
+
+---
+
+## Azione Richiesta
+
+Devo aggiornare il secret `STRIPE_SECRET_KEY` con la chiave corretta dal tuo account Stripe.
+
+**IMPORTANTE**: Assicurati di copiare la **Secret key** (inizia con `sk_live_` o `sk_test_`), NON:
+- Meter Key (`mk_...`)
+- Publishable Key (`pk_...`)
+- Restricted Key (`rk_...`)
+- Product/Price ID (`prod_...`, `price_...`)

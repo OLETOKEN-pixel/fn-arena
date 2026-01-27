@@ -222,7 +222,7 @@ export default function BuyCoins() {
             {/* Payment info */}
             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <CreditCard className="w-4 h-4" />
-              <span>Pagamento sicuro tramite Stripe • Carta o PayPal</span>
+              <span>Pagamento sicuro tramite Stripe</span>
             </div>
           </CardContent>
         </Card>

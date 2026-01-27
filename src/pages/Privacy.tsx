@@ -89,7 +89,7 @@ export default function Privacy() {
             <h3>3.4. Data from third parties</h3>
             <ul className="space-y-2">
               <li>Payment processors (e.g., Stripe) may provide us with confirmation of successful/failed payments and limited transaction metadata.</li>
-              <li>PayPal may provide data necessary to confirm withdrawal processing status.</li>
+              <li>Stripe Connect may provide data necessary to confirm withdrawal processing status.</li>
             </ul>
             <p>We do not receive your full payment card details from Stripe.</p>
 
@@ -116,7 +116,7 @@ export default function Privacy() {
             <p>We do not sell your personal data. We may share it only when necessary:</p>
             <ul className="space-y-2">
               <li><strong>Service providers:</strong> hosting providers, analytics/monitoring tools, email/support tools, and other vendors helping operate the Platform.</li>
-              <li><strong>Payment providers:</strong> Stripe (deposits) and PayPal (withdrawals), only to process payments/withdrawals and prevent fraud.</li>
+              <li><strong>Payment providers:</strong> Stripe for all payments and withdrawals, only to process transactions and prevent fraud.</li>
               <li><strong>Legal and regulatory authorities:</strong> if required by law, court order, or to protect our rights and users.</li>
               <li><strong>Professional advisors:</strong> legal, accounting, or security advisors if needed.</li>
               <li><strong>Business transfer:</strong> if the Platform is sold or transferred, data may be transferred as part of that transaction, subject to law.</li>

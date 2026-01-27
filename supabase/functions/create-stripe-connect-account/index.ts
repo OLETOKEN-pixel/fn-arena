@@ -182,10 +182,16 @@ serve(async (req) => {
       userMessage = "Configurazione Stripe incompleta. Contatta il supporto.";
     } else if (errorMessage.includes("Invalid API Key")) {
       userMessage = "Chiave API Stripe non valida. Contatta il supporto.";
+    } else if (errorMessage.includes("transfers") || errorMessage.includes("capabilities")) {
+      userMessage = "Account Stripe non abilitato ai trasferimenti. Completa la verifica.";
     }
     
     return new Response(
-      JSON.stringify({ error: userMessage, details: errorMessage }),
+      JSON.stringify({ 
+        error: userMessage, 
+        details: errorMessage,
+        stripeRequestId: stripeError.requestId || null
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

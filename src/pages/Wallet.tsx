@@ -147,16 +147,35 @@ export default function Wallet() {
     } catch (error: unknown) {
       console.error('Stripe connect error:', error);
       
-      // Extract error message from response
+      // Extract detailed error message from response
       let errorMessage = 'Impossibile avviare la verifica Stripe. Riprova.';
-      if (error && typeof error === 'object' && 'message' in error) {
-        const errObj = error as { message?: string; context?: { body?: { error?: string } } };
-        errorMessage = errObj.context?.body?.error || errObj.message || errorMessage;
+      let requestId: string | null = null;
+      
+      if (error && typeof error === 'object') {
+        const errObj = error as { 
+          message?: string; 
+          context?: { 
+            body?: { 
+              error?: string; 
+              details?: string; 
+              stripeRequestId?: string;
+              code?: string;
+            } 
+          } 
+        };
+        const body = errObj.context?.body;
+        errorMessage = body?.error || body?.details || errObj.message || errorMessage;
+        requestId = body?.stripeRequestId || null;
+        
+        // Log full error for debugging
+        console.error('Stripe error details:', JSON.stringify(body, null, 2));
       }
       
       toast({
         title: 'Errore Stripe',
-        description: errorMessage,
+        description: requestId 
+          ? `${errorMessage} (ID: ${requestId})` 
+          : errorMessage,
         variant: 'destructive',
       });
     } finally {

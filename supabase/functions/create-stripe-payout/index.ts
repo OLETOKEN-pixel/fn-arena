@@ -234,10 +234,18 @@ serve(async (req) => {
       userMessage = "Chiave API Stripe non valida. Contatta il supporto.";
     } else if (errorMessage.includes("insufficient")) {
       userMessage = "Fondi insufficienti per il trasferimento.";
+    } else if (errorMessage.includes("transfers") || errorMessage.includes("capabilities")) {
+      userMessage = "Account Stripe non abilitato ai trasferimenti. Completa la verifica.";
+    } else if (errorMessage.includes("destination account")) {
+      userMessage = "Il tuo account Stripe richiede verifica aggiuntiva.";
     }
     
     return new Response(
-      JSON.stringify({ error: userMessage, details: errorMessage }),
+      JSON.stringify({ 
+        error: userMessage, 
+        details: errorMessage,
+        stripeRequestId: stripeError.requestId || null
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

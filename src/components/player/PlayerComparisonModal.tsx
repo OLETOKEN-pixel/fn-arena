@@ -55,13 +55,11 @@ export function PlayerComparisonModal({
 
     try {
       // Fetch both stats and ranks in parallel
-      // Cast to any for newly created RPCs not yet in generated types
-      const rpc = supabase.rpc as any;
       const [myStatsRes, targetStatsRes, myRankRes, targetRankRes] = await Promise.all([
         supabase.rpc('get_player_stats', { p_user_id: user.id }),
         supabase.rpc('get_player_stats', { p_user_id: targetUserId }),
-        rpc('get_player_rank', { p_user_id: user.id }),
-        rpc('get_player_rank', { p_user_id: targetUserId }),
+        supabase.rpc('get_player_rank', { p_user_id: user.id }),
+        supabase.rpc('get_player_rank', { p_user_id: targetUserId }),
       ]);
 
       if (myStatsRes.data && typeof myStatsRes.data === 'object') {

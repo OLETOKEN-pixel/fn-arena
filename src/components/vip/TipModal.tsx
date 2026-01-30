@@ -138,26 +138,8 @@ export function TipModal({
 
   const quickAmounts = [1, 5, 10, 25];
 
-  if (!isVip) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-sm bg-card border-border">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Gift className="w-5 h-5 text-amber-400" />
-              Send Tip
-            </DialogTitle>
-          </DialogHeader>
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              VIP membership required to send tips. Upgrade to VIP to unlock this feature!
-            </AlertDescription>
-          </Alert>
-        </DialogContent>
-      </Dialog>
-    );
-  }
+  // VIP check removed from UI - backend RPC will enforce VIP requirement
+  // Non-VIP users can see the modal but will get an error when trying to send
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

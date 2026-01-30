@@ -69,7 +69,7 @@ export function PlayerStatsModal({ open, onOpenChange, userId }: PlayerStatsModa
     });
   };
 
-  const canTip = user && user.id !== userId && isVip;
+  const canTip = user && user.id !== userId;
   const canCompare = user && user.id !== userId;
 
   return (

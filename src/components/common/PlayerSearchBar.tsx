@@ -31,7 +31,7 @@ export function PlayerSearchBar() {
       clearTimeout(debounceRef.current);
     }
 
-    if (query.trim().length < 2) {
+    if (query.trim().length < 1) {
       setResults([]);
       setOpen(false);
       return;
@@ -57,7 +57,7 @@ export function PlayerSearchBar() {
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, 200);
 
     return () => {
       if (debounceRef.current) {
@@ -107,7 +107,7 @@ export function PlayerSearchBar() {
             placeholder="Search players..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => query.trim().length >= 2 && setOpen(true)}
+            onFocus={() => query.trim().length >= 1 && setOpen(true)}
             className="pl-9 pr-4 h-9 w-48 lg:w-64 bg-secondary/50 border-border/50 focus:border-primary/50 transition-all"
           />
           {loading && (

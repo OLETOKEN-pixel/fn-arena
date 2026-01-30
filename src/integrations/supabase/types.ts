@@ -1791,6 +1791,7 @@ export type Database = {
         Args: { p_match_id: string; p_winner_side: string }
         Returns: Json
       }
+      generate_unique_username: { Args: { base_name: string }; Returns: string }
       get_admin_issue_stats: { Args: never; Returns: Json }
       get_avatar_shop: {
         Args: never
@@ -1939,6 +1940,15 @@ export type Database = {
       respond_to_invite: {
         Args: { p_action: string; p_team_id: string }
         Returns: Json
+      }
+      search_players_public: {
+        Args: { p_current_user_id?: string; p_limit?: number; p_query: string }
+        Returns: {
+          avatar_url: string
+          rank: number
+          user_id: string
+          username: string
+        }[]
       }
       search_users_for_invite: {
         Args: { p_search_term: string; p_team_id: string }

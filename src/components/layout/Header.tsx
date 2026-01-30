@@ -75,8 +75,8 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
           <PlayerSearchBar />
         </div>
 
-        {/* Center: VIP Tip Button (only for VIP users) */}
-        {user && isVip && (
+        {/* Center: Tip Button (visible to all logged-in users) */}
+        {user && (
           <div className="hidden sm:flex items-center">
             <Button
               onClick={() => setShowTipModal(true)}

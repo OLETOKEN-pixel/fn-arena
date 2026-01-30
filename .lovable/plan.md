@@ -1,275 +1,443 @@
 
-# Piano: Fix Completo UI/UX Premium + Bug Critici
+# Piano: Audio Notifications REALTIME (Zero Delay)
 
-## Diagnosi Problemi Rilevati
+## Diagnosi del Problema Attuale
 
-### 🔴 Problemi Critici
+### Stato Corrente
+L'hook `useSoundNotifications` esiste e funziona tecnicamente, MA:
 
-| Problema | Causa | File |
-|----------|-------|------|
-| **Compare fallisce** | `supabase.rpc as any` causa errore "Cannot read properties of undefined (reading 'rest')" | `PlayerComparisonModal.tsx` |
-| **Player Search non trova nessuno** | La RPC `search_players_public` non esiste nel database - la migrazione non è stata creata | Migrazione SQL mancante |
-| **Tip nascosto per non-VIP** | `if (!isVip) return Alert` blocca l'intero modal | `TipModal.tsx` linea 141-160 |
-| **Leaderboard view ordina sbagliato** | La view base usa `ORDER BY wins DESC, total_earnings DESC` (invertito) | View `leaderboard` |
-
-### 🟡 Problemi UI
-
-| Problema | File |
-|----------|------|
-| Header Tip button solo per VIP | `Header.tsx` linea 79 |
-| PlayerStatsModal mostra Tip solo per VIP | `PlayerStatsModal.tsx` linea 72 |
+| Problema | Causa |
+|----------|-------|
+| **`playSound` non viene mai chiamato** | In `MatchDetails.tsx` l'hook è importato (linea 39) ma `playSound()` non è mai invocato |
+| **Nessun evento realtime dedicato** | La subscription esistente fa solo refetch dati ogni 350ms, non triggera audio |
+| **Funziona solo sulla pagina match** | Se sei su `/` o `/matches`, non senti nulla |
+| **Nessuna tabella eventi** | Non esiste `match_events`, quindi non c'è un flusso evento → suono |
 
 ---
 
-## 1. FIX CRITICO: Search Players RPC (Manca completamente)
+## Architettura Proposta
 
-La RPC `search_players_public` viene chiamata ma **non esiste nel database**. Creare la migrazione:
-
-```sql
-CREATE OR REPLACE FUNCTION public.search_players_public(
-  p_query text,
-  p_current_user_id uuid DEFAULT NULL,
-  p_limit integer DEFAULT 10
-)
-RETURNS TABLE (
-  user_id uuid,
-  username text,
-  avatar_url text,
-  rank bigint
-)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT 
-    pp.user_id,
-    pp.username,
-    pp.avatar_url,
-    COALESCE(
-      (SELECT r.rn FROM (
-        SELECT lb.user_id, ROW_NUMBER() OVER (ORDER BY lb.total_earnings DESC, lb.wins DESC) as rn
-        FROM leaderboard lb
-      ) r WHERE r.user_id = pp.user_id),
-      999999
-    ) as rank
-  FROM profiles_public pp
-  WHERE 
-    pp.username ILIKE '%' || p_query || '%'
-    AND (p_current_user_id IS NULL OR pp.user_id != p_current_user_id)
-  ORDER BY 
-    CASE WHEN LOWER(pp.username) = LOWER(p_query) THEN 0 ELSE 1 END,
-    LENGTH(pp.username)
-  LIMIT p_limit;
-$$;
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          CLIENT (Browser)                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│  App.tsx                                                                 │
+│    └── MatchSoundProvider (NUOVO - Context globale)                     │
+│           ├── Subscription a match_events (realtime)                    │
+│           ├── AudioContext + preloaded sounds                          │
+│           ├── Permission banner se audio non sbloccato                  │
+│           └── playSound('join' | 'ready' | 'all_ready' | 'declare')     │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼ Realtime Postgres Changes
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          DATABASE (Supabase)                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│  match_events (NUOVA TABELLA)                                           │
+│    id uuid PK                                                            │
+│    match_id uuid (indexed)                                               │
+│    event_type enum: 'join' | 'ready' | 'all_ready' | 'declare'          │
+│    actor_user_id uuid                                                    │
+│    target_user_ids uuid[]  (chi deve ricevere il suono)                 │
+│    payload jsonb                                                         │
+│    created_at timestamp                                                  │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▲ INSERT automatico
+┌─────────────────────────────────────────────────────────────────────────┐
+│  TRIGGER: on_match_event()                                               │
+│    - join_match_v2: INSERT match_events (type='join')                   │
+│    - set_player_ready: INSERT match_events (type='ready'/'all_ready')   │
+│    - submit_team_declaration: INSERT match_events (type='declare')      │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. FIX CRITICO: Compare Modal - Errore RPC
-
-**Problema**: Il codice usa `supabase.rpc as any` per chiamare `get_player_rank`, causando errore "rest undefined".
-
-**File**: `src/components/player/PlayerComparisonModal.tsx`
-
-**Soluzione**: Usare chiamata RPC standard senza cast:
-
-```typescript
-// PRIMA (broken):
-const rpc = supabase.rpc as any;
-const [myRankRes, targetRankRes] = await Promise.all([
-  rpc('get_player_rank', { p_user_id: user.id }),
-  rpc('get_player_rank', { p_user_id: targetUserId }),
-]);
-
-// DOPO (corretto):
-const [myRankRes, targetRankRes] = await Promise.all([
-  supabase.rpc('get_player_rank', { p_user_id: user.id }),
-  supabase.rpc('get_player_rank', { p_user_id: targetUserId }),
-]);
-```
-
-Inoltre aggiungere gestione errori robusta e fallback se le chiamate falliscono.
-
----
-
-## 3. FIX: Tip Visibile a Tutti (Rimuovere VIP Block)
-
-### File: `src/components/vip/TipModal.tsx`
-
-**Problema**: Linee 141-160 bloccano completamente il modal per non-VIP.
-
-**Soluzione**: Rimuovere il blocco VIP nella UI. La verifica VIP esiste già nel backend (`send_tip` RPC). Mostrare il modal a tutti, e se l'utente non-VIP prova a inviare, vedrà l'errore "VIP required" dal backend.
-
-```typescript
-// RIMUOVERE questo blocco:
-if (!isVip) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <Alert variant="destructive">
-          VIP membership required...
-        </Alert>
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
-
-**Alternativa UX migliore**: Mostrare sempre il modal, ma se non-VIP:
-- Mostrare badge "VIP Required" sul bottone Send
-- Bottone Send cliccabile ma mostra toast con upsell a VIP
-
-### File: `src/components/layout/Header.tsx`
-
-**Linea 79**: Cambiare `{user && isVip && (` → `{user && (`
-
-### File: `src/components/player/PlayerStatsModal.tsx`
-
-**Linea 72**: Cambiare `const canTip = user && user.id !== userId && isVip;` → `const canTip = user && user.id !== userId;`
-
----
-
-## 4. FIX: Leaderboard View Ordering
-
-**Problema**: La view `leaderboard` ordina per `wins DESC, total_earnings DESC`. Deve essere invertito.
-
-**Soluzione**: Ricreare la view con l'ordine corretto:
-
-```sql
-CREATE OR REPLACE VIEW public.leaderboard AS
-SELECT 
-  p.id,
-  p.user_id,
-  p.username,
-  p.avatar_url,
-  COUNT(DISTINCT CASE WHEN mr.winner_user_id = p.user_id AND mr.status = 'confirmed' THEN mr.match_id END) as wins,
-  COUNT(DISTINCT mp.match_id) as total_matches,
-  COALESCE(SUM(CASE WHEN mr.winner_user_id = p.user_id AND mr.status = 'confirmed' THEN m.entry_fee * 1.9 ELSE 0 END), 0) as total_earnings
-FROM public.profiles p
-LEFT JOIN public.match_participants mp ON mp.user_id = p.user_id
-LEFT JOIN public.matches m ON m.id = mp.match_id AND m.status = 'finished'
-LEFT JOIN public.match_results mr ON mr.match_id = m.id
-GROUP BY p.id, p.user_id, p.username, p.avatar_url
-ORDER BY total_earnings DESC, wins DESC;  -- FIX: era invertito
-```
-
----
-
-## 5. FIX: Player Search Bar - Debounce e Query
-
-### File: `src/components/common/PlayerSearchBar.tsx`
-
-**Miglioramenti**:
-1. Ridurre debounce da 300ms a 200ms per reattività
-2. Permettere ricerca con 1 carattere (non 2)
-3. Migliorare styling dropdown con blur e shadow premium
-
-```typescript
-// Linea 34: cambiare minimo caratteri
-if (query.trim().length < 1) {  // era 2
-  setResults([]);
-  setOpen(false);
-  return;
-}
-```
-
----
-
-## 6. Username Univoco + Discord Bug
+## 1. Database: Tabella `match_events`
 
 ### Migrazione SQL
 
 ```sql
--- Assicurarsi che discord_username esista già (verificato: esiste)
--- Aggiungere UNIQUE constraint su username
-ALTER TABLE profiles 
-ADD CONSTRAINT profiles_username_unique UNIQUE (username);
+-- 1. Crea tabella match_events
+CREATE TABLE public.match_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  match_id uuid NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  event_type text NOT NULL CHECK (event_type IN ('join', 'ready', 'all_ready', 'declare')),
+  actor_user_id uuid NOT NULL,
+  target_user_ids uuid[] NOT NULL DEFAULT '{}',
+  payload jsonb DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
--- Funzione per generare username unico
-CREATE OR REPLACE FUNCTION generate_unique_username(base_name text)
-RETURNS text
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  clean_name text;
-  candidate text;
-  counter int := 0;
+-- 2. Index per query realtime
+CREATE INDEX idx_match_events_match_id ON match_events(match_id);
+CREATE INDEX idx_match_events_targets ON match_events USING GIN (target_user_ids);
+CREATE INDEX idx_match_events_created ON match_events(created_at DESC);
+
+-- 3. RLS: utenti possono vedere solo eventi dove sono nei target
+ALTER TABLE match_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can see events targeting them"
+  ON match_events FOR SELECT
+  USING (auth.uid() = ANY(target_user_ids) OR auth.uid() = actor_user_id);
+
+-- 4. Abilita realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE public.match_events;
+
+-- 5. Cleanup vecchi eventi (> 1 ora)
+CREATE OR REPLACE FUNCTION cleanup_old_match_events()
+RETURNS trigger AS $$
 BEGIN
-  -- Pulisci il nome base
-  clean_name := regexp_replace(LOWER(base_name), '[^a-z0-9_]', '', 'g');
-  IF LENGTH(clean_name) < 3 THEN
-    clean_name := 'player';
-  END IF;
-  
-  candidate := clean_name;
-  
-  WHILE EXISTS (SELECT 1 FROM profiles WHERE LOWER(username) = LOWER(candidate)) LOOP
-    counter := counter + 1;
-    candidate := clean_name || counter::text;
-  END LOOP;
-  
-  RETURN candidate;
+  DELETE FROM match_events WHERE created_at < now() - interval '1 hour';
+  RETURN NEW;
 END;
-$$;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_cleanup_match_events
+  AFTER INSERT ON match_events
+  FOR EACH STATEMENT
+  EXECUTE FUNCTION cleanup_old_match_events();
 ```
 
 ---
 
-## 7. Notifiche Audio - Fix e Test Sound
+## 2. Backend: Modificare RPC per Emettere Eventi
 
-### File: `src/hooks/useSoundNotifications.ts`
+### `join_match_v2` - Evento JOIN
 
-Il sistema esiste già ed è ben implementato. Verificare integrazione in `MatchDetails.tsx`:
+Alla fine della funzione, dopo INSERT in `match_participants`, aggiungere:
 
-```typescript
-// Già presente, verificare che playSound venga chiamato correttamente
-const { playSound, needsUnlock, unlockAudio } = useSoundNotifications();
+```sql
+-- Notifica il creator che qualcuno ha joinato
+INSERT INTO match_events (match_id, event_type, actor_user_id, target_user_ids, payload)
+VALUES (
+  p_match_id,
+  'join',
+  auth.uid(),
+  ARRAY[v_match.creator_id],
+  jsonb_build_object('actor_username', v_actor_username)
+);
 ```
 
-**Miglioramento**: Aggiungere banner UI se `needsUnlock` è true:
+### `set_player_ready` - Evento READY / ALL_READY
+
+```sql
+-- Ottieni tutti i partecipanti tranne l'actor
+SELECT array_agg(user_id) INTO v_targets
+FROM match_participants
+WHERE match_id = p_match_id AND user_id != auth.uid();
+
+-- Se tutti ready, evento 'all_ready' a tutti
+IF v_all_ready THEN
+  SELECT array_agg(user_id) INTO v_all_targets
+  FROM match_participants WHERE match_id = p_match_id;
+  
+  INSERT INTO match_events (match_id, event_type, actor_user_id, target_user_ids)
+  VALUES (p_match_id, 'all_ready', auth.uid(), v_all_targets);
+ELSE
+  -- Altrimenti evento 'ready' agli altri
+  INSERT INTO match_events (match_id, event_type, actor_user_id, target_user_ids)
+  VALUES (p_match_id, 'ready', auth.uid(), v_targets);
+END IF;
+```
+
+### `submit_team_declaration` - Evento DECLARE
+
+```sql
+-- Notifica l'altro team
+SELECT array_agg(mp.user_id) INTO v_targets
+FROM match_participants mp
+WHERE mp.match_id = p_match_id
+  AND mp.team_side != v_my_team_side;
+
+INSERT INTO match_events (match_id, event_type, actor_user_id, target_user_ids, payload)
+VALUES (
+  p_match_id,
+  'declare',
+  auth.uid(),
+  v_targets,
+  jsonb_build_object('result', p_result, 'team_side', v_my_team_side)
+);
+```
+
+---
+
+## 3. Frontend: Provider Globale Audio
+
+### Nuovo file: `src/contexts/MatchSoundContext.tsx`
 
 ```typescript
-{needsUnlock && (
-  <Button onClick={unlockAudio} variant="outline" size="sm">
-    <Volume2 className="w-4 h-4 mr-2" />
-    Enable Match Sounds
-  </Button>
+import { createContext, useContext, useEffect, useRef, useCallback, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from './AuthContext';
+
+type MatchEventType = 'join' | 'ready' | 'all_ready' | 'declare';
+
+interface MatchSoundContextType {
+  audioUnlocked: boolean;
+  unlockAudio: () => void;
+  soundsEnabled: boolean;
+  setSoundsEnabled: (enabled: boolean) => void;
+  volume: number;
+  setVolume: (vol: number) => void;
+  playSound: (type: MatchEventType) => void;
+}
+
+const MatchSoundContext = createContext<MatchSoundContextType | null>(null);
+
+// Frequenze per suoni distintivi via Web Audio API
+const SOUND_CONFIGS: Record<MatchEventType, { frequencies: number[]; duration: number }> = {
+  join: { frequencies: [523, 659, 784], duration: 0.4 },           // C5-E5-G5 chord
+  ready: { frequencies: [440, 550], duration: 0.25 },              // A4-C#5 double beep
+  all_ready: { frequencies: [392, 494, 587, 784], duration: 0.6 }, // G4→G5 fanfare
+  declare: { frequencies: [330, 415, 523], duration: 0.35 },       // E4-G#4-C5
+};
+
+export function MatchSoundProvider({ children }) {
+  const { user } = useAuth();
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [soundsEnabled, setSoundsEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem('oleboy_match_sounds');
+      return stored ? JSON.parse(stored).enabled !== false : true;
+    } catch { return true; }
+  });
+  const [volume, setVolumeState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('oleboy_match_sounds');
+      return stored ? JSON.parse(stored).volume ?? 80 : 80;
+    } catch { return 80; }
+  });
+  
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Persist settings
+  useEffect(() => {
+    try {
+      localStorage.setItem('oleboy_match_sounds', JSON.stringify({ enabled: soundsEnabled, volume }));
+    } catch {}
+  }, [soundsEnabled, volume]);
+
+  const unlockAudio = useCallback(() => {
+    if (audioUnlocked) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      audioContextRef.current = new AudioCtx();
+      if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
+      setAudioUnlocked(true);
+    } catch (e) {
+      console.error('Failed to unlock audio:', e);
+    }
+  }, [audioUnlocked]);
+
+  const playSound = useCallback((type: MatchEventType) => {
+    if (!soundsEnabled) return;
+    if (!audioContextRef.current) {
+      unlockAudio();
+      if (!audioContextRef.current) return;
+    }
+
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const config = SOUND_CONFIGS[type];
+    const vol = (volume / 100) * 0.5; // Scale for comfort
+
+    config.frequencies.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.03);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + config.duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const start = ctx.currentTime + i * 0.08;
+      osc.start(start);
+      osc.stop(start + config.duration + 0.05);
+    });
+  }, [soundsEnabled, volume, unlockAudio]);
+
+  // REALTIME SUBSCRIPTION - Global per utente loggato
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('match-events-global')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'match_events',
+          // Filter: solo eventi dove l'utente è nei target
+          // NOTA: Supabase non supporta filter su array, quindi filtriamo client-side
+        },
+        (payload) => {
+          const event = payload.new as {
+            event_type: MatchEventType;
+            actor_user_id: string;
+            target_user_ids: string[];
+          };
+
+          // Se l'utente è nei target E non è lui stesso l'actor → suona
+          if (
+            event.target_user_ids?.includes(user.id) &&
+            event.actor_user_id !== user.id
+          ) {
+            playSound(event.event_type);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, playSound]);
+
+  return (
+    <MatchSoundContext.Provider value={{
+      audioUnlocked,
+      unlockAudio,
+      soundsEnabled,
+      setSoundsEnabled,
+      volume,
+      setVolume: setVolumeState,
+      playSound,
+    }}>
+      {children}
+    </MatchSoundContext.Provider>
+  );
+}
+
+export function useMatchSound() {
+  const ctx = useContext(MatchSoundContext);
+  if (!ctx) throw new Error('useMatchSound must be used within MatchSoundProvider');
+  return ctx;
+}
+```
+
+---
+
+## 4. Integrazione in App.tsx
+
+```typescript
+import { MatchSoundProvider } from '@/contexts/MatchSoundContext';
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <MatchSoundProvider>  {/* NUOVO */}
+          <TooltipProvider>
+            ...
+          </TooltipProvider>
+        </MatchSoundProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+```
+
+---
+
+## 5. Banner "Enable Sounds" nel Header
+
+### Modifica `Header.tsx`
+
+Aggiungere banner persistente in alto se audio non sbloccato:
+
+```tsx
+import { useMatchSound } from '@/contexts/MatchSoundContext';
+
+// Nel componente Header:
+const { audioUnlocked, unlockAudio, soundsEnabled } = useMatchSound();
+
+// Nel render, sopra la navbar:
+{!audioUnlocked && soundsEnabled && user && (
+  <div className="bg-accent/90 text-black px-4 py-2 text-center text-sm">
+    <span className="mr-2">🔔 Enable match sounds to never miss an event!</span>
+    <Button size="sm" variant="secondary" onClick={unlockAudio}>
+      Enable Sounds
+    </Button>
+  </div>
 )}
 ```
 
 ---
 
-## 8. UI Premium - Già Implementato
+## 6. Aggiornare Sound Settings
 
-Verificato che:
-- ✅ Social icons in Header e Footer con hover glow oro
-- ✅ Admin chat styling con rosso e font grande
-- ✅ Dropdown notifiche premium
+Modificare `SoundSettings.tsx` per usare il nuovo context:
+
+```typescript
+import { useMatchSound } from '@/contexts/MatchSoundContext';
+
+export function SoundSettings() {
+  const { soundsEnabled, setSoundsEnabled, volume, setVolume, playSound, audioUnlocked, unlockAudio } = useMatchSound();
+  
+  const testSound = () => {
+    if (!audioUnlocked) unlockAudio();
+    setTimeout(() => playSound('join'), 100);
+  };
+  
+  // ... rest of component
+}
+```
+
+---
+
+## 7. Rimuovere Vecchio Hook
+
+Il file `src/hooks/useSoundNotifications.ts` può essere rimosso o deprecato, sostituito dal context globale.
 
 ---
 
 ## Riepilogo Modifiche
 
-| Priorità | File | Azione |
-|----------|------|--------|
-| 🔴 CRITICO | Migrazione SQL | Creare RPC `search_players_public` |
-| 🔴 CRITICO | Migrazione SQL | Fixare ordering view `leaderboard` |
-| 🔴 CRITICO | `PlayerComparisonModal.tsx` | Rimuovere `as any` da chiamate RPC |
-| 🟡 ALTO | `TipModal.tsx` | Rimuovere blocco VIP (linee 141-160) |
-| 🟡 ALTO | `Header.tsx` | Mostrare Tip button a tutti (linea 79) |
-| 🟡 ALTO | `PlayerStatsModal.tsx` | Mostrare Tip a tutti (linea 72) |
-| 🟡 ALTO | `PlayerSearchBar.tsx` | Ridurre minimo caratteri a 1 |
-| 🟢 MEDIO | Migrazione SQL | Aggiungere UNIQUE constraint su username |
+| Priorità | File/Componente | Azione |
+|----------|-----------------|--------|
+| 🔴 CRITICO | Migrazione SQL | Creare tabella `match_events` + RLS + realtime |
+| 🔴 CRITICO | `join_match_v2` RPC | INSERT evento `join` |
+| 🔴 CRITICO | `set_player_ready` RPC | INSERT evento `ready`/`all_ready` |
+| 🔴 CRITICO | `submit_team_declaration` RPC | INSERT evento `declare` |
+| 🟡 ALTO | `MatchSoundContext.tsx` | Nuovo context globale con subscription |
+| 🟡 ALTO | `App.tsx` | Wrap con `MatchSoundProvider` |
+| 🟡 ALTO | `Header.tsx` | Banner "Enable Sounds" |
+| 🟢 MEDIO | `SoundSettings.tsx` | Usare nuovo context |
+| 🟢 BASSO | `useSoundNotifications.ts` | Rimuovere (deprecato) |
 
 ---
 
-## Test Post-Implementazione
+## Test Obbligatori Post-Implementazione
 
 | Test | Risultato Atteso |
 |------|------------------|
-| Cerca "m" nella search bar | Dropdown con utenti che contengono "m" |
-| Clicca Compare su un player | Modal si apre con dati reali |
-| Clicca Tip (utente non-VIP) | Modal si apre, errore solo al Send |
-| Leaderboard | Ordinata per total_earnings DESC |
-| Crea user con username duplicato | Username auto-generato con suffix |
+| User A su `/`, User B joina match A | A sente suono IMMEDIATO |
+| User A e B in match, A clicca Ready | B sente suono |
+| Entrambi Ready | Entrambi sentono suono `all_ready` |
+| User A dichiara risultato | B sente suono `declare` |
+| Tab in background | Suono deve comunque arrivare |
+| Audio non sbloccato | Banner visibile, click sblocca |
+| Preferenze salvate | Reload mantiene settings |
+
+---
+
+## Note Tecniche
+
+### Perché Tabella Eventi invece di Trigger su match_participants?
+
+1. **Controllo target preciso**: Possiamo specificare CHI deve ricevere il suono
+2. **Payload flessibile**: Possiamo includere username, risultato, etc.
+3. **RLS semplice**: Filter basato su `target_user_ids` 
+4. **Zero delay**: INSERT → Realtime → Client in <100ms
+5. **Cleanup automatico**: Trigger rimuove eventi vecchi
+
+### Volume Alto
+
+Nel codice il volume è scalato a `0.5` massimo per evitare distorsione. L'utente può impostare fino a 100% che corrisponde a 0.5 audio gain (abbastanza forte senza essere fastidioso).

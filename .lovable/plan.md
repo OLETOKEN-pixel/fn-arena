@@ -1,359 +1,275 @@
 
-# Piano Completo: UI/UX Premium + Fix Classifica
+# Piano: Fix Completo UI/UX Premium + Bug Critici
 
-## Panoramica delle Funzionalità
+## Diagnosi Problemi Rilevati
 
-Questo piano implementa 8 funzionalità richieste mantenendo lo stile dark/premium esistente con micro-animazioni e UX coerente.
+### 🔴 Problemi Critici
 
----
+| Problema | Causa | File |
+|----------|-------|------|
+| **Compare fallisce** | `supabase.rpc as any` causa errore "Cannot read properties of undefined (reading 'rest')" | `PlayerComparisonModal.tsx` |
+| **Player Search non trova nessuno** | La RPC `search_players_public` non esiste nel database - la migrazione non è stata creata | Migrazione SQL mancante |
+| **Tip nascosto per non-VIP** | `if (!isVip) return Alert` blocca l'intero modal | `TipModal.tsx` linea 141-160 |
+| **Leaderboard view ordina sbagliato** | La view base usa `ORDER BY wins DESC, total_earnings DESC` (invertito) | View `leaderboard` |
 
-## 1. Barra di Ricerca Utenti (Search Players)
+### 🟡 Problemi UI
 
-### Posizione e Design
-- Posizionata nella **Header** (lato sinistro), accanto al menu hamburger mobile
-- Stile: Input con icona lente, sfondo `bg-secondary`, bordo sottile
-- Placeholder: "Search players..."
-
-### Componente: `src/components/common/PlayerSearchBar.tsx`
-```text
-┌────────────────────────────────────────┐
-│ 🔍 Search players...                   │
-├────────────────────────────────────────┤
-│ [Avatar] username123     Rank #42      │ ← click naviga al profilo
-│ [Avatar] player_xyz      Rank #156     │
-│ [Avatar] gamer_pro       Rank #23      │
-└────────────────────────────────────────┘
-```
-
-### Logica
-- **Debounce**: 300ms
-- **Query**: Nuova RPC `search_players_public(p_query, p_current_user_id, p_limit)` che:
-  - Cerca in `profiles_public.username` (ILIKE)
-  - Esclude l'utente corrente (`user_id != p_current_user_id`)
-  - Ritorna: `user_id, username, avatar_url, rank` (calcolato da posizione leaderboard)
-  - Limit: 10 risultati
-- **Click risultato**: Apre `PlayerStatsModal` con userId
-
-### File da modificare/creare
-| File | Azione |
-|------|--------|
-| `src/components/common/PlayerSearchBar.tsx` | Nuovo componente |
-| `src/components/layout/Header.tsx` | Aggiungere PlayerSearchBar |
-| Migrazione SQL | Nuova RPC `search_players_public` |
+| Problema | File |
+|----------|------|
+| Header Tip button solo per VIP | `Header.tsx` linea 79 |
+| PlayerStatsModal mostra Tip solo per VIP | `PlayerStatsModal.tsx` linea 72 |
 
 ---
 
-## 2. Funzione "Compare" (Confronto Statistiche)
+## 1. FIX CRITICO: Search Players RPC (Manca completamente)
 
-### UI
-- **Bottone "Compare"** nel `PlayerStatsModal` accanto al bottone Tip
-- Click apre `PlayerComparisonModal`
-
-### Design Modale (da screenshot)
-```text
-┌─────────────────────────────────────────────────────┐
-│ 📊 Player Comparison                            [X] │
-├─────────────────────────────────────────────────────┤
-│    [Avatar]              [Avatar]                   │
-│    marvfn17              marvderg                   │
-│    Rank #6131            Rank #4468                 │
-├─────────────────────────────────────────────────────┤
-│ Metric        You        Target      Difference    │
-│ ─────────────────────────────────────────────────── │
-│ Win Rate      75.0%      50.0%       +25.0%  🟢    │
-│ Total Profit  +5.90      -7.50       +13.40  🟢    │
-│ Total Wins    9          23          -14     🔴    │
-│ Best Streak   0          4           -4      🔴    │
-│ Current Streak 0         0           +0      ⚪    │
-│ Total Matches 12         46          -34     🔴    │
-│ Global Rank   #6131      #4468       -1663   🔴    │
-└─────────────────────────────────────────────────────┘
-```
-
-### Logica
-- Recupera stats di entrambi gli utenti via `get_player_stats` RPC
-- Calcola differenze (verde positivo, rosso negativo, grigio neutro)
-- Global Rank: calcolato dalla posizione nella leaderboard
-
-### File da creare/modificare
-| File | Azione |
-|------|--------|
-| `src/components/player/PlayerComparisonModal.tsx` | Nuovo componente |
-| `src/components/player/PlayerStatsModal.tsx` | Aggiungere bottone Compare |
-
----
-
-## 3. Icone Social (TikTok + X) in Header e Footer
-
-### Header
-- Posizione: A destra, prima del bottone notifiche
-- Icone: TikTok e X (SVG custom già presente per X)
-- Hover: `hover:text-accent hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]`
-- Tooltip: "TikTok", "X"
-
-### Footer
-- Aggiornare i link esistenti:
-  - X: `https://x.com/oleboytokens`
-  - TikTok: `https://www.tiktok.com/@oleboytokens`
-
-### File da modificare
-| File | Azione |
-|------|--------|
-| `src/components/layout/Header.tsx` | Aggiungere icone TikTok/X |
-| `src/components/layout/Footer.tsx` | Aggiornare link social |
-
----
-
-## 4. Notifiche Dropdown (invece di pagina)
-
-### Design (da screenshot)
-```text
-┌─────────────────────────────────────────┐
-│ Notifications                    🗑️ ⚙️  │
-├─────────────────────────────────────────┤
-│ 🏆 2v2 Realistics Tournament      ↗     │
-│    Grab your duo and join...           │
-│    9 days ago                          │
-├─────────────────────────────────────────┤
-│ ⚙️ Maintenance Complete!               │
-│    Thank you for remaining patient...  │
-│    12 days ago                         │
-├─────────────────────────────────────────┤
-│ ⚠️ Platform Downtime                   │
-│    The platform will shortly...        │
-│    13 days ago                         │
-└─────────────────────────────────────────┘
-```
-
-### Componente: `src/components/notifications/NotificationsDropdown.tsx`
-- Trigger: Click su Bell icon in Header
-- Contenuto: ScrollArea con max-height 400px
-- Header: "Notifications" + icone (trash all, settings)
-- Footer: "Mark all as read"
-- Chiusura: Click fuori o ESC
-- Badge contatore già esistente
-
-### Logica
-- Riutilizza hook `useNotifications`
-- Mantiene la pagina `/notifications` per accesso completo
-- Team invite actions inline nel dropdown
-
-### File da creare/modificare
-| File | Azione |
-|------|--------|
-| `src/components/notifications/NotificationsDropdown.tsx` | Nuovo componente |
-| `src/components/layout/Header.tsx` | Sostituire Link con Dropdown |
-
----
-
-## 5. Bottone "Tip" Visibile al Centro
-
-### Posizione
-- Header, zona centrale (tra logo/search e wallet/notifiche)
-- Solo per utenti VIP loggati
-
-### Design
-```text
-┌──────────────────────────────────────────────────────────────────┐
-│ [Menu] [🔍 Search]     [💰 Send Tip]     [Wallet] [🔔] [Avatar] │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Stile Bottone
-- Gradient oro: `bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400`
-- Testo nero bold
-- Shimmer effect on hover
-- Icona Gift + "Tip"
-
-### Modale Tip Modificata
-- Aggiungere **selezione utente** se aperta senza destinatario
-- Ricerca utenti VIP con dropdown
-- Se non ci sono VIP: messaggio "Nessun utente VIP disponibile"
-
-### File da modificare
-| File | Azione |
-|------|--------|
-| `src/components/layout/Header.tsx` | Aggiungere bottone Tip centrale |
-| `src/components/vip/TipModal.tsx` | Aggiungere selezione utente |
-
----
-
-## 6. Chat Match: Nome Admin Rosso e Grande
-
-### Requisiti
-- Se `display_name === 'ADMIN'`:
-  - Colore: rosso (`text-red-500`)
-  - Font: bold, display (`font-display font-black`)
-  - Dimensione: significativamente più grande (~2-3x, non 10x per evitare overflow)
-  - Background messaggio: sfumatura rossa leggera
-
-### Implementazione in MatchChat.tsx
-```tsx
-const isAdminMessage = msg.display_name === 'ADMIN';
-
-// Nel rendering del nome:
-<span className={cn(
-  isAdminMessage 
-    ? 'text-red-500 font-display font-black text-lg md:text-xl' 
-    : 'text-xs font-medium'
-)}>
-  {msg.display_name}
-</span>
-
-// Nel bubble messaggio:
-<div className={cn(
-  'rounded-lg px-3 py-2 break-words',
-  isAdminMessage
-    ? 'bg-gradient-to-r from-red-500/20 to-red-600/10 border border-red-500/30 text-base md:text-lg'
-    : isOwnMessage ? '...' : '...'
-)}>
-```
-
-### File da modificare
-| File | Azione |
-|------|--------|
-| `src/components/matches/MatchChat.tsx` | Stile speciale per ADMIN |
-
----
-
-## 7. Suoni Notifiche durante Match
-
-### Eventi Audio
-1. **Match Accepted** - quando qualcuno joina il tuo match
-2. **Ready Up** - quando un partecipante clicca ready
-3. **User Declared** - quando qualcuno dichiara il risultato
-
-### Implementazione
-
-**Nuovo hook: `src/hooks/useSoundNotifications.ts`**
-- Gestisce preferenze utente (localStorage)
-- Controlla `prefers-reduced-motion`
-- Usa Web Audio API per suonare anche in background
-
-**File audio: `public/sounds/`**
-- `notification-match.mp3` - suono match accepted
-- `notification-ready.mp3` - suono ready up
-- `notification-result.mp3` - suono dichiarazione
-
-**Componente settings: `src/components/settings/SoundSettings.tsx`**
-- Toggle ON/OFF
-- Slider volume (0-100%)
-- Pulsante "Test Sound"
-
-**Integrazione in MatchDetails.tsx**
-- Ascolta eventi realtime e triggera suoni appropriati
-- Mostra banner "Clicca per abilitare suoni" se autoplay bloccato
-
-### File da creare/modificare
-| File | Azione |
-|------|--------|
-| `src/hooks/useSoundNotifications.ts` | Nuovo hook |
-| `src/components/settings/SoundSettings.tsx` | Nuovo componente |
-| `public/sounds/*.mp3` | File audio (placeholder, utente può sostituire) |
-| `src/pages/MatchDetails.tsx` | Integrazione suoni |
-| `src/components/notifications/NotificationsDropdown.tsx` | Link a settings suoni |
-
----
-
-## 8. Fix Classifica: Ordinamento Corretto
-
-### Problema Attuale
-La RPC `get_leaderboard` ordina per `wins DESC, total_earnings DESC`, ma il requisito è ordinare per **coins guadagnati** (earnings).
-
-### Soluzione
-Modificare la RPC per ordinare correttamente:
+La RPC `search_players_public` viene chiamata ma **non esiste nel database**. Creare la migrazione:
 
 ```sql
-ORDER BY total_earnings DESC, wins DESC
-```
-
-**Primary sort**: `total_earnings` (coins vinti)
-**Tie-breaker**: `wins` (numero vittorie)
-
-### Migrazione SQL
-```sql
-CREATE OR REPLACE FUNCTION public.get_leaderboard(p_limit integer DEFAULT 25, p_offset integer DEFAULT 0)
-RETURNS TABLE (...)
+CREATE OR REPLACE FUNCTION public.search_players_public(
+  p_query text,
+  p_current_user_id uuid DEFAULT NULL,
+  p_limit integer DEFAULT 10
+)
+RETURNS TABLE (
+  user_id uuid,
+  username text,
+  avatar_url text,
+  rank bigint
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
 AS $$
-  SELECT ...
-  ORDER BY total_earnings DESC, wins DESC  -- CAMBIO QUI
-  LIMIT p_limit
-  OFFSET p_offset;
+  SELECT 
+    pp.user_id,
+    pp.username,
+    pp.avatar_url,
+    COALESCE(
+      (SELECT r.rn FROM (
+        SELECT lb.user_id, ROW_NUMBER() OVER (ORDER BY lb.total_earnings DESC, lb.wins DESC) as rn
+        FROM leaderboard lb
+      ) r WHERE r.user_id = pp.user_id),
+      999999
+    ) as rank
+  FROM profiles_public pp
+  WHERE 
+    pp.username ILIKE '%' || p_query || '%'
+    AND (p_current_user_id IS NULL OR pp.user_id != p_current_user_id)
+  ORDER BY 
+    CASE WHEN LOWER(pp.username) = LOWER(p_query) THEN 0 ELSE 1 END,
+    LENGTH(pp.username)
+  LIMIT p_limit;
 $$;
 ```
 
-### UI Update
-- Leaderboard.tsx già mostra "ranked by earnings" - nessun cambio necessario
-- Aggiungere tooltip/info che spiega il criterio
+---
 
-### File da modificare
-| File | Azione |
-|------|--------|
-| Migrazione SQL | Fix ordering in `get_leaderboard` |
-| `src/pages/Leaderboard.tsx` | (opzionale) Aggiungere info tooltip |
+## 2. FIX CRITICO: Compare Modal - Errore RPC
+
+**Problema**: Il codice usa `supabase.rpc as any` per chiamare `get_player_rank`, causando errore "rest undefined".
+
+**File**: `src/components/player/PlayerComparisonModal.tsx`
+
+**Soluzione**: Usare chiamata RPC standard senza cast:
+
+```typescript
+// PRIMA (broken):
+const rpc = supabase.rpc as any;
+const [myRankRes, targetRankRes] = await Promise.all([
+  rpc('get_player_rank', { p_user_id: user.id }),
+  rpc('get_player_rank', { p_user_id: targetUserId }),
+]);
+
+// DOPO (corretto):
+const [myRankRes, targetRankRes] = await Promise.all([
+  supabase.rpc('get_player_rank', { p_user_id: user.id }),
+  supabase.rpc('get_player_rank', { p_user_id: targetUserId }),
+]);
+```
+
+Inoltre aggiungere gestione errori robusta e fallback se le chiamate falliscono.
 
 ---
 
-## Riepilogo File
+## 3. FIX: Tip Visibile a Tutti (Rimuovere VIP Block)
 
-### Nuovi File
-| File | Descrizione |
-|------|-------------|
-| `src/components/common/PlayerSearchBar.tsx` | Barra ricerca giocatori |
-| `src/components/player/PlayerComparisonModal.tsx` | Modale confronto stats |
-| `src/components/notifications/NotificationsDropdown.tsx` | Dropdown notifiche |
-| `src/hooks/useSoundNotifications.ts` | Hook gestione suoni |
-| `src/components/settings/SoundSettings.tsx` | Settings suoni |
-| `public/sounds/notification-match.mp3` | Audio match |
-| `public/sounds/notification-ready.mp3` | Audio ready |
-| `public/sounds/notification-result.mp3` | Audio result |
+### File: `src/components/vip/TipModal.tsx`
 
-### File da Modificare
-| File | Modifiche |
-|------|-----------|
-| `src/components/layout/Header.tsx` | Search bar, social icons, tip button, notifications dropdown |
-| `src/components/layout/Footer.tsx` | Link social corretti + TikTok |
-| `src/components/player/PlayerStatsModal.tsx` | Bottone Compare |
-| `src/components/vip/TipModal.tsx` | Selezione utente |
-| `src/components/matches/MatchChat.tsx` | Stile ADMIN |
-| `src/pages/MatchDetails.tsx` | Integrazione suoni |
-| `src/pages/Leaderboard.tsx` | Info tooltip ordinamento |
+**Problema**: Linee 141-160 bloccano completamente il modal per non-VIP.
 
-### Migrazioni Database
-| Migrazione | Descrizione |
-|------------|-------------|
-| `search_players_public` | RPC ricerca giocatori |
-| Fix `get_leaderboard` | Ordinamento per earnings |
+**Soluzione**: Rimuovere il blocco VIP nella UI. La verifica VIP esiste già nel backend (`send_tip` RPC). Mostrare il modal a tutti, e se l'utente non-VIP prova a inviare, vedrà l'errore "VIP required" dal backend.
 
----
+```typescript
+// RIMUOVERE questo blocco:
+if (!isVip) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <Alert variant="destructive">
+          VIP membership required...
+        </Alert>
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
 
-## Animazioni e Stile Premium
+**Alternativa UX migliore**: Mostrare sempre il modal, ma se non-VIP:
+- Mostrare badge "VIP Required" sul bottone Send
+- Bottone Send cliccabile ma mostra toast con upsell a VIP
 
-### Standard Applicati
-- Transizioni: `transition-all duration-200`
-- Hover scale: `hover:scale-[1.02]`
-- Focus ring: `focus-visible:ring-2 focus-visible:ring-ring`
-- Backdrop blur: `backdrop-blur-sm`
-- Ombre: `shadow-lg shadow-primary/10`
-- Glow oro: `drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]`
+### File: `src/components/layout/Header.tsx`
 
-### Componenti con Animazioni
-- Dropdown notifiche: `animate-in fade-in-0 zoom-in-95`
-- Modali: backdrop blur + scale in
-- Bottoni: shimmer effect on hover
-- Search results: fade in staggered
+**Linea 79**: Cambiare `{user && isVip && (` → `{user && (`
+
+### File: `src/components/player/PlayerStatsModal.tsx`
+
+**Linea 72**: Cambiare `const canTip = user && user.id !== userId && isVip;` → `const canTip = user && user.id !== userId;`
 
 ---
 
-## Note Tecniche
+## 4. FIX: Leaderboard View Ordering
 
-### Audio Web API
-- Usa `AudioContext` per controllo volume
-- Gestisce `prefers-reduced-motion` rispettando accessibilità
-- Fallback se autoplay bloccato: mostra banner interattivo
-- Salva preferenze in `localStorage` con chiave `oleboy_sound_settings`
+**Problema**: La view `leaderboard` ordina per `wins DESC, total_earnings DESC`. Deve essere invertito.
 
-### Performance
-- Search bar: debounce 300ms
-- Notifications: già cached via `useNotifications` hook
-- Comparison modal: fetch parallelo entrambi gli stats
+**Soluzione**: Ricreare la view con l'ordine corretto:
+
+```sql
+CREATE OR REPLACE VIEW public.leaderboard AS
+SELECT 
+  p.id,
+  p.user_id,
+  p.username,
+  p.avatar_url,
+  COUNT(DISTINCT CASE WHEN mr.winner_user_id = p.user_id AND mr.status = 'confirmed' THEN mr.match_id END) as wins,
+  COUNT(DISTINCT mp.match_id) as total_matches,
+  COALESCE(SUM(CASE WHEN mr.winner_user_id = p.user_id AND mr.status = 'confirmed' THEN m.entry_fee * 1.9 ELSE 0 END), 0) as total_earnings
+FROM public.profiles p
+LEFT JOIN public.match_participants mp ON mp.user_id = p.user_id
+LEFT JOIN public.matches m ON m.id = mp.match_id AND m.status = 'finished'
+LEFT JOIN public.match_results mr ON mr.match_id = m.id
+GROUP BY p.id, p.user_id, p.username, p.avatar_url
+ORDER BY total_earnings DESC, wins DESC;  -- FIX: era invertito
+```
+
+---
+
+## 5. FIX: Player Search Bar - Debounce e Query
+
+### File: `src/components/common/PlayerSearchBar.tsx`
+
+**Miglioramenti**:
+1. Ridurre debounce da 300ms a 200ms per reattività
+2. Permettere ricerca con 1 carattere (non 2)
+3. Migliorare styling dropdown con blur e shadow premium
+
+```typescript
+// Linea 34: cambiare minimo caratteri
+if (query.trim().length < 1) {  // era 2
+  setResults([]);
+  setOpen(false);
+  return;
+}
+```
+
+---
+
+## 6. Username Univoco + Discord Bug
+
+### Migrazione SQL
+
+```sql
+-- Assicurarsi che discord_username esista già (verificato: esiste)
+-- Aggiungere UNIQUE constraint su username
+ALTER TABLE profiles 
+ADD CONSTRAINT profiles_username_unique UNIQUE (username);
+
+-- Funzione per generare username unico
+CREATE OR REPLACE FUNCTION generate_unique_username(base_name text)
+RETURNS text
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  clean_name text;
+  candidate text;
+  counter int := 0;
+BEGIN
+  -- Pulisci il nome base
+  clean_name := regexp_replace(LOWER(base_name), '[^a-z0-9_]', '', 'g');
+  IF LENGTH(clean_name) < 3 THEN
+    clean_name := 'player';
+  END IF;
+  
+  candidate := clean_name;
+  
+  WHILE EXISTS (SELECT 1 FROM profiles WHERE LOWER(username) = LOWER(candidate)) LOOP
+    counter := counter + 1;
+    candidate := clean_name || counter::text;
+  END LOOP;
+  
+  RETURN candidate;
+END;
+$$;
+```
+
+---
+
+## 7. Notifiche Audio - Fix e Test Sound
+
+### File: `src/hooks/useSoundNotifications.ts`
+
+Il sistema esiste già ed è ben implementato. Verificare integrazione in `MatchDetails.tsx`:
+
+```typescript
+// Già presente, verificare che playSound venga chiamato correttamente
+const { playSound, needsUnlock, unlockAudio } = useSoundNotifications();
+```
+
+**Miglioramento**: Aggiungere banner UI se `needsUnlock` è true:
+
+```typescript
+{needsUnlock && (
+  <Button onClick={unlockAudio} variant="outline" size="sm">
+    <Volume2 className="w-4 h-4 mr-2" />
+    Enable Match Sounds
+  </Button>
+)}
+```
+
+---
+
+## 8. UI Premium - Già Implementato
+
+Verificato che:
+- ✅ Social icons in Header e Footer con hover glow oro
+- ✅ Admin chat styling con rosso e font grande
+- ✅ Dropdown notifiche premium
+
+---
+
+## Riepilogo Modifiche
+
+| Priorità | File | Azione |
+|----------|------|--------|
+| 🔴 CRITICO | Migrazione SQL | Creare RPC `search_players_public` |
+| 🔴 CRITICO | Migrazione SQL | Fixare ordering view `leaderboard` |
+| 🔴 CRITICO | `PlayerComparisonModal.tsx` | Rimuovere `as any` da chiamate RPC |
+| 🟡 ALTO | `TipModal.tsx` | Rimuovere blocco VIP (linee 141-160) |
+| 🟡 ALTO | `Header.tsx` | Mostrare Tip button a tutti (linea 79) |
+| 🟡 ALTO | `PlayerStatsModal.tsx` | Mostrare Tip a tutti (linea 72) |
+| 🟡 ALTO | `PlayerSearchBar.tsx` | Ridurre minimo caratteri a 1 |
+| 🟢 MEDIO | Migrazione SQL | Aggiungere UNIQUE constraint su username |
+
+---
+
+## Test Post-Implementazione
+
+| Test | Risultato Atteso |
+|------|------------------|
+| Cerca "m" nella search bar | Dropdown con utenti che contengono "m" |
+| Clicca Compare su un player | Modal si apre con dati reali |
+| Clicca Tip (utente non-VIP) | Modal si apre, errore solo al Send |
+| Leaderboard | Ordinata per total_earnings DESC |
+| Crea user con username duplicato | Username auto-generato con suffix |

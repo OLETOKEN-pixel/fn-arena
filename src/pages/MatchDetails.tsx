@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock, Share2, Gamepad2, Globe, Monitor, Crosshair, Timer, Coins } from 'lucide-react';
+import { ArrowLeft, Users, Trophy, XCircle, Loader2, Clock, Share2, Gamepad2, Globe, Monitor, Crosshair, Timer, Coins, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge, MatchStatusBadge, RegionBadge, PlatformBadge } from '@/components/ui/custom-badge';
@@ -16,8 +16,10 @@ import { ProofSection } from '@/components/matches/ProofSection';
 import { MatchChat } from '@/components/matches/MatchChat';
 import { TeamSelector } from '@/components/teams/TeamSelector';
 import { PaymentModeSelector } from '@/components/teams/PaymentModeSelector';
+import { SoundSettings } from '@/components/settings/SoundSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useSoundNotifications } from '@/hooks/useSoundNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import type { Match, Team, TeamMember, Profile, TeamMemberWithBalance, PaymentMode } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
@@ -34,6 +36,7 @@ export default function MatchDetails() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, profile, wallet, isProfileComplete, refreshWallet } = useAuth();
+  const { playSound, needsUnlock, unlockAudio } = useSoundNotifications();
 
   const [isAdmin, setIsAdmin] = useState(false);
 

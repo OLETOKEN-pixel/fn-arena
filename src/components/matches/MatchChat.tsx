@@ -185,6 +185,7 @@ export function MatchChat({
           <div className="space-y-2">
             {messages.map((msg) => {
               const isOwnMessage = msg.user_id === currentUserId;
+              const isAdminMessage = msg.display_name === 'ADMIN';
               
               if (msg.is_system) {
                 return (
@@ -201,39 +202,52 @@ export function MatchChat({
                   key={msg.id}
                   className={cn(
                     'flex gap-2',
-                    isOwnMessage && 'flex-row-reverse'
+                    isOwnMessage && !isAdminMessage && 'flex-row-reverse'
                   )}
                 >
                   <Avatar className={cn(
-                    "w-6 h-6 flex-shrink-0",
-                    isOwnMessage ? "border border-accent/50" : "border border-border"
+                    "flex-shrink-0",
+                    isAdminMessage ? "w-10 h-10 border-2 border-destructive" : "w-6 h-6",
+                    isOwnMessage && !isAdminMessage ? "border border-accent/50" : "border border-border"
                   )}>
                     <AvatarImage src={msg.avatar_url || undefined} />
-                    <AvatarFallback className="text-[10px] font-bold">
+                    <AvatarFallback className={cn(
+                      "font-bold",
+                      isAdminMessage ? "text-sm bg-destructive text-destructive-foreground" : "text-[10px]"
+                    )}>
                       {msg.display_name?.charAt(0).toUpperCase() || '?'}
                     </AvatarFallback>
                   </Avatar>
                   
                   <div className={cn(
                     'flex flex-col max-w-[80%]',
-                    isOwnMessage && 'items-end'
+                    isOwnMessage && !isAdminMessage && 'items-end'
                   )}>
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className={cn(
-                        'text-xs font-medium',
-                        isOwnMessage ? 'text-accent' : 'text-foreground'
+                        'font-medium',
+                        isAdminMessage 
+                          ? 'text-destructive font-display font-black text-lg md:text-xl' 
+                          : isOwnMessage 
+                          ? 'text-xs text-accent' 
+                          : 'text-xs text-foreground'
                       )}>
                         {msg.display_name}
                       </span>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className={cn(
+                        "text-muted-foreground",
+                        isAdminMessage ? "text-xs" : "text-[10px]"
+                      )}>
                         {format(new Date(msg.created_at), 'HH:mm')}
                       </span>
                     </div>
                     <div className={cn(
-                      'rounded-lg px-2.5 py-1.5 text-xs break-words',
-                      isOwnMessage 
-                        ? 'bg-accent text-accent-foreground rounded-tr-sm' 
-                        : 'bg-secondary/70 text-foreground border border-border/30 rounded-tl-sm'
+                      'rounded-lg px-2.5 py-1.5 break-words',
+                      isAdminMessage
+                        ? 'bg-gradient-to-r from-destructive/20 to-destructive/10 border-2 border-destructive/40 text-base md:text-lg font-medium'
+                        : isOwnMessage 
+                        ? 'text-xs bg-accent text-accent-foreground rounded-tr-sm' 
+                        : 'text-xs bg-secondary/70 text-foreground border border-border/30 rounded-tl-sm'
                     )}>
                       {msg.message}
                     </div>

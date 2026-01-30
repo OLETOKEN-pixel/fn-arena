@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, LogIn, LogOut, Menu, X } from 'lucide-react';
+import { LogIn, LogOut, Menu, X, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,11 +10,29 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useVipStatus } from '@/hooks/useVipStatus';
 import { CoinIcon } from '@/components/common/CoinIcon';
+import { PlayerSearchBar } from '@/components/common/PlayerSearchBar';
+import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { VipBanner } from '@/components/vip/VipBanner';
 import { VipModal } from '@/components/vip/VipModal';
+import { TipModal } from '@/components/vip/TipModal';
+
+// Social Icons
+const XIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+);
+
+const TikTokIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+  </svg>
+);
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
@@ -24,8 +42,10 @@ interface HeaderProps {
 export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
   const { user, profile, wallet, signOut } = useAuth();
   const { unreadCount } = useNotifications();
+  const { isVip } = useVipStatus();
   const navigate = useNavigate();
   const [showVipModal, setShowVipModal] = useState(false);
+  const [showTipModal, setShowTipModal] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -35,29 +55,75 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
-        {/* Mobile menu toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden"
-          onClick={onMobileMenuToggle}
-        >
-          {isMobileMenuOpen ? (
-            <X className="w-5 h-5" />
-          ) : (
-            <Menu className="w-5 h-5" />
-          )}
-        </Button>
+        {/* Left side: Mobile menu + Search */}
+        <div className="flex items-center gap-3">
+          {/* Mobile menu toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={onMobileMenuToggle}
+          >
+            {isMobileMenuOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <Menu className="w-5 h-5" />
+            )}
+          </Button>
 
-        {/* Spacer for layout balance */}
-        <div className="flex-1" />
+          {/* Player Search Bar */}
+          <PlayerSearchBar />
+        </div>
+
+        {/* Center: VIP Tip Button (only for VIP users) */}
+        {user && isVip && (
+          <div className="hidden sm:flex items-center">
+            <Button
+              onClick={() => setShowTipModal(true)}
+              className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 text-black font-bold hover:from-amber-400 hover:via-yellow-400 hover:to-amber-300 shadow-lg shadow-amber-500/20 transition-all duration-200 hover:scale-105 hover:shadow-amber-500/30"
+            >
+              <Gift className="w-4 h-4 mr-2" />
+              Send Tip
+            </Button>
+          </div>
+        )}
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {user ? (
             <>
               {/* VIP Banner */}
               <VipBanner onClick={() => setShowVipModal(true)} />
+
+              {/* Social Icons */}
+              <div className="hidden lg:flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <a
+                      href="https://x.com/oleboytokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg text-muted-foreground hover:text-accent transition-all duration-200 hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                    >
+                      <XIcon />
+                    </a>
+                  </TooltipTrigger>
+                  <TooltipContent>X (Twitter)</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <a
+                      href="https://www.tiktok.com/@oleboytokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg text-muted-foreground hover:text-accent transition-all duration-200 hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                    >
+                      <TikTokIcon />
+                    </a>
+                  </TooltipTrigger>
+                  <TooltipContent>TikTok</TooltipContent>
+                </Tooltip>
+              </div>
 
               {/* Wallet balance with clickable coin */}
               <Link
@@ -73,22 +139,8 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
                 </span>
               </Link>
 
-              {/* Notifications */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="relative"
-                asChild
-              >
-                <Link to="/notifications">
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold bg-destructive text-destructive-foreground rounded-full">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
-              </Button>
+              {/* Notifications Dropdown */}
+              <NotificationsDropdown />
 
               {/* User menu */}
               <DropdownMenu>
@@ -178,6 +230,14 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
 
       {/* VIP Modal */}
       <VipModal open={showVipModal} onOpenChange={setShowVipModal} />
+
+      {/* Tip Modal (VIP only, without pre-selected recipient) */}
+      <TipModal
+        open={showTipModal}
+        onOpenChange={setShowTipModal}
+        recipientId=""
+        recipientUsername=""
+      />
     </header>
   );
 }

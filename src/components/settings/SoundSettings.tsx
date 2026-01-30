@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { useSoundNotifications } from '@/hooks/useSoundNotifications';
+import { useMatchSound } from '@/contexts/MatchSoundContext';
 import { cn } from '@/lib/utils';
 
 interface SoundSettingsProps {
@@ -12,7 +12,14 @@ interface SoundSettingsProps {
 }
 
 export function SoundSettings({ compact = false, className }: SoundSettingsProps) {
-  const { settings, setEnabled, setVolume, testSound, needsUnlock, unlockAudio } = useSoundNotifications();
+  const { soundsEnabled, setSoundsEnabled, volume, setVolume, playSound, audioUnlocked, unlockAudio } = useMatchSound();
+
+  const needsUnlock = !audioUnlocked && soundsEnabled;
+
+  const testSound = () => {
+    if (!audioUnlocked) unlockAudio();
+    setTimeout(() => playSound('join'), 100);
+  };
 
   if (compact) {
     return (
@@ -24,22 +31,22 @@ export function SoundSettings({ compact = false, className }: SoundSettingsProps
             if (needsUnlock) {
               unlockAudio();
             }
-            setEnabled(!settings.enabled);
+            setSoundsEnabled(!soundsEnabled);
           }}
           className={cn(
             'h-8 w-8',
-            settings.enabled ? 'text-primary' : 'text-muted-foreground'
+            soundsEnabled ? 'text-primary' : 'text-muted-foreground'
           )}
         >
-          {settings.enabled ? (
+          {soundsEnabled ? (
             <Volume2 className="w-4 h-4" />
           ) : (
             <VolumeX className="w-4 h-4" />
           )}
         </Button>
-        {settings.enabled && (
+        {soundsEnabled && (
           <Slider
-            value={[settings.volume]}
+            value={[volume]}
             onValueChange={([v]) => setVolume(v)}
             max={100}
             step={5}
@@ -61,25 +68,25 @@ export function SoundSettings({ compact = false, className }: SoundSettingsProps
         </div>
         <Switch
           id="sound-enabled"
-          checked={settings.enabled}
+          checked={soundsEnabled}
           onCheckedChange={(checked) => {
             if (checked && needsUnlock) {
               unlockAudio();
             }
-            setEnabled(checked);
+            setSoundsEnabled(checked);
           }}
         />
       </div>
 
-      {settings.enabled && (
+      {soundsEnabled && (
         <>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Volume</span>
-              <span className="font-medium">{settings.volume}%</span>
+              <span className="font-medium">{volume}%</span>
             </div>
             <Slider
-              value={[settings.volume]}
+              value={[volume]}
               onValueChange={([v]) => setVolume(v)}
               max={100}
               step={5}
@@ -102,7 +109,7 @@ export function SoundSettings({ compact = false, className }: SoundSettingsProps
         </>
       )}
 
-      {needsUnlock && settings.enabled && (
+      {needsUnlock && soundsEnabled && (
         <Button
           onClick={unlockAudio}
           size="sm"

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogIn, LogOut, Menu, X, Gift } from 'lucide-react';
+import { LogIn, LogOut, Menu, X, Gift, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMatchSound } from '@/contexts/MatchSoundContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useVipStatus } from '@/hooks/useVipStatus';
 import { CoinIcon } from '@/components/common/CoinIcon';
@@ -43,6 +44,7 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
   const { user, profile, wallet, signOut } = useAuth();
   const { unreadCount } = useNotifications();
   const { isVip } = useVipStatus();
+  const { audioUnlocked, unlockAudio, soundsEnabled } = useMatchSound();
   const navigate = useNavigate();
   const [showVipModal, setShowVipModal] = useState(false);
   const [showTipModal, setShowTipModal] = useState(false);
@@ -52,7 +54,21 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
     navigate('/');
   };
 
+  // Show audio enable banner if sounds enabled but not unlocked
+  const showAudioBanner = user && soundsEnabled && !audioUnlocked;
+
   return (
+    <>
+      {/* Audio Enable Banner */}
+      {showAudioBanner && (
+        <div className="bg-accent/90 text-black px-4 py-2 text-center text-sm flex items-center justify-center gap-3">
+          <Volume2 className="w-4 h-4" />
+          <span>Enable match sounds to never miss an event!</span>
+          <Button size="sm" variant="secondary" onClick={unlockAudio} className="ml-2">
+            Enable Sounds
+          </Button>
+        </div>
+      )}
     <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
         {/* Left side: Mobile menu + Search */}
@@ -239,5 +255,6 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
         recipientUsername=""
       />
     </header>
+    </>
   );
 }

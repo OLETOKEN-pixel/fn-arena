@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { MatchSoundProvider } from "@/contexts/MatchSoundContext";
 import { AppLoadingGuard } from "@/components/common/AppLoadingGuard";
 
 // Pages
@@ -53,13 +52,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <MatchSoundProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AppLoadingGuard>
-                <Routes>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppLoadingGuard>
+              <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/matches" element={<Matches />} />
@@ -87,11 +85,10 @@ function App() {
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AppLoadingGuard>
-            </BrowserRouter>
-          </TooltipProvider>
-        </MatchSoundProvider>
+              </Routes>
+            </AppLoadingGuard>
+          </BrowserRouter>
+        </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

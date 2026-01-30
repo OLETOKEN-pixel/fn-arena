@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Target, TrendingUp, Coins, Calendar, Gift, X } from 'lucide-react';
+import { Trophy, Target, TrendingUp, Coins, Calendar, Gift, X, BarChart3 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVipStatus } from '@/hooks/useVipStatus';
 import { TipModal } from '@/components/vip/TipModal';
+import { PlayerComparisonModal } from '@/components/player/PlayerComparisonModal';
 import { cn } from '@/lib/utils';
 
 interface PlayerStats {
@@ -39,6 +40,7 @@ export function PlayerStatsModal({ open, onOpenChange, userId }: PlayerStatsModa
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTipModal, setShowTipModal] = useState(false);
+  const [showCompareModal, setShowCompareModal] = useState(false);
 
   useEffect(() => {
     if (open && userId) {
@@ -68,6 +70,7 @@ export function PlayerStatsModal({ open, onOpenChange, userId }: PlayerStatsModa
   };
 
   const canTip = user && user.id !== userId && isVip;
+  const canCompare = user && user.id !== userId;
 
   return (
     <>
@@ -110,11 +113,18 @@ export function PlayerStatsModal({ open, onOpenChange, userId }: PlayerStatsModa
                     )}
                   </div>
                 </div>
-                {canTip && (
-                  <Button size="sm" variant="outline" onClick={() => setShowTipModal(true)}>
-                    <Gift className="w-4 h-4 mr-1" /> Tip
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {canCompare && (
+                    <Button size="sm" variant="outline" onClick={() => setShowCompareModal(true)}>
+                      <BarChart3 className="w-4 h-4 mr-1" /> Compare
+                    </Button>
+                  )}
+                  {canTip && (
+                    <Button size="sm" variant="outline" onClick={() => setShowTipModal(true)}>
+                      <Gift className="w-4 h-4 mr-1" /> Tip
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <Tabs defaultValue="overview" className="w-full">
@@ -204,6 +214,17 @@ export function PlayerStatsModal({ open, onOpenChange, userId }: PlayerStatsModa
           recipientId={userId}
           recipientUsername={stats.username}
           recipientAvatarUrl={stats.avatar_url ?? undefined}
+        />
+      )}
+
+      {/* Compare Modal */}
+      {stats && (
+        <PlayerComparisonModal
+          open={showCompareModal}
+          onOpenChange={setShowCompareModal}
+          targetUserId={userId}
+          targetUsername={stats.username}
+          targetAvatarUrl={stats.avatar_url}
         />
       )}
     </>

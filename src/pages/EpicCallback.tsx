@@ -35,21 +35,21 @@ export default function EpicCallback() {
       // Handle user cancellation or error from Epic
       if (error) {
         setStatus('error');
-        setErrorMessage(errorDescription || 'Collegamento annullato');
+        setErrorMessage(errorDescription || 'Connection canceled');
         return;
       }
 
       // Validate required params
       if (!code || !state) {
         setStatus('error');
-        setErrorMessage('Parametri di autorizzazione mancanti. Riprova il collegamento.');
+        setErrorMessage('Missing authorization parameters. Please try again.');
         return;
       }
 
       // Check if user is authenticated
       if (!user) {
         setStatus('error');
-        setErrorMessage('Sessione scaduta. Effettua il login e riprova.');
+        setErrorMessage('Session expired. Please log in and try again.');
         return;
       }
 
@@ -63,11 +63,11 @@ export default function EpicCallback() {
         console.log('[EpicCallback] Edge function response:', { data, error: invokeError });
 
         if (invokeError) {
-          throw new Error(invokeError.message || 'Errore durante il collegamento');
+          throw new Error(invokeError.message || 'Connection error');
         }
 
         if (!data?.success) {
-          throw new Error(data?.error || 'Collegamento non riuscito');
+          throw new Error(data?.error || 'Connection failed');
         }
 
         // Success!
@@ -77,7 +77,7 @@ export default function EpicCallback() {
         // Refresh profile to get updated epic_username
         await refreshProfile();
         
-        toast.success(`Epic Games collegato: ${data.epicUsername}`);
+        toast.success(`Epic Games connected: ${data.epicUsername}`);
 
         // Auto-redirect after 2 seconds
         setTimeout(() => {
@@ -85,7 +85,7 @@ export default function EpicCallback() {
         }, 2000);
       } catch (err: unknown) {
         console.error('[EpicCallback] Error:', err);
-        const message = err instanceof Error ? err.message : 'Errore sconosciuto';
+        const message = err instanceof Error ? err.message : 'Unknown error';
         setStatus('error');
         setErrorMessage(message);
       }
@@ -102,9 +102,9 @@ export default function EpicCallback() {
             {status === 'loading' && (
               <>
                 <Loader2 className="w-16 h-16 text-primary mx-auto mb-4 animate-spin" />
-                <h1 className="text-2xl font-bold mb-2">Collegamento in corso...</h1>
+                <h1 className="text-2xl font-bold mb-2">Connecting...</h1>
                 <p className="text-muted-foreground">
-                  Stiamo verificando il tuo account Epic Games
+                  Verifying your Epic Games account
                 </p>
               </>
             )}
@@ -112,15 +112,15 @@ export default function EpicCallback() {
             {status === 'success' && (
               <>
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <h1 className="text-2xl font-bold mb-2">Epic Games Collegato!</h1>
+                <h1 className="text-2xl font-bold mb-2">Epic Games Connected!</h1>
                 <p className="text-muted-foreground mb-4">
-                  Il tuo account è stato collegato come <strong>{epicUsername}</strong>
+                  Your account is now linked as <strong>{epicUsername}</strong>
                 </p>
                 <p className="text-sm text-muted-foreground mb-6">
-                  Verrai reindirizzato al profilo...
+                  Redirecting to profile...
                 </p>
                 <Button asChild className="w-full">
-                  <Link to="/profile?tab=game">Vai al Profilo</Link>
+                  <Link to="/profile?tab=game">Go to Profile</Link>
                 </Button>
               </>
             )}
@@ -128,17 +128,17 @@ export default function EpicCallback() {
             {status === 'error' && (
               <>
                 <XCircle className="w-16 h-16 text-destructive mx-auto mb-4" />
-                <h1 className="text-2xl font-bold mb-2">Collegamento Fallito</h1>
+                <h1 className="text-2xl font-bold mb-2">Connection Failed</h1>
                 <p className="text-muted-foreground mb-6">{errorMessage}</p>
                 <div className="flex flex-col gap-3">
                   <Button asChild variant="default" className="w-full">
                     <Link to="/profile?tab=game">
                       <RefreshCw className="w-4 h-4 mr-2" />
-                      Riprova
+                      Try Again
                     </Link>
                   </Button>
                   <Button asChild variant="outline" className="w-full">
-                    <Link to="/">Torna alla Home</Link>
+                    <Link to="/">Back to Home</Link>
                   </Button>
                 </div>
               </>

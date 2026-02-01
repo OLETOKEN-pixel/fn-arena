@@ -177,8 +177,8 @@ export default function MatchDetails() {
        const isParticipant = matchData.participants?.some((p) => p.user_id === user.id);
        if (!isParticipant && !isAdmin) {
         toast({
-          title: 'Solo partecipanti',
-          description: 'Questo match non è più pubblico. Solo i partecipanti possono vederlo.',
+          title: 'Participants Only',
+          description: 'This match is no longer public. Only participants can view it.',
           variant: 'destructive',
         });
         navigate('/matches');
@@ -336,8 +336,8 @@ export default function MatchDetails() {
     try {
       if (selectedTeam.owner_id !== user?.id) {
         toast({
-          title: 'Impossibile joinare',
-          description: 'Solo il proprietario del team può joinare il match.',
+          title: 'Unable to join',
+          description: 'Only the team owner can join the match.',
           variant: 'destructive',
         });
         return;
@@ -357,7 +357,7 @@ export default function MatchDetails() {
 
       if (!result?.success) {
         toast({
-          title: 'Impossibile joinare',
+          title: 'Unable to join',
           description: result?.message || result?.error || 'Failed to join match',
           variant: 'destructive',
         });
@@ -409,7 +409,7 @@ export default function MatchDetails() {
 
       if (!result?.success) {
         toast({
-          title: 'Impossibile joinare',
+          title: 'Unable to join',
           description: result?.message || result?.error || 'Failed to join match',
           variant: 'destructive',
         });

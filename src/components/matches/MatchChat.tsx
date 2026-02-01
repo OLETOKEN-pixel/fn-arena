@@ -110,8 +110,8 @@ export function MatchChat({
     const messageText = newMessage.trim();
     if (messageText.length > 500) {
       toast({
-        title: 'Messaggio troppo lungo',
-        description: 'Il messaggio non può superare i 500 caratteri.',
+        title: 'Message too long',
+        description: 'Message cannot exceed 500 characters.',
         variant: 'destructive',
       });
       return;
@@ -135,8 +135,8 @@ export function MatchChat({
       console.error('Send message error:', error);
       setNewMessage(messageText);
       toast({
-        title: 'Errore',
-        description: 'Impossibile inviare il messaggio.',
+        title: 'Error',
+        description: 'Failed to send message.',
         variant: 'destructive',
       });
     } finally {

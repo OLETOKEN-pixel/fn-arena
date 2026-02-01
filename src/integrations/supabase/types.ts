@@ -405,6 +405,44 @@ export type Database = {
           },
         ]
       }
+      match_events: {
+        Row: {
+          actor_user_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          match_id: string
+          payload: Json
+          target_user_ids: string[]
+        }
+        Insert: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          match_id: string
+          payload?: Json
+          target_user_ids?: string[]
+        }
+        Update: {
+          actor_user_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          match_id?: string
+          payload?: Json
+          target_user_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_events_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_participants: {
         Row: {
           id: string
@@ -1781,6 +1819,15 @@ export type Database = {
         Returns: Json
       }
       delete_team: { Args: { p_team_id: string }; Returns: Json }
+      emit_match_event: {
+        Args: {
+          p_actor_user_id?: string
+          p_event_type: string
+          p_match_id: string
+          p_payload?: Json
+        }
+        Returns: Json
+      }
       equip_avatar: { Args: { p_avatar_id: string }; Returns: Json }
       expire_stale_matches: { Args: never; Returns: Json }
       finalize_match_payout: {

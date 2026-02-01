@@ -61,9 +61,9 @@ type ProfileSection = 'account' | 'game' | 'payments' | 'connections';
 
 const sections = [
   { id: 'account' as const, label: 'Account', icon: User },
-  { id: 'game' as const, label: 'Gioco', icon: Gamepad2 },
-  { id: 'payments' as const, label: 'Pagamenti', icon: CreditCard },
-  { id: 'connections' as const, label: 'Collegamenti', icon: Link2 },
+  { id: 'game' as const, label: 'Game', icon: Gamepad2 },
+  { id: 'payments' as const, label: 'Payments', icon: CreditCard },
+  { id: 'connections' as const, label: 'Connections', icon: Link2 },
 ];
 
 export default function Profile() {
@@ -131,14 +131,14 @@ export default function Profile() {
       if (error) throw error;
       
       await refreshProfile();
-      toast.success('Profilo aggiornato!');
+      toast.success('Profile updated!');
       
       // Redirect if profile was incomplete and now complete
       if (!isProfileComplete && !!epicUsername && redirectAfterComplete) {
         navigate(redirectAfterComplete, { replace: true });
       }
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Errore durante il salvataggio';
+      const message = error instanceof Error ? error.message : 'Error saving changes';
       toast.error(message);
     } finally {
       setIsSaving(false);
@@ -152,11 +152,11 @@ export default function Profile() {
     }
     
     if (username.length < 3 || username.length > 20) {
-      setUsernameError('Username deve avere 3-20 caratteri');
+      setUsernameError('Username must be 3-20 characters');
       return;
     }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      setUsernameError('Solo lettere, numeri e underscore');
+      setUsernameError('Letters, numbers and underscores only');
       return;
     }
     
@@ -166,10 +166,10 @@ export default function Profile() {
     try {
       const result = await changeUsername(username);
       if (result.success) {
-        toast.success('Username aggiornato!');
+        toast.success('Username updated!');
         await refreshProfile();
       } else {
-        setUsernameError(result.error || 'Errore durante il cambio username');
+        setUsernameError(result.error || 'Error changing username');
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Errore';
@@ -185,17 +185,17 @@ export default function Profile() {
       const { data, error } = await supabase.functions.invoke('epic-auth-start');
       
       if (error) {
-        throw new Error(error.message || 'Errore durante la connessione');
+        throw new Error(error.message || 'Connection error');
       }
       
       if (!data?.authUrl) {
-        throw new Error('URL di autorizzazione non ricevuto');
+        throw new Error('Authorization URL not received');
       }
       
       // Redirect to Epic OAuth
       window.location.href = data.authUrl;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Errore durante la connessione a Epic Games';
+      const message = error instanceof Error ? error.message : 'Error connecting to Epic Games';
       toast.error(message);
       setIsConnectingEpic(false);
     }
@@ -218,11 +218,11 @@ export default function Profile() {
       if (error) throw error;
 
       await refreshProfile();
-      toast.success('Epic Games scollegato');
+      toast.success('Epic Games disconnected');
       setShowDisconnectEpicDialog(false);
       setEpicUsername('');
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Errore durante lo scollegamento';
+      const message = error instanceof Error ? error.message : 'Error disconnecting';
       toast.error(message);
     } finally {
       setIsDisconnectingEpic(false);
@@ -243,8 +243,8 @@ export default function Profile() {
         {!isProfileComplete && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Completa il Profilo</AlertTitle>
-            <AlertDescription>Aggiungi il tuo Epic Games Username per creare o unirti ai match.</AlertDescription>
+            <AlertTitle>Complete Your Profile</AlertTitle>
+            <AlertDescription>Add your Epic Games Username to create or join matches.</AlertDescription>
           </Alert>
         )}
 
@@ -267,8 +267,8 @@ export default function Profile() {
                       {profile.username?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="text-xs text-white font-medium">Modifica</span>
+                <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-xs text-white font-medium">Edit</span>
                   </div>
                 </button>
                 <div>
@@ -284,7 +284,7 @@ export default function Profile() {
                   {isDiscordConnected && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                       <DiscordIcon className="w-3 h-3" />
-                      Username sincronizzato da Discord
+                      Username synced from Discord
                     </p>
                   )}
                 </div>
@@ -298,7 +298,7 @@ export default function Profile() {
                     onClick={() => setShowVipModal(true)}
                     className="border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
                   >
-                    <Crown className="w-4 h-4 mr-1" /> Diventa VIP
+                    <Crown className="w-4 h-4 mr-1" /> Become VIP
                   </Button>
                 )}
               </div>
@@ -339,7 +339,7 @@ export default function Profile() {
               {/* Account Section */}
               {activeSection === 'account' && (
                 <div className="space-y-5">
-                  <h2 className="text-lg font-semibold">Impostazioni Account</h2>
+                  <h2 className="text-lg font-semibold">Account Settings</h2>
                   
                   {/* Username (from Discord) */}
                   <div className="space-y-2">
@@ -361,13 +361,13 @@ export default function Profile() {
                         variant={isVip ? "default" : "outline"}
                         className={!isVip ? "border-amber-500/50 text-amber-500" : ""}
                       >
-                        {isVip ? "Salva" : <><Crown className="w-4 h-4 mr-1" /> VIP</>}
+                        {isVip ? "Save" : <><Crown className="w-4 h-4 mr-1" /> VIP</>}
                       </Button>
                     </div>
                     {usernameError && <p className="text-xs text-destructive">{usernameError}</p>}
                     {!isVip && (
                       <p className="text-xs text-muted-foreground">
-                        🔒 Solo i membri VIP possono cambiare username. Il tuo username proviene da Discord.
+                        🔒 Only VIP members can change username. Your username comes from Discord.
                       </p>
                     )}
                   </div>
@@ -375,10 +375,10 @@ export default function Profile() {
                   {/* Region & Platform */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Regione Preferita</Label>
+                      <Label>Preferred Region</Label>
                       <Select value={preferredRegion} onValueChange={(v) => setPreferredRegion(v as Region)}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleziona regione" />
+                          <SelectValue placeholder="Select region" />
                         </SelectTrigger>
                         <SelectContent>
                           {REGIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
@@ -387,10 +387,10 @@ export default function Profile() {
                     </div>
                     
                     <div className="space-y-2">
-                      <Label>Piattaforma Preferita</Label>
+                      <Label>Preferred Platform</Label>
                       <Select value={preferredPlatform} onValueChange={(v) => setPreferredPlatform(v as Platform)}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Seleziona piattaforma" />
+                          <SelectValue placeholder="Select platform" />
                         </SelectTrigger>
                         <SelectContent>
                           {PLATFORMS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
@@ -401,7 +401,7 @@ export default function Profile() {
                   
                   <Button onClick={handleSave} disabled={isSaving}>
                     <Save className="w-4 h-4 mr-2" />
-                    {isSaving ? 'Salvataggio...' : 'Salva Modifiche'}
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
               )}
@@ -409,7 +409,7 @@ export default function Profile() {
               {/* Game Section */}
               {activeSection === 'game' && (
                 <div className="space-y-5">
-                  <h2 className="text-lg font-semibold">Account di Gioco</h2>
+                  <h2 className="text-lg font-semibold">Game Accounts</h2>
                   
                   {/* Epic Games Card */}
                   <div className="p-4 rounded-lg bg-secondary/50 border border-border">

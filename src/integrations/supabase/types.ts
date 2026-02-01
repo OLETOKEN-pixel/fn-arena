@@ -1940,16 +1940,14 @@ export type Database = {
         }
         Returns: Json
       }
-      join_match_v2:
-        | { Args: { p_match_id: string }; Returns: Json }
-        | {
-            Args: {
-              p_match_id: string
-              p_payment_mode?: string
-              p_team_id?: string
-            }
-            Returns: Json
-          }
+      join_match_v2: {
+        Args: {
+          p_match_id: string
+          p_payment_mode?: string
+          p_team_id?: string
+        }
+        Returns: Json
+      }
       join_team_match: {
         Args: { p_match_id: string; p_payment_mode?: string; p_team_id: string }
         Returns: Json

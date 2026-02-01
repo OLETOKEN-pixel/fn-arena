@@ -1819,15 +1819,26 @@ export type Database = {
         Returns: Json
       }
       delete_team: { Args: { p_team_id: string }; Returns: Json }
-      emit_match_event: {
-        Args: {
-          p_actor_user_id?: string
-          p_event_type: string
-          p_match_id: string
-          p_payload?: Json
-        }
-        Returns: Json
-      }
+      emit_match_event:
+        | {
+            Args: {
+              p_actor_user_id?: string
+              p_event_type: string
+              p_match_id: string
+              p_payload?: Json
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_actor_user_id: string
+              p_event_type: string
+              p_match_id: string
+              p_payload?: Json
+              p_target_user_ids: string[]
+            }
+            Returns: Json
+          }
       equip_avatar: { Args: { p_avatar_id: string }; Returns: Json }
       expire_stale_matches: { Args: never; Returns: Json }
       finalize_match_payout: {
@@ -1929,7 +1940,16 @@ export type Database = {
         }
         Returns: Json
       }
-      join_match_v2: { Args: { p_match_id: string }; Returns: Json }
+      join_match_v2:
+        | { Args: { p_match_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_match_id: string
+              p_payment_mode?: string
+              p_team_id?: string
+            }
+            Returns: Json
+          }
       join_team_match: {
         Args: { p_match_id: string; p_payment_mode?: string; p_team_id: string }
         Returns: Json

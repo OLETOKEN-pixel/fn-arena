@@ -258,6 +258,45 @@ export default function MatchDetails() {
     }
   }, [id, fetchMatch]);
 
+  // ========== REALTIME AUDIO NOTIFICATIONS ==========
+  // Subscribe to match_events table for instant audio notifications
+  useEffect(() => {
+    if (!id || !user) return;
+
+    const audioChannel = supabase
+      .channel(`match-events-audio-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'match_events',
+          filter: `match_id=eq.${id}`,
+        },
+        (payload) => {
+          const event = payload.new as {
+            event_type: string;
+            target_user_ids: string[];
+            actor_user_id: string;
+          };
+
+          // Only play sound if current user is a target and not the actor
+          if (
+            event.target_user_ids?.includes(user.id) &&
+            event.actor_user_id !== user.id
+          ) {
+            // Play notification sound for all match events
+            playSound('match_accepted');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(audioChannel);
+    };
+  }, [id, user, playSound]);
+
   const handleCancelMatch = async () => {
     if (!match) return;
     

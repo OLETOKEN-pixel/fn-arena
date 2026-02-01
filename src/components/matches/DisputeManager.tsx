@@ -38,15 +38,15 @@ export function DisputeManager({ matches, onResolved }: DisputeManagerProps) {
       }
 
       toast({
-        title: 'Disputa risolta',
-        description: 'Il vincitore è stato dichiarato e il premio assegnato.',
+        title: 'Dispute Resolved',
+        description: 'Winner declared and prize awarded.',
       });
 
       onResolved();
     } catch (error) {
       toast({
-        title: 'Errore',
-        description: 'Impossibile risolvere la disputa.',
+        title: 'Error',
+        description: 'Unable to resolve dispute.',
         variant: 'destructive',
       });
     } finally {
@@ -58,7 +58,7 @@ export function DisputeManager({ matches, onResolved }: DisputeManagerProps) {
     return (
       <Card className="bg-card border-border">
         <CardContent className="py-8 text-center">
-          <p className="text-muted-foreground">Nessuna disputa da risolvere 🎉</p>
+          <p className="text-muted-foreground">No disputes to resolve 🎉</p>
         </CardContent>
       </Card>
     );
@@ -71,7 +71,7 @@ export function DisputeManager({ matches, onResolved }: DisputeManagerProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="w-5 h-5" />
-              Disputa - {match.mode}
+              Dispute - {match.mode}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -89,7 +89,7 @@ export function DisputeManager({ matches, onResolved }: DisputeManagerProps) {
 
             {/* Participants */}
             <div className="space-y-2">
-              <p className="text-sm font-medium">Partecipanti:</p>
+              <p className="text-sm font-medium">Participants:</p>
               <div className="grid grid-cols-2 gap-4">
                 {match.participants?.map((p) => (
                   <div key={p.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary">
@@ -116,7 +116,7 @@ export function DisputeManager({ matches, onResolved }: DisputeManagerProps) {
                       ) : (
                         <>
                           <Trophy className="w-4 h-4 mr-1" />
-                          Vincitore
+                          Winner
                         </>
                       )}
                     </Button>
@@ -127,9 +127,9 @@ export function DisputeManager({ matches, onResolved }: DisputeManagerProps) {
 
             {/* Admin Notes */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Note Admin</label>
+              <label className="text-sm font-medium">Admin Notes</label>
               <Textarea
-                placeholder="Motivazione della decisione..."
+                placeholder="Reason for decision..."
                 value={adminNotes[match.id] || ''}
                 onChange={(e) => setAdminNotes({ ...adminNotes, [match.id]: e.target.value })}
               />

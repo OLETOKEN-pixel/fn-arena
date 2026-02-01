@@ -10,14 +10,7 @@ interface SoundSettings {
 const STORAGE_KEY = 'oleboy_sound_settings';
 const DEFAULT_SETTINGS: SoundSettings = {
   enabled: true,
-  volume: 70,
-};
-
-// Simple beep sounds using Web Audio API (no external files needed)
-const SOUND_FREQUENCIES: Record<SoundType, number[]> = {
-  match_accepted: [523, 659, 784], // C5, E5, G5 chord
-  ready_up: [440, 550], // A4, C#5
-  result_declared: [392, 494, 587, 784], // G4 -> G5 fanfare
+  volume: 90, // Higher default volume
 };
 
 export function useSoundNotifications() {
@@ -31,7 +24,7 @@ export function useSoundNotifications() {
   });
 
   const [audioUnlocked, setAudioUnlocked] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Check for reduced motion preference
   const prefersReducedMotion = typeof window !== 'undefined' 
@@ -47,65 +40,81 @@ export function useSoundNotifications() {
     }
   }, [settings]);
 
-  // Initialize audio context on user interaction
+  // Update audio volume when settings change
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = settings.volume / 100;
+    }
+  }, [settings.volume]);
+
+  // Initialize and preload audio on user interaction
   const unlockAudio = useCallback(() => {
     if (audioUnlocked) return;
 
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioContextClass) {
-        audioContextRef.current = new AudioContextClass();
-        // Resume context if suspended
-        if (audioContextRef.current.state === 'suspended') {
-          audioContextRef.current.resume();
-        }
-        setAudioUnlocked(true);
+      // Create and preload the audio element
+      audioRef.current = new Audio('/sounds/notification.mp3');
+      audioRef.current.volume = settings.volume / 100;
+      audioRef.current.preload = 'auto';
+      
+      // Trigger a silent play to unlock audio on mobile/Safari
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            // Immediately pause and reset
+            audioRef.current?.pause();
+            if (audioRef.current) {
+              audioRef.current.currentTime = 0;
+            }
+            setAudioUnlocked(true);
+          })
+          .catch((e) => {
+            console.warn('Audio unlock failed (may need user interaction):', e);
+            // Still mark as unlocked - it may work on next user interaction
+            setAudioUnlocked(true);
+          });
       }
     } catch (e) {
-      console.error('Failed to create AudioContext:', e);
+      console.error('Failed to preload audio:', e);
     }
-  }, [audioUnlocked]);
+  }, [audioUnlocked, settings.volume]);
 
   // Play a sound
   const playSound = useCallback((type: SoundType) => {
     if (!settings.enabled || prefersReducedMotion) return;
-    if (!audioContextRef.current) {
-      // Try to create context if not exists
-      unlockAudio();
-      if (!audioContextRef.current) return;
+    
+    // If audio not unlocked yet, try to unlock first
+    if (!audioRef.current) {
+      try {
+        audioRef.current = new Audio('/sounds/notification.mp3');
+        audioRef.current.volume = settings.volume / 100;
+      } catch (e) {
+        console.error('Failed to create audio:', e);
+        return;
+      }
     }
 
-    const ctx = audioContextRef.current;
-    if (ctx.state === 'suspended') {
-      ctx.resume();
+    try {
+      // Reset to beginning and play
+      audioRef.current.currentTime = 0;
+      audioRef.current.volume = settings.volume / 100;
+      
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((e) => {
+          console.warn('Failed to play sound:', e);
+        });
+      }
+    } catch (e) {
+      console.error('Failed to play sound:', e);
     }
-
-    const frequencies = SOUND_FREQUENCIES[type];
-    const volume = settings.volume / 100 * 0.3; // Scale down for comfort
-
-    frequencies.forEach((freq, i) => {
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
-
-      gainNode.gain.setValueAtTime(0, ctx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.05);
-      gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-
-      const startTime = ctx.currentTime + i * 0.1;
-      oscillator.start(startTime);
-      oscillator.stop(startTime + 0.35);
-    });
-  }, [settings.enabled, settings.volume, prefersReducedMotion, unlockAudio]);
+  }, [settings.enabled, settings.volume, prefersReducedMotion]);
 
   // Test sound
   const testSound = useCallback(() => {
     unlockAudio();
+    // Small delay to ensure audio is unlocked
     setTimeout(() => playSound('match_accepted'), 100);
   }, [playSound, unlockAudio]);
 

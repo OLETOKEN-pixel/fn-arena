@@ -72,8 +72,8 @@ export default function Auth() {
     } catch (err) {
       console.error('Discord sign-in error:', err);
       toast({
-        title: 'Errore',
-        description: 'Impossibile avviare il login con Discord. Riprova.',
+        title: 'Error',
+        description: 'Unable to start Discord login. Please try again.',
         variant: 'destructive',
       });
       setIsSubmitting(false);
@@ -123,7 +123,7 @@ export default function Auth() {
         className="absolute top-4 left-4 z-10 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Torna alla Home
+        Back to Home
       </Link>
 
       {/* Auth Card */}
@@ -138,10 +138,10 @@ export default function Auth() {
           
           {/* Title */}
           <h1 className="font-display text-2xl font-bold mb-2 text-foreground">
-            Accedi a OLEBOY TOKEN
+            Sign in to OLEBOY TOKEN
           </h1>
           <p className="text-muted-foreground mb-8">
-            La piattaforma gaming per veri campioni
+            The gaming platform for true champions
           </p>
           
           {/* Discord Button - Primary CTA */}
@@ -153,23 +153,23 @@ export default function Auth() {
             {isSubmitting ? (
               <>
                 <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-                Connessione...
+                Connecting...
               </>
             ) : (
               <>
                 <DiscordIcon className="w-5 h-5 mr-3" />
-                Continua con Discord
+                Continue with Discord
               </>
             )}
           </Button>
           
           {/* Terms and Privacy */}
           <p className="text-xs text-muted-foreground mt-8">
-            Accedendo accetti i nostri{' '}
+            By signing in, you agree to our{' '}
             <Link to="/terms" className="text-primary hover:underline">
-              Termini di Servizio
+              Terms of Service
             </Link>{' '}
-            e la{' '}
+            and{' '}
             <Link to="/privacy" className="text-primary hover:underline">
               Privacy Policy
             </Link>

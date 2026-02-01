@@ -160,7 +160,7 @@ export default function TeamDetails() {
   const handleDeleteTeam = async () => {
     if (!team) return;
     
-    if (!confirm(`Sei sicuro di voler eliminare il team "${team.name}"? Tutti i membri verranno rimossi. Questa azione è irreversibile.`)) {
+    if (!confirm(`Are you sure you want to delete the team "${team.name}"? All members will be removed. This action is irreversible.`)) {
       return;
     }
     
@@ -178,14 +178,14 @@ export default function TeamDetails() {
       }
 
       toast({
-        title: 'Team eliminato',
-        description: `Il team ${team.name} è stato eliminato.`,
+        title: 'Team deleted',
+        description: `Team ${team.name} has been deleted.`,
       });
       navigate('/teams');
     } catch (error) {
       toast({
-        title: 'Errore',
-        description: error instanceof Error ? error.message : 'Impossibile eliminare il team',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Unable to delete team',
         variant: 'destructive',
       });
     } finally {
@@ -326,7 +326,7 @@ export default function TeamDetails() {
                   disabled={deleting}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
-                  {deleting ? 'Eliminando...' : 'Elimina Team'}
+                  {deleting ? 'Deleting...' : 'Delete Team'}
                 </Button>
               )}
               {!isOwner && (
@@ -379,12 +379,12 @@ export default function TeamDetails() {
                       {member.profile?.username?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                      <p className="font-medium">{member.profile?.username || 'Utente'}</p>
+                    <div>
+                      <p className="font-medium">{member.profile?.username || 'User'}</p>
                       {member.profile?.epic_username ? (
                         <p className="text-xs text-muted-foreground">Epic: {member.profile.epic_username}</p>
                       ) : (
-                        <p className="text-xs text-muted-foreground">Epic non collegato</p>
+                        <p className="text-xs text-muted-foreground">Epic not connected</p>
                       )}
                   </div>
                 </div>

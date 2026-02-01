@@ -1,64 +1,58 @@
 
-# Comprehensive Fix Plan: Match Audio, Realtime Events, UI/English, and Premium Polish
+# Fix Plan: Match "Ready Up" Blocking Error + Realtime Audio Notifications
 
-## Executive Summary
+## Problem Summary
 
-This plan addresses all critical bugs and UI issues including the missing `emit_match_event` function (if being called elsewhere), adds a real-time match event system for audio notifications, translates all Italian strings to English, enhances the sound notification system to use the uploaded MP3 file, fixes social icon colors, and ensures premium UI consistency.
+The "Ready Up" functionality is blocked due to a **database function signature mismatch**:
+
+**Current error:**
+```
+function emit_match_event(uuid, unknown, uuid, uuid[], jsonb) does not exist
+```
+
+**Root Cause:**
+- The `set_player_ready` function in the database is calling `emit_match_event` with **5 arguments**:
+  ```sql
+  PERFORM emit_match_event(p_match_id, 'all_ready', v_user_id, v_all_participants, '{}'::jsonb);
+  PERFORM emit_match_event(p_match_id, 'ready', v_user_id, v_targets, '{}'::jsonb);
+  ```
+- But `emit_match_event` only accepts **4 arguments** (no `target_user_ids` parameter)
 
 ---
 
-## 1. CRITICAL: Match Events Table & RPC for Audio Notifications
+## 1. Database Migration: Add 5-Argument Overload
 
-### Problem Analysis
-The user mentions an error about `emit_match_event` not existing. While my search didn't find this being called in the current codebase, we need to create a robust real-time event system for match audio notifications.
+Create a new PostgreSQL function that supports the 5-argument signature while preserving the existing 4-argument version.
 
-### Solution: Create Match Events Infrastructure
-
-#### Database Migration
-
+### New Function Signature
 ```sql
--- Create match_events table for real-time audio triggers
-CREATE TABLE IF NOT EXISTS public.match_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  match_id uuid NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
-  event_type text NOT NULL CHECK (event_type IN (
-    'match_created',
-    'player_joined',
-    'team_ready',
-    'all_ready',
-    'match_started',
-    'result_declared'
-  )),
-  actor_user_id uuid,
-  target_user_ids uuid[] NOT NULL DEFAULT '{}',
-  payload jsonb NOT NULL DEFAULT '{}',
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
--- Enable RLS
-ALTER TABLE public.match_events ENABLE ROW LEVEL SECURITY;
-
--- RLS: Participants and admins can view match events
-CREATE POLICY "Participants can view match events" ON public.match_events
-  FOR SELECT
-  USING (
-    auth.uid() = ANY(target_user_ids)
-    OR EXISTS (
-      SELECT 1 FROM match_participants mp
-      WHERE mp.match_id = match_events.match_id
-      AND mp.user_id = auth.uid()
-    )
-    OR is_admin()
-  );
-
--- Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.match_events;
-
--- Create emit_match_event RPC
 CREATE OR REPLACE FUNCTION public.emit_match_event(
   p_match_id uuid,
   p_event_type text,
-  p_actor_user_id uuid DEFAULT NULL,
+  p_actor_user_id uuid,
+  p_target_user_ids uuid[],
+  p_payload jsonb DEFAULT '{}'::jsonb
+)
+RETURNS jsonb
+```
+
+### Implementation Details
+- Insert into `match_events` table with the provided `target_user_ids` array
+- Return the inserted event ID
+- Use `SECURITY DEFINER` to allow RPC calls from client
+- Both overloads can coexist (PostgreSQL supports function overloading)
+
+### Migration File
+Create: `supabase/migrations/[timestamp]_fix_emit_match_event_overload.sql`
+
+```sql
+-- Add 5-argument overload for emit_match_event
+-- This version accepts explicit target_user_ids array
+CREATE OR REPLACE FUNCTION public.emit_match_event(
+  p_match_id uuid,
+  p_event_type text,
+  p_actor_user_id uuid,
+  p_target_user_ids uuid[],
   p_payload jsonb DEFAULT '{}'::jsonb
 )
 RETURNS jsonb
@@ -67,19 +61,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_target_users uuid[];
   v_event_id uuid;
 BEGIN
-  -- Get all participants of the match as targets (excluding actor)
-  SELECT array_agg(mp.user_id)
-  INTO v_target_users
-  FROM match_participants mp
-  WHERE mp.match_id = p_match_id
-    AND (p_actor_user_id IS NULL OR mp.user_id != p_actor_user_id);
-
-  -- Insert the event
+  -- Insert the event with explicit target users
   INSERT INTO match_events (match_id, event_type, actor_user_id, target_user_ids, payload)
-  VALUES (p_match_id, p_event_type, p_actor_user_id, COALESCE(v_target_users, '{}'), p_payload)
+  VALUES (p_match_id, p_event_type, p_actor_user_id, COALESCE(p_target_user_ids, '{}'), p_payload)
   RETURNING id INTO v_event_id;
 
   RETURN jsonb_build_object('success', true, 'event_id', v_event_id);
@@ -89,86 +75,59 @@ $$;
 
 ---
 
-## 2. Enhanced Sound Notification System
+## 2. Update join_match_v2 to Emit Events
+
+Currently `join_match_v2` does NOT emit any events. Add event emission after successful join.
+
+### Changes to join_match_v2
+Add at the end before `RETURN jsonb_build_object('success', true)`:
+
+```sql
+-- Emit player_joined event to notify match creator
+PERFORM emit_match_event(
+  p_match_id,
+  'player_joined',
+  v_caller_id,
+  ARRAY[v_match.creator_id],
+  jsonb_build_object('joined_user_id', v_caller_id)
+);
+```
+
+---
+
+## 3. Verify set_player_ready Event Emissions
+
+The current `set_player_ready` already emits events:
+- `'ready'` event when a player becomes ready (to other participants)
+- `'all_ready'` event when all players are ready (to all participants)
+
+After adding the 5-arg overload, these calls will work correctly.
+
+---
+
+## 4. Frontend: Add Realtime Subscription for Match Events + Audio
 
 ### Current State
-- `useSoundNotifications.ts` uses Web Audio API with synthesized beeps
-- No actual MP3 file is being used
+- `useSoundNotifications.ts` exists and works correctly
+- Audio file `public/sounds/notification.mp3` exists
+- `AudioEnableModal` component exists but is optional (has "Maybe Later" button)
 
-### Solution
+### Required Changes
 
-#### A. Copy Uploaded Audio File to Project
-```
-user-uploads://notification-tone-443095.mp3 → public/sounds/notification.mp3
-```
+**A. MatchDetails.tsx - Add match_events subscription:**
 
-#### B. Update useSoundNotifications.ts
-
-**Key Changes:**
-1. Replace synthesized beeps with real MP3 audio playback
-2. Preload audio on unlock for instant playback
-3. Higher volume by default (0.9)
-4. Works in background tabs after initial unlock
+Add a new realtime subscription specifically for `match_events` table that:
+1. Listens for INSERT events on `match_events` where `match_id = current match`
+2. Checks if `target_user_ids` contains the current user
+3. Plays the appropriate sound based on `event_type`
 
 ```typescript
-// Key changes to useSoundNotifications.ts:
-
-// Add audio element refs for preloaded sounds
-const audioRef = useRef<HTMLAudioElement | null>(null);
-
-// Preload the MP3 on unlock
-const unlockAudio = useCallback(() => {
-  if (audioUnlocked) return;
-  try {
-    audioRef.current = new Audio('/sounds/notification.mp3');
-    audioRef.current.volume = settings.volume / 100;
-    audioRef.current.preload = 'auto';
-    // Trigger a silent play to unlock
-    audioRef.current.play().then(() => {
-      audioRef.current?.pause();
-      audioRef.current!.currentTime = 0;
-    });
-    setAudioUnlocked(true);
-  } catch (e) {
-    console.error('Failed to preload audio:', e);
-  }
-}, [audioUnlocked, settings.volume]);
-
-// Play sound using preloaded audio
-const playSound = useCallback((type: SoundType) => {
-  if (!settings.enabled || !audioRef.current) return;
-  try {
-    audioRef.current.currentTime = 0;
-    audioRef.current.volume = settings.volume / 100;
-    audioRef.current.play();
-  } catch (e) {
-    console.error('Failed to play sound:', e);
-  }
-}, [settings.enabled, settings.volume]);
-```
-
-#### C. Create Audio Enable Modal Component
-
-**New File: `src/components/common/AudioEnableModal.tsx`**
-
-```tsx
-// Modal that appears when user first enters match area
-// "Enable Match Sounds" button unlocks AudioContext
-// Stores preference in localStorage
-// Only shows once per session if dismissed
-```
-
-#### D. Update MatchDetails.tsx
-
-**Add Realtime Subscription to match_events:**
-
-```typescript
-// Subscribe to match events for this match
+// Add subscription to match_events for audio notifications
 useEffect(() => {
   if (!id || !user) return;
   
   const channel = supabase
-    .channel(`match-events-${id}`)
+    .channel(`match-events-audio-${id}`)
     .on(
       'postgres_changes',
       {
@@ -178,21 +137,15 @@ useEffect(() => {
         filter: `match_id=eq.${id}`,
       },
       (payload) => {
-        const event = payload.new as MatchEvent;
+        const event = payload.new as {
+          event_type: string;
+          target_user_ids: string[];
+          actor_user_id: string;
+        };
         
         // Only play sound if current user is a target
         if (event.target_user_ids?.includes(user.id)) {
-          const soundMap: Record<string, SoundType> = {
-            'player_joined': 'match_accepted',
-            'team_ready': 'ready_up',
-            'all_ready': 'match_accepted',
-            'result_declared': 'result_declared',
-          };
-          
-          const soundType = soundMap[event.event_type];
-          if (soundType) {
-            playSound(soundType);
-          }
+          playSound('match_accepted'); // Use same sound for all events
         }
       }
     )
@@ -202,312 +155,73 @@ useEffect(() => {
 }, [id, user, playSound]);
 ```
 
----
+**B. Make Audio Mandatory (Auto-unlock on First Interaction):**
 
-## 3. Translate All Italian Strings to English
+Update the audio system to be mandatory without settings toggle:
+1. Remove the SoundSettings toggle UI from MatchDetails
+2. Keep audio enabled by default (already the case with `enabled: true`)
+3. Auto-unlock audio on first click anywhere on the page
 
-### Files Requiring Updates
-
-| File | Italian Text → English |
-|------|----------------------|
-| `Header.tsx` | "Accedi con Discord" → "Sign in with Discord" |
-| `Auth.tsx` | "Torna alla Home" → "Back to Home" |
-| `Auth.tsx` | "Accedi a OLEBOY TOKEN" → "Sign in to OLEBOY TOKEN" |
-| `Auth.tsx` | "La piattaforma gaming per veri campioni" → "The gaming platform for true champions" |
-| `Auth.tsx` | "Continua con Discord" → "Continue with Discord" |
-| `Auth.tsx` | "Connessione..." → "Connecting..." |
-| `Auth.tsx` | "Accedendo accetti i nostri" → "By signing in, you agree to our" |
-| `Auth.tsx` | "Termini di Servizio" → "Terms of Service" |
-| `Auth.tsx` | toast error text → "Unable to start Discord login. Please try again." |
-| `MatchChat.tsx` | "Messaggio troppo lungo" → "Message too long" |
-| `MatchChat.tsx` | "Il messaggio non può superare..." → "Message cannot exceed 500 characters" |
-| `MatchChat.tsx` | "Errore" / "Impossibile inviare" → "Error" / "Failed to send message" |
-| `MatchDetails.tsx` | "Solo partecipanti" → "Participants Only" |
-| `MatchDetails.tsx` | "Questo match non è più pubblico..." → "This match is no longer public..." |
-| `MatchDetails.tsx` | "Impossibile joinare" → "Unable to join" |
-| `Profile.tsx` | "Solo lettere, numeri e underscore" → "Letters, numbers and underscores only" |
-| `Profile.tsx` | "Errore durante il salvataggio" → "Error saving changes" |
-| `Profile.tsx` | "Solo i membri VIP..." → "Only VIP members can change username..." |
-| `TeamDetails.tsx` | "Impossibile eliminare il team" → "Unable to delete team" |
-| `EpicCallback.tsx` | All Italian error messages → English equivalents |
-| `DisputeManager.tsx` | "Partecipanti" → "Participants" |
-
----
-
-## 4. Social Icons - Brand Colors & Visibility
-
-### Current State
-- Social icons in Header are monochrome with gold glow on hover
-- Footer icons are styled correctly
-
-### Solution: Update to Official Brand Colors
-
-**Header.tsx Changes:**
-
-```tsx
-// X (Twitter) - Black icon (or dark mode: white)
-<a
-  href="https://x.com/oleboytokens"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="p-2 rounded-lg bg-black/10 hover:bg-black/20 transition-all duration-200"
->
-  <XIcon className="text-foreground" />
-</a>
-
-// TikTok - Official brand colors (black + cyan/pink gradient effect on hover)
-<a
-  href="https://www.tiktok.com/@oleboytokens"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="p-2 rounded-lg bg-black/10 hover:bg-gradient-to-r hover:from-[#00f2ea] hover:to-[#ff0050] transition-all duration-200"
->
-  <TikTokIcon className="text-foreground hover:text-white" />
-</a>
-```
-
----
-
-## 5. Audio Enable Modal (First-Time Prompt)
-
-### New Component: `AudioEnableModal.tsx`
-
-```tsx
-interface AudioEnableModalProps {
-  open: boolean;
-  onEnable: () => void;
-  onDismiss: () => void;
-}
-
-// Premium modal with:
-// - Icon/illustration
-// - "Enable Match Sounds" title
-// - Description explaining sounds for match events
-// - Primary "Enable" button (calls onEnable)
-// - Secondary "Maybe Later" link
-// - Checkbox: "Don't show again" (stores in localStorage)
-```
-
-### Integration in MatchDetails.tsx
-
-```tsx
-// Show modal if:
-// 1. User is in a match (isParticipant)
-// 2. Audio is not yet unlocked (needsUnlock)
-// 3. User hasn't dismissed permanently
-
-const [showAudioModal, setShowAudioModal] = useState(false);
-
-useEffect(() => {
-  const dismissed = localStorage.getItem('audio_modal_dismissed');
-  if (isParticipant && needsUnlock && !dismissed) {
-    setShowAudioModal(true);
-  }
-}, [isParticipant, needsUnlock]);
-```
-
----
-
-## 6. Trigger Events in Match Flow RPCs
-
-### Update Existing RPCs to Emit Events
-
-**6A. join_match RPC - Add Event Emission**
-
-After successful join:
-```sql
--- Emit player_joined event
-PERFORM emit_match_event(
-  p_match_id,
-  'player_joined',
-  auth.uid(),
-  jsonb_build_object('username', (SELECT username FROM profiles WHERE user_id = auth.uid()))
-);
-```
-
-**6B. set_player_ready RPC - Add Event Emission**
-
-When player becomes ready:
-```sql
--- Emit team_ready event when a team becomes fully ready
-IF v_team_all_ready THEN
-  PERFORM emit_match_event(
-    p_match_id,
-    'team_ready',
-    auth.uid(),
-    jsonb_build_object('team_side', v_team_side)
-  );
-END IF;
-
--- Emit all_ready when match starts
-IF v_all_ready THEN
-  PERFORM emit_match_event(
-    p_match_id,
-    'all_ready',
-    NULL,
-    '{}'::jsonb
-  );
-END IF;
-```
-
-**6C. submit_team_declaration RPC - Add Event Emission**
-
-When result is declared:
-```sql
--- Emit result_declared event
-PERFORM emit_match_event(
-  p_match_id,
-  'result_declared',
-  auth.uid(),
-  jsonb_build_object('result', p_result)
-);
-```
-
----
-
-## 7. Compare Modal - Ensure Data Loads
-
-### Current Issue
-The `PlayerComparisonModal` shows "Unable to load comparison data" when RPCs fail.
-
-### Solution
-
-**7A. Add Robust Error Handling**
-
+Add to a global layout or App component:
 ```typescript
-const fetchStats = async () => {
-  if (!user) return;
-  setLoading(true);
-  setError(null);
-
-  try {
-    const [myStatsRes, targetStatsRes, myRankRes, targetRankRes] = await Promise.all([
-      supabase.rpc('get_player_stats', { p_user_id: user.id }),
-      supabase.rpc('get_player_stats', { p_user_id: targetUserId }),
-      supabase.rpc('get_player_rank', { p_user_id: user.id }),
-      supabase.rpc('get_player_rank', { p_user_id: targetUserId }),
-    ]);
-
-    // Log any errors for debugging
-    if (myStatsRes.error) console.error('My stats error:', myStatsRes.error);
-    if (targetStatsRes.error) console.error('Target stats error:', targetStatsRes.error);
-
-    // Handle partial data gracefully
-    if (myStatsRes.data) setMyStats(myStatsRes.data as PlayerStats);
-    if (targetStatsRes.data) setTargetStats(targetStatsRes.data as PlayerStats);
-    if (myRankRes.data) setMyRank(Number(myRankRes.data));
-    if (targetRankRes.data) setTargetRank(Number(targetRankRes.data));
-
-    // Only show error if both failed
-    if (!myStatsRes.data && !targetStatsRes.data) {
-      setError('Failed to load stats. Please try again.');
-    }
-  } catch (e) {
-    console.error('Error fetching comparison stats:', e);
-    setError('An unexpected error occurred.');
-  } finally {
-    setLoading(false);
-  }
-};
-```
-
-**7B. Show Retry Button on Error**
-
-```tsx
-{error && (
-  <div className="text-center py-8 space-y-3">
-    <p className="text-muted-foreground">{error}</p>
-    <Button variant="outline" onClick={fetchStats}>
-      Retry
-    </Button>
-  </div>
-)}
+useEffect(() => {
+  const handleFirstInteraction = () => {
+    unlockAudio();
+    document.removeEventListener('click', handleFirstInteraction);
+    document.removeEventListener('keydown', handleFirstInteraction);
+  };
+  
+  document.addEventListener('click', handleFirstInteraction);
+  document.addEventListener('keydown', handleFirstInteraction);
+  
+  return () => {
+    document.removeEventListener('click', handleFirstInteraction);
+    document.removeEventListener('keydown', handleFirstInteraction);
+  };
+}, [unlockAudio]);
 ```
 
 ---
 
-## 8. Premium UI Polish
+## 5. File Changes Summary
 
-### Consistent Button Animations
-
-Add to `globals.css` or `index.css`:
-
-```css
-/* Premium button hover effects */
-.btn-premium {
-  @apply transition-all duration-200 hover:scale-[1.02] hover:shadow-lg;
-}
-
-.btn-glow-gold {
-  @apply hover:shadow-amber-500/20;
-}
-
-/* Smooth modal transitions */
-.modal-premium {
-  @apply animate-in fade-in-0 zoom-in-95 duration-200;
-}
-```
-
-### Social Icon Premium Styling
-
-```tsx
-// Circular buttons with brand backgrounds
-<a className="w-10 h-10 rounded-full flex items-center justify-center
-  bg-gradient-to-br from-[#00f2ea] to-[#ff0050] text-white
-  hover:scale-110 transition-all duration-200 shadow-lg shadow-[#ff0050]/20">
-  <TikTokIcon />
-</a>
-```
+| File | Action |
+|------|--------|
+| `supabase/migrations/[new]_fix_emit_match_event.sql` | Create 5-arg overload + update join_match_v2 |
+| `src/pages/MatchDetails.tsx` | Add match_events realtime subscription for audio |
+| `src/hooks/useSoundNotifications.ts` | Minor: ensure volume is 1.0 by default |
+| `src/App.tsx` or layout component | Add global first-interaction audio unlock |
 
 ---
 
-## Files to Modify/Create
-
-| Priority | File | Action |
-|----------|------|--------|
-| 🔴 CRITICAL | SQL Migration | Create match_events table + emit_match_event RPC |
-| 🔴 CRITICAL | `public/sounds/notification.mp3` | Copy uploaded file |
-| 🔴 CRITICAL | `src/hooks/useSoundNotifications.ts` | Use MP3 instead of beeps |
-| 🟡 HIGH | `src/pages/Auth.tsx` | All Italian → English |
-| 🟡 HIGH | `src/components/layout/Header.tsx` | Italian text + social icon colors |
-| 🟡 HIGH | `src/components/matches/MatchChat.tsx` | Italian → English |
-| 🟡 HIGH | `src/pages/MatchDetails.tsx` | Italian → English + audio event subscription |
-| 🟡 HIGH | `src/pages/Profile.tsx` | Italian → English |
-| 🟡 HIGH | `src/pages/TeamDetails.tsx` | Italian → English |
-| 🟡 HIGH | `src/pages/EpicCallback.tsx` | Italian → English |
-| 🟡 HIGH | `src/components/admin/IssueCenter.tsx` | Italian → English |
-| 🟡 HIGH | `src/components/matches/DisputeManager.tsx` | Italian → English |
-| 🟢 MEDIUM | `src/components/common/AudioEnableModal.tsx` | New component |
-| 🟢 MEDIUM | `src/components/player/PlayerComparisonModal.tsx` | Better error handling |
-| 🟢 MEDIUM | SQL Migration | Update join_match, set_player_ready, submit_team_declaration to emit events |
-
----
-
-## Testing Checklist
+## 6. Testing Checklist
 
 | Test | Expected Result |
 |------|-----------------|
-| Search "ma" in player search | Shows players with "ma" in username |
-| Click Compare on a player | Modal loads with stats |
-| Open Tip modal (non-VIP user) | Modal opens (error only on Send) |
-| Join a match as opponent | Host hears notification sound |
-| Ready up in match | Other players hear sound |
-| Declare result | Other players hear sound |
-| Tab in background during match | Sound still plays after unlock |
-| All UI text | 100% English |
-| Social icons in Header/Footer | TikTok (gradient), X (black/white) |
-| Leaderboard | Ordered by earnings DESC |
+| Click "Ready Up" button | No error, player becomes ready |
+| Join a match as opponent | Host receives audio notification |
+| All players ready up | All participants hear audio notification |
+| Tab in background | Sound still plays after initial unlock |
+| Works for 1v1, 2v2, 3v3, 4v4 | All team sizes emit events correctly |
 
 ---
 
 ## Technical Notes
 
-### Browser Audio Constraints
-- Chrome/Safari require user gesture to unlock AudioContext
-- After unlock, audio works even in background tabs
-- MP3 format is universally supported
+### PostgreSQL Function Overloading
+PostgreSQL allows multiple functions with the same name but different argument types/counts. Both the 4-arg and 5-arg versions of `emit_match_event` will coexist.
 
-### Realtime Subscription Architecture
-- `match_events` table enables instant notifications via Supabase Realtime
-- Target users receive events filtered by `target_user_ids`
-- Events auto-cleanup can be handled via pg_cron if needed
+### Event Types
+The `match_events` table CHECK constraint allows:
+- `match_created`
+- `player_joined`
+- `team_ready`
+- `all_ready`
+- `match_started`
+- `result_declared`
+
+The `set_player_ready` function uses `'ready'` and `'all_ready'`. We need to add `'ready'` to the CHECK constraint OR change the event type to `'team_ready'`.
+
+### Realtime Requirements
+- `match_events` table is already added to `supabase_realtime` publication
+- RLS policy allows participants to view events where they are in `target_user_ids`

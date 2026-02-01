@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { cn } from '@/lib/utils';
+import { useSoundNotifications } from '@/hooks/useSoundNotifications';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -11,6 +12,34 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { unlockAudio, audioUnlocked } = useSoundNotifications();
+  const hasUnlockedRef = useRef(false);
+
+  // ========== GLOBAL AUDIO UNLOCK ON FIRST INTERACTION ==========
+  // This ensures audio works even in background tabs after user interacts once
+  useEffect(() => {
+    if (audioUnlocked || hasUnlockedRef.current) return;
+
+    const handleFirstInteraction = () => {
+      if (hasUnlockedRef.current) return;
+      hasUnlockedRef.current = true;
+      unlockAudio();
+      // Clean up listeners after first interaction
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+    };
+
+    document.addEventListener('click', handleFirstInteraction);
+    document.addEventListener('keydown', handleFirstInteraction);
+    document.addEventListener('touchstart', handleFirstInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+    };
+  }, [unlockAudio, audioUnlocked]);
 
   return (
     <div className="min-h-screen bg-background">

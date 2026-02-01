@@ -10,7 +10,7 @@ interface SoundSettings {
 const STORAGE_KEY = 'oleboy_sound_settings';
 const DEFAULT_SETTINGS: SoundSettings = {
   enabled: true,
-  volume: 90, // Higher default volume
+  volume: 100, // Maximum volume for mandatory notifications
 };
 
 export function useSoundNotifications() {

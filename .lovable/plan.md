@@ -1,278 +1,262 @@
 
 
-# Fix Match System + Mandatory Global Audio Notifications
+# Analisi Completa e Fix: Sistema Match + Audio Notifications
 
-## Executive Summary
+## Sommario Esecutivo
 
-The match system is broken due to a **database constraint violation**. The `join_match_v2` function uses transaction type `'match_entry'` which is NOT allowed by the `transactions_type_check` constraint. Additionally, audio notifications only work when viewing a specific match page, not globally.
+Ho analizzato l'intero codice da inizio a fine. Ecco il report completo:
 
 ---
 
-## ROOT CAUSE ANALYSIS
+## REPORT BUG TROVATI
 
-### BUG 1: Transaction Type Constraint Violation (CRITICAL BLOCKER)
+### BUG A: Join Match - transactions_type_check (RISOLTO)
 
-**Error**: `new row for relation 'transactions' violates check constraint 'transactions_type_check'`
+**Stato**: Il database E' GIA' CORRETTO.
 
-**Location**: `join_match_v2` function (deployed version)
-
-**Problem Lines** (3 occurrences):
+**Verifica**: La funzione `join_match_v2` attualmente deployata usa `type = 'lock'` (verificato con `pg_get_functiondef`):
 ```sql
--- Line 94 (1v1 join):
 INSERT INTO transactions (user_id, type, amount, description, match_id)
-VALUES (v_caller_id, 'match_entry', -v_entry_fee, ...);
-
--- Line 152 (team cover mode):
-VALUES (v_caller_id, 'match_entry', -v_total_cost, 'Team match entry (cover mode)', ...);
-
--- Line 160 (team split mode):
-VALUES (v_member_id, 'match_entry', -v_entry_fee, 'Team match entry (split mode)', ...);
+VALUES (v_caller_id, 'lock', -v_entry_fee, 'Match entry fee', p_match_id);
 ```
 
-**Allowed Transaction Types** (from constraint):
-- `'deposit'`
-- `'lock'`
-- `'unlock'`
-- `'payout'`
-- `'refund'`
-- `'fee'`
+**Constraint permessi**: `deposit`, `lock`, `unlock`, `payout`, `refund`, `fee`
 
-**Solution**: Change all `'match_entry'` to `'lock'` (correct semantic for locking entry fee)
-
-### BUG 2: Audio Only Works on MatchDetails Page
-
-**Current State**:
-- Audio subscription exists in `MatchDetails.tsx` (lines 261-298)
-- Only listens when user is viewing a specific match
-- If user is on `/matches` listing, they won't hear sounds when someone joins their created match
-
-**Solution**: Create a **GlobalMatchEventListener** component mounted at app level
-
-### System Working Correctly
-
-**`set_player_ready` function**: ✅ Works correctly
-- Emits `'ready'` event to other participants when a player becomes ready
-- Emits `'all_ready'` event to all participants when match starts
-- Uses 5-arg `emit_match_event` signature properly
-
-**`emit_match_event` functions**: ✅ Both signatures exist
-- 4-arg version (auto-targets all participants excluding actor)
-- 5-arg version (explicit `target_user_ids` array)
-
-**Audio unlock system**: ✅ Implemented in MainLayout
-- Unlocks on first click/keydown/touchstart
-- Works even in background tabs after unlock
+**Conclusione**: Il join match FUNZIONA correttamente. Il bug precedente e' stato risolto dalla migration `20260202200946`.
 
 ---
 
-## PHASE 1: DATABASE FIX (Highest Priority)
+### BUG B: Dichiarazione Risultato - win/loss vs WIN/LOSS (CRITICO - DA FIXARE)
 
-### Migration: Fix `join_match_v2` Transaction Types
+**Stato**: BUG ATTIVO
 
-Create new migration that replaces `'match_entry'` with `'lock'`:
+**Problema trovato**:
+
+| Componente | Valore Inviato | Valore Atteso |
+|------------|----------------|---------------|
+| Frontend `TeamResultDeclaration.tsx` (linea 129-131) | `'WIN'` / `'LOSS'` (uppercase) | - |
+| DB `submit_team_declaration` (linea 17) | - | `'win'` / `'loss'` (lowercase) |
+
+**Codice problematico in DB** (`submit_team_declaration`):
+```sql
+IF p_result NOT IN ('win', 'loss') THEN
+  RETURN json_build_object('success', false, 'error', 'Invalid result. Must be win or loss');
+END IF;
+```
+
+**Codice frontend** (`TeamResultDeclaration.tsx` linea 122, 129-131):
+```typescript
+const handleSubmitResult = async (result: 'WIN' | 'LOSS') => {
+  // ...
+  const { data, error } = await supabase.rpc('submit_team_declaration', {
+    p_match_id: match.id,
+    p_result: result,  // <-- INVIA 'WIN' o 'LOSS' uppercase!
+  });
+```
+
+**Fix necessario**: Normalizzare l'input nella funzione DB:
+```sql
+v_result := UPPER(TRIM(p_result));
+IF v_result NOT IN ('WIN', 'LOSS') THEN
+  RETURN json_build_object('success', false, 'error', 'Invalid result. Must be WIN or LOSS');
+END IF;
+```
+
+---
+
+### BUG C: Audio Notifications (PARZIALMENTE FUNZIONANTE)
+
+**Stato**: Sistema correttamente implementato ma con un problema locale
+
+**Cosa funziona**:
+1. Eventi `match_events` vengono creati correttamente (verificato in DB - 3 eventi recenti)
+2. `GlobalMatchEventListener` e' montato in `App.tsx`
+3. Audio unlock funziona in `MainLayout.tsx`
+4. File audio `public/sounds/notification.mp3` esiste
+5. `set_player_ready` emette eventi `ready` e `all_ready` correttamente
+6. `join_match_v2` emette eventi `player_joined` al creator
+
+**Problema identificato**: Il hook `useSoundNotifications` legge `settings.enabled` da localStorage. Se un utente ha disabilitato le notifiche in passato, l'audio non suona.
+
+```typescript
+// linea 84-85 di useSoundNotifications.ts
+const playSound = useCallback((type: SoundType) => {
+  if (!settings.enabled || prefersReducedMotion) return;  // <-- Check disabilita audio
+```
+
+**Fix necessario**: Forzare audio sempre ON ignorando localStorage per le notifiche match.
+
+---
+
+### Problemi Aggiuntivi Trovati
+
+1. **Event type `declare` non nel constraint**: La funzione `submit_team_declaration` (versione vecchia) tenta di emettere `'declare'` ma il constraint accetta solo: `match_created`, `player_joined`, `team_ready`, `ready`, `all_ready`, `match_started`, `result_declared`.
+
+2. **Due versioni di `submit_team_declaration`**: Esistono due versioni con logiche diverse. La versione nel DB attuale richiede lowercase.
+
+---
+
+## FLUSSO VERIFICATO
+
+### Match Events (Funzionante)
+
+```text
+Verifica DB: SELECT * FROM match_events ORDER BY created_at DESC LIMIT 3;
+
+Risultato:
+- event_type: 'all_ready'   - target_user_ids: [user1, user2]
+- event_type: 'ready'       - target_user_ids: [user2]  
+- event_type: 'player_joined' - target_user_ids: [creator]
+```
+
+Gli eventi vengono creati correttamente con targeting appropriato.
+
+### Constraint transactions_type_check (OK)
+
+```text
+CHECK ((type = ANY (ARRAY['deposit', 'lock', 'unlock', 'payout', 'refund', 'fee'])))
+```
+
+La funzione `join_match_v2` usa `'lock'` - OK.
+
+---
+
+## PIANO FIX COMPLETO
+
+### FASE 1: Fix submit_team_declaration (DB Migration)
+
+Creare una nuova migration che:
+1. Normalizza input a uppercase
+2. Valida su `'WIN'`/`'LOSS'`
+3. Salva sempre uppercase per coerenza con `try_finalize_match`
 
 ```sql
--- =====================================================
--- Fix join_match_v2: Use valid transaction type 'lock'
--- instead of invalid 'match_entry'
--- =====================================================
--- The transactions table has a CHECK constraint that only allows:
--- 'deposit', 'lock', 'unlock', 'payout', 'refund', 'fee'
---
--- 'match_entry' is NOT a valid type and causes the join to fail.
-
-CREATE OR REPLACE FUNCTION public.join_match_v2(
+CREATE OR REPLACE FUNCTION public.submit_team_declaration(
   p_match_id uuid,
-  p_team_id uuid DEFAULT NULL,
-  p_payment_mode text DEFAULT 'cover'::text
+  p_result text
 )
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
--- [Full function body with 'lock' instead of 'match_entry']
--- Line 94, 152, 160 all changed to:
---   VALUES (..., 'lock', ...);
+DECLARE
+  v_caller_id uuid := auth.uid();
+  v_result text;
+  v_match matches%ROWTYPE;
+  v_participant match_participants%ROWTYPE;
+  v_team_side text;
+  v_existing_team_result text;
+  v_opp_result text;
+  v_finalize jsonb;
+BEGIN
+  IF v_caller_id IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'status', 'not_authenticated', 'error', 'Not authenticated');
+  END IF;
+
+  -- NORMALIZZA INPUT: uppercase e trim
+  v_result := UPPER(TRIM(p_result));
+  
+  IF v_result NOT IN ('WIN','LOSS') THEN
+    RETURN jsonb_build_object('success', false, 'status', 'invalid_result', 'error', 'Invalid result. Must be WIN or LOSS');
+  END IF;
+
+  -- [resto della funzione rimane identico ma usa v_result invece di p_result]
+  -- ...
+END;
 $$;
 ```
 
-**Key Changes**:
-1. Line 94: `'match_entry'` → `'lock'` (1v1 join)
-2. Line 152: `'match_entry'` → `'lock'` (team cover mode)
-3. Line 160: `'match_entry'` → `'lock'` (team split mode)
+### FASE 2: Forzare Audio Sempre ON (Frontend)
 
----
-
-## PHASE 2: GLOBAL MATCH EVENT LISTENER
-
-### New Component: `GlobalMatchEventListener.tsx`
-
-```text
-Location: src/components/common/GlobalMatchEventListener.tsx
-
-Purpose:
-- Subscribe to match_events table globally
-- Play audio when user is targeted by an event
-- Works on ANY page, not just MatchDetails
-```
-
-**Implementation Details**:
+Modificare `useSoundNotifications.ts` per ignorare `enabled` setting:
 
 ```typescript
-// Mount in AuthContext or App.tsx when user is logged in
-// Subscribe to match_events where target_user_ids contains current user
-// Play sound based on event_type:
-//   - 'player_joined' → notification sound
-//   - 'ready' → notification sound
-//   - 'all_ready' → notification sound
-//   - 'team_ready' → notification sound
+// In playSound, rimuovere il check !settings.enabled
+const playSound = useCallback((type: SoundType) => {
+  // Audio e' sempre obbligatorio per match events - ignorare settings.enabled
+  if (prefersReducedMotion) return;
+  
+  // ...resto del codice
+}, [settings.volume, prefersReducedMotion]);
 ```
 
-### Integration Point
+Oppure, piu' pulito: creare una funzione `playMandatorySound` che ignora le impostazioni utente.
 
-Add to `AuthContext.tsx` or create wrapper component:
+### FASE 3: Fix Event Type (opzionale)
 
-```typescript
-// When user is authenticated, render:
-<GlobalMatchEventListener userId={user.id} />
-```
+La versione vecchia di `submit_team_declaration` emette `'declare'` che non e' nel constraint. Le alternative:
+1. Cambiare a `'result_declared'` (gia' nel constraint)
+2. Aggiungere `'declare'` al constraint
 
----
-
-## PHASE 3: AUDIO SYSTEM VERIFICATION
-
-### Current Working Implementation
-
-**`useSoundNotifications.ts`**:
-- ✅ Uses MP3 file from `/sounds/notification.mp3`
-- ✅ Preloads audio on unlock
-- ✅ Volume at 100% by default
-- ✅ Works in background tabs after unlock
-
-**`MainLayout.tsx`**:
-- ✅ Global audio unlock on first interaction
-- ✅ Listens for click/keydown/touchstart
-- ✅ One-time unlock, no user toggle
-
-**No changes needed** to the audio system itself.
+Raccomandazione: usare `'result_declared'` per coerenza.
 
 ---
 
-## FILE CHANGES SUMMARY
+## FILE DA MODIFICARE
 
-| Priority | File | Action |
-|----------|------|--------|
-| 🔴 CRITICAL | `supabase/migrations/[new].sql` | Fix join_match_v2: change 'match_entry' → 'lock' |
-| 🟡 HIGH | `src/components/common/GlobalMatchEventListener.tsx` | NEW: Global realtime subscription |
-| 🟡 HIGH | `src/contexts/AuthContext.tsx` or `App.tsx` | Mount GlobalMatchEventListener |
-| 🟢 OPTIONAL | `src/pages/MatchDetails.tsx` | Remove local audio subscription (now global) |
+| File | Azione | Priorita' |
+|------|--------|-----------|
+| `supabase/migrations/[new].sql` | Fix `submit_team_declaration`: normalizza input a uppercase | CRITICA |
+| `src/hooks/useSoundNotifications.ts` | Forzare audio sempre ON per notifiche match | ALTA |
 
 ---
 
-## EVENT FLOW AFTER FIX
+## VERIFICA FUNZIONALITA' ESISTENTE
+
+| Componente | Stato | Note |
+|------------|-------|------|
+| `join_match_v2` | OK | Usa `'lock'`, emette `player_joined` |
+| `set_player_ready` | OK | Emette `'ready'` e `'all_ready'` |
+| `GlobalMatchEventListener` | OK | Montato in App.tsx, filtra per target_user_ids |
+| Audio unlock | OK | In MainLayout e GlobalMatchEventListener |
+| `try_finalize_match` | OK | Valida uppercase `WIN`/`LOSS` |
+| `declare_result` | OK | Valida uppercase `WIN`/`LOSS` |
+| `match_events` table | OK | Realtime abilitato, constraint corretto |
+
+---
+
+## CHECKLIST POST-FIX
+
+1. Dopo migration:
+   - Verificare con: `SELECT pg_get_functiondef(oid) FROM pg_proc WHERE proname = 'submit_team_declaration'`
+   - Testare dichiarazione risultato da frontend
+
+2. Test End-to-End:
+   - 1v1: Creare match, join, ready up entrambi, dichiarare risultato
+   - Verificare audio suona su join (al creator)
+   - Verificare audio suona su ready (all'avversario)
+   - Verificare audio suona su all_ready (a entrambi)
+
+3. Test Audio Background:
+   - Aprire app in una tab
+   - Cliccare una volta (unlock)
+   - Mettere tab in background
+   - Da altra sessione: join match
+   - Verificare audio suona nella tab in background
+
+---
+
+## NOTE TECNICHE
+
+### Perche' esistono due versioni di submit_team_declaration?
+
+1. **Versione nel DB attivo** (da query `pg_get_functiondef`): Richiede lowercase `'win'`/`'loss'`
+2. **Versione in migration 20260122213210**: Richiede uppercase `'WIN'`/`'LOSS'`
+
+La versione attiva e' quella piu' vecchia. La migration recente non ha sovrascritto correttamente o c'e' stata una race condition.
+
+### Struttura Eventi Match
 
 ```text
-User A creates match
-         ↓
-User B clicks "Join Match"
-         ↓
-Frontend: supabase.rpc('join_match', { p_match_id })
-         ↓
-DB: join_match_v2(...) executes
-         ↓
-   ┌─────────────────────────────────────┐
-   │ INSERT INTO transactions            │
-   │ (user_id, type='lock', amount, ...) │ ← FIXED!
-   └─────────────────────────────────────┘
-         ↓
-   INSERT INTO match_participants
-         ↓
-   PERFORM emit_match_event('player_joined', ...)
-         ↓
-   INSERT INTO match_events (target_user_ids = [A])
-         ↓
-   Realtime broadcast to all subscribers
-         ↓
-   GlobalMatchEventListener receives INSERT
-         ↓
-   Checks: target_user_ids includes A? YES
-         ↓
-   playSound('match_accepted')
-         ↓
-   User A hears notification! 🔊
+match_events:
+- match_id (uuid)
+- event_type (text) - constraint: match_created, player_joined, team_ready, ready, all_ready, match_started, result_declared
+- actor_user_id (uuid)
+- target_user_ids (uuid[])
+- payload (jsonb)
+- created_at (timestamptz)
 ```
 
----
-
-## READY UP FLOW (Already Working)
-
-```text
-User B clicks "Ready Up"
-         ↓
-DB: set_player_ready(match_id)
-         ↓
-   UPDATE match_participants SET ready = true
-         ↓
-   Check: all_ready? NO (A not ready)
-         ↓
-   PERFORM emit_match_event('ready', B, [A], {})
-         ↓
-   User A receives event → plays sound
-         ↓
-User A clicks "Ready Up"
-         ↓
-   Check: all_ready? YES
-         ↓
-   UPDATE matches SET status = 'in_progress'
-         ↓
-   PERFORM emit_match_event('all_ready', A, [A,B], {})
-         ↓
-   Both users receive event → match started!
-```
-
----
-
-## TESTING CHECKLIST
-
-| Test | Expected Result |
-|------|-----------------|
-| Click "Join Match" on 1v1 | ✅ Match joined, no DB error |
-| Creator receives notification | ✅ Sound plays (on any page) |
-| User B ready up in 1v1 | ✅ User A receives sound |
-| Both ready in 1v1 | ✅ Match starts, both hear sound |
-| 2v2 team join | ✅ Works with team, no errors |
-| Tab in background | ✅ Sound still plays |
-
----
-
-## TECHNICAL NOTES
-
-### Why 'lock' is the Correct Type
-
-The transaction represents an **entry fee being locked** in the user's wallet:
-- `balance` decreases
-- `locked_balance` increases
-- Money is held until match concludes
-
-This matches the semantic meaning of `'lock'` transaction type.
-
-### Realtime Subscription Filter
-
-The GlobalMatchEventListener should use:
-```typescript
-supabase
-  .channel('global-match-events')
-  .on('postgres_changes', {
-    event: 'INSERT',
-    schema: 'public',
-    table: 'match_events',
-  }, ...)
-```
-
-Client-side filter checks `target_user_ids.includes(userId)` since Postgres filters don't support array contains.
-
-### Audio File
-
-The uploaded `notification-tone-443095-2.mp3` should be copied to `public/sounds/notification.mp3` to replace or update the existing sound file.
+Gli eventi sono correttamente targetizzati e il realtime e' abilitato sulla tabella.
 

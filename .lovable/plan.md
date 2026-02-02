@@ -1,166 +1,278 @@
 
-# Fix Match Join Error + Audio Notifications
 
-## Problema Rilevato
+# Fix Match System + Mandatory Global Audio Notifications
 
-L'errore mostrato nello screenshot:
+## Executive Summary
 
-```
-Impossibile joinare
-function public.join_match_v2(uuid) is not unique
-```
-
-### Causa Root
-
-Nel database esistono **DUE versioni** della funzione `join_match_v2`:
-
-| Firma | Stato |
-|-------|-------|
-| `join_match_v2(p_match_id uuid)` | Vecchia versione (1 arg) |
-| `join_match_v2(p_match_id uuid, p_team_id uuid DEFAULT NULL, p_payment_mode text DEFAULT 'cover')` | Nuova versione (3 args con default) |
-
-Quando il wrapper `join_match()` chiama `join_match_v2(p_match_id)`, PostgreSQL trova **entrambe** le funzioni come corrispondenze valide e fallisce con "not unique".
-
-### Differenze tra le versioni
-
-**Vecchia versione** (da eliminare):
-- Non controlla expiry del match
-- Non emette eventi `emit_match_event`
-- Usa transaction type `'lock'` (obsoleto)
-- Non supporta team matches
-
-**Nuova versione** (da mantenere):
-- Controlla expiry match
-- Emette `player_joined` event per audio notifications
-- Gestisce sia 1v1 che team matches
-- Ha controlli strict busy check
+The match system is broken due to a **database constraint violation**. The `join_match_v2` function uses transaction type `'match_entry'` which is NOT allowed by the `transactions_type_check` constraint. Additionally, audio notifications only work when viewing a specific match page, not globally.
 
 ---
 
-## Piano di Fix
+## ROOT CAUSE ANALYSIS
 
-### 1. Database Migration: Eliminare la funzione duplicata
+### BUG 1: Transaction Type Constraint Violation (CRITICAL BLOCKER)
 
-Creare una nuova migrazione SQL che:
+**Error**: `new row for relation 'transactions' violates check constraint 'transactions_type_check'`
 
+**Location**: `join_match_v2` function (deployed version)
+
+**Problem Lines** (3 occurrences):
 ```sql
--- Drop the old 1-argument version of join_match_v2
--- This resolves the "function not unique" error
-DROP FUNCTION IF EXISTS public.join_match_v2(uuid);
+-- Line 94 (1v1 join):
+INSERT INTO transactions (user_id, type, amount, description, match_id)
+VALUES (v_caller_id, 'match_entry', -v_entry_fee, ...);
+
+-- Line 152 (team cover mode):
+VALUES (v_caller_id, 'match_entry', -v_total_cost, 'Team match entry (cover mode)', ...);
+
+-- Line 160 (team split mode):
+VALUES (v_member_id, 'match_entry', -v_entry_fee, 'Team match entry (split mode)', ...);
 ```
 
-Questo lascerà solo la versione a 3 argomenti con DEFAULT, che accetterà correttamente le chiamate con 1 solo argomento.
+**Allowed Transaction Types** (from constraint):
+- `'deposit'`
+- `'lock'`
+- `'unlock'`
+- `'payout'`
+- `'refund'`
+- `'fee'`
+
+**Solution**: Change all `'match_entry'` to `'lock'` (correct semantic for locking entry fee)
+
+### BUG 2: Audio Only Works on MatchDetails Page
+
+**Current State**:
+- Audio subscription exists in `MatchDetails.tsx` (lines 261-298)
+- Only listens when user is viewing a specific match
+- If user is on `/matches` listing, they won't hear sounds when someone joins their created match
+
+**Solution**: Create a **GlobalMatchEventListener** component mounted at app level
+
+### System Working Correctly
+
+**`set_player_ready` function**: ✅ Works correctly
+- Emits `'ready'` event to other participants when a player becomes ready
+- Emits `'all_ready'` event to all participants when match starts
+- Uses 5-arg `emit_match_event` signature properly
+
+**`emit_match_event` functions**: ✅ Both signatures exist
+- 4-arg version (auto-targets all participants excluding actor)
+- 5-arg version (explicit `target_user_ids` array)
+
+**Audio unlock system**: ✅ Implemented in MainLayout
+- Unlocks on first click/keydown/touchstart
+- Works even in background tabs after unlock
 
 ---
 
-### 2. Verifica Sistema Audio (Già Implementato ✅)
+## PHASE 1: DATABASE FIX (Highest Priority)
 
-Ho verificato che il sistema audio è correttamente implementato:
+### Migration: Fix `join_match_v2` Transaction Types
 
-**File audio**: `public/sounds/notification.mp3` ✅
-
-**Hook `useSoundNotifications.ts`**:
-- Volume 100% di default ✅
-- Precarica MP3 su unlock ✅
-- Funziona in background tabs dopo unlock ✅
-
-**Global Audio Unlock in `MainLayout.tsx`**:
-- Listener su click/keydown/touchstart ✅
-- Chiama `unlockAudio()` alla prima interazione ✅
-
-**Subscription Realtime in `MatchDetails.tsx`**:
-- Ascolta INSERT su `match_events` table ✅
-- Filtra per `target_user_ids` ✅
-- Chiama `playSound()` per eventi match ✅
-
----
-
-### 3. Funzioni Database Verificate ✅
-
-**`emit_match_event`**: Esistono entrambe le versioni necessarie
-- 4 args: calcola targets automaticamente
-- 5 args: accetta targets espliciti
-
-**`set_player_ready`**: Emette correttamente:
-- `'ready'` event ai partecipanti
-- `'all_ready'` quando tutti pronti
-
-**`join_match_v2`** (nuova versione): Emette:
-- `'player_joined'` al creator quando qualcuno joina
-
----
-
-## Migrazione SQL da Eseguire
+Create new migration that replaces `'match_entry'` with `'lock'`:
 
 ```sql
 -- =====================================================
--- Fix join_match_v2 ambiguity: Drop old 1-arg version
+-- Fix join_match_v2: Use valid transaction type 'lock'
+-- instead of invalid 'match_entry'
 -- =====================================================
--- The old join_match_v2(uuid) conflicts with the new
--- join_match_v2(uuid, uuid DEFAULT NULL, text DEFAULT 'cover')
--- because both match a call with just 1 uuid argument.
+-- The transactions table has a CHECK constraint that only allows:
+-- 'deposit', 'lock', 'unlock', 'payout', 'refund', 'fee'
 --
--- Solution: Drop the old version, keep only the new one.
+-- 'match_entry' is NOT a valid type and causes the join to fail.
 
-DROP FUNCTION IF EXISTS public.join_match_v2(uuid);
-
--- The new version already handles:
--- - 1v1 matches (when p_team_id is NULL and team_size = 1)
--- - Team matches (when p_team_id is provided)
--- - Expiration checks
--- - Event emission for audio notifications
+CREATE OR REPLACE FUNCTION public.join_match_v2(
+  p_match_id uuid,
+  p_team_id uuid DEFAULT NULL,
+  p_payment_mode text DEFAULT 'cover'::text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+-- [Full function body with 'lock' instead of 'match_entry']
+-- Line 94, 152, 160 all changed to:
+--   VALUES (..., 'lock', ...);
+$$;
 ```
+
+**Key Changes**:
+1. Line 94: `'match_entry'` → `'lock'` (1v1 join)
+2. Line 152: `'match_entry'` → `'lock'` (team cover mode)
+3. Line 160: `'match_entry'` → `'lock'` (team split mode)
 
 ---
 
-## Flusso Dopo il Fix
+## PHASE 2: GLOBAL MATCH EVENT LISTENER
+
+### New Component: `GlobalMatchEventListener.tsx`
 
 ```text
-                    Flusso Chiamate
-                    ================
+Location: src/components/common/GlobalMatchEventListener.tsx
 
-User clicks "Join Match"
+Purpose:
+- Subscribe to match_events table globally
+- Play audio when user is targeted by an event
+- Works on ANY page, not just MatchDetails
+```
+
+**Implementation Details**:
+
+```typescript
+// Mount in AuthContext or App.tsx when user is logged in
+// Subscribe to match_events where target_user_ids contains current user
+// Play sound based on event_type:
+//   - 'player_joined' → notification sound
+//   - 'ready' → notification sound
+//   - 'all_ready' → notification sound
+//   - 'team_ready' → notification sound
+```
+
+### Integration Point
+
+Add to `AuthContext.tsx` or create wrapper component:
+
+```typescript
+// When user is authenticated, render:
+<GlobalMatchEventListener userId={user.id} />
+```
+
+---
+
+## PHASE 3: AUDIO SYSTEM VERIFICATION
+
+### Current Working Implementation
+
+**`useSoundNotifications.ts`**:
+- ✅ Uses MP3 file from `/sounds/notification.mp3`
+- ✅ Preloads audio on unlock
+- ✅ Volume at 100% by default
+- ✅ Works in background tabs after unlock
+
+**`MainLayout.tsx`**:
+- ✅ Global audio unlock on first interaction
+- ✅ Listens for click/keydown/touchstart
+- ✅ One-time unlock, no user toggle
+
+**No changes needed** to the audio system itself.
+
+---
+
+## FILE CHANGES SUMMARY
+
+| Priority | File | Action |
+|----------|------|--------|
+| 🔴 CRITICAL | `supabase/migrations/[new].sql` | Fix join_match_v2: change 'match_entry' → 'lock' |
+| 🟡 HIGH | `src/components/common/GlobalMatchEventListener.tsx` | NEW: Global realtime subscription |
+| 🟡 HIGH | `src/contexts/AuthContext.tsx` or `App.tsx` | Mount GlobalMatchEventListener |
+| 🟢 OPTIONAL | `src/pages/MatchDetails.tsx` | Remove local audio subscription (now global) |
+
+---
+
+## EVENT FLOW AFTER FIX
+
+```text
+User A creates match
+         ↓
+User B clicks "Join Match"
          ↓
 Frontend: supabase.rpc('join_match', { p_match_id })
          ↓
-DB: join_match(uuid, uuid DEFAULT NULL, text DEFAULT 'cover')
+DB: join_match_v2(...) executes
          ↓
-   ┌─────────────────────┐
-   │ team_size = 1 (1v1) │
-   └──────────┬──────────┘
-              ↓
-   join_match_v2(p_match_id)  ← ORA FUNZIONA!
-              ↓
-   (solo la versione 3-args rimane)
-              ↓
-   Emit player_joined event → match_events table
-              ↓
-   Realtime broadcast → All participants
-              ↓
-   MatchDetails subscription riceve INSERT
-              ↓
+   ┌─────────────────────────────────────┐
+   │ INSERT INTO transactions            │
+   │ (user_id, type='lock', amount, ...) │ ← FIXED!
+   └─────────────────────────────────────┘
+         ↓
+   INSERT INTO match_participants
+         ↓
+   PERFORM emit_match_event('player_joined', ...)
+         ↓
+   INSERT INTO match_events (target_user_ids = [A])
+         ↓
+   Realtime broadcast to all subscribers
+         ↓
+   GlobalMatchEventListener receives INSERT
+         ↓
+   Checks: target_user_ids includes A? YES
+         ↓
    playSound('match_accepted')
-              ↓
-   Audio notification suona!
+         ↓
+   User A hears notification! 🔊
 ```
 
 ---
 
-## Test Post-Fix
+## READY UP FLOW (Already Working)
 
-| Test | Risultato Atteso |
-|------|------------------|
-| Click "Join Match" su match 1v1 | Match joined correttamente, no errori |
-| Creatore del match | Sente notifica audio quando qualcuno joina |
-| Ready Up in match | Tutti i partecipanti sentono audio |
-| Tab in background | Audio funziona dopo primo unlock |
+```text
+User B clicks "Ready Up"
+         ↓
+DB: set_player_ready(match_id)
+         ↓
+   UPDATE match_participants SET ready = true
+         ↓
+   Check: all_ready? NO (A not ready)
+         ↓
+   PERFORM emit_match_event('ready', B, [A], {})
+         ↓
+   User A receives event → plays sound
+         ↓
+User A clicks "Ready Up"
+         ↓
+   Check: all_ready? YES
+         ↓
+   UPDATE matches SET status = 'in_progress'
+         ↓
+   PERFORM emit_match_event('all_ready', A, [A,B], {})
+         ↓
+   Both users receive event → match started!
+```
 
 ---
 
-## File da Modificare
+## TESTING CHECKLIST
 
-| File | Azione |
-|------|--------|
-| `supabase/migrations/[new].sql` | DROP vecchia funzione join_match_v2(uuid) |
+| Test | Expected Result |
+|------|-----------------|
+| Click "Join Match" on 1v1 | ✅ Match joined, no DB error |
+| Creator receives notification | ✅ Sound plays (on any page) |
+| User B ready up in 1v1 | ✅ User A receives sound |
+| Both ready in 1v1 | ✅ Match starts, both hear sound |
+| 2v2 team join | ✅ Works with team, no errors |
+| Tab in background | ✅ Sound still plays |
 
-Questo è l'unico cambiamento necessario per risolvere il bug.
+---
+
+## TECHNICAL NOTES
+
+### Why 'lock' is the Correct Type
+
+The transaction represents an **entry fee being locked** in the user's wallet:
+- `balance` decreases
+- `locked_balance` increases
+- Money is held until match concludes
+
+This matches the semantic meaning of `'lock'` transaction type.
+
+### Realtime Subscription Filter
+
+The GlobalMatchEventListener should use:
+```typescript
+supabase
+  .channel('global-match-events')
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'match_events',
+  }, ...)
+```
+
+Client-side filter checks `target_user_ids.includes(userId)` since Postgres filters don't support array contains.
+
+### Audio File
+
+The uploaded `notification-tone-443095-2.mp3` should be copied to `public/sounds/notification.mp3` to replace or update the existing sound file.
+

@@ -80,9 +80,10 @@ export function useSoundNotifications() {
     }
   }, [audioUnlocked, settings.volume]);
 
-  // Play a sound
+  // Play a sound - MANDATORY for match events, ignores user settings
   const playSound = useCallback((type: SoundType) => {
-    if (!settings.enabled || prefersReducedMotion) return;
+    // Audio is ALWAYS ON for match notifications - only respect reduced motion preference
+    if (prefersReducedMotion) return;
     
     // If audio not unlocked yet, try to unlock first
     if (!audioRef.current) {
@@ -109,7 +110,7 @@ export function useSoundNotifications() {
     } catch (e) {
       console.error('Failed to play sound:', e);
     }
-  }, [settings.enabled, settings.volume, prefersReducedMotion]);
+  }, [settings.volume, prefersReducedMotion]);
 
   // Test sound
   const testSound = useCallback(() => {

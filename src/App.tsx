@@ -3,8 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLoadingGuard } from "@/components/common/AppLoadingGuard";
+import { GlobalMatchEventListener } from "@/components/common/GlobalMatchEventListener";
 
 // Pages
 import Index from "./pages/Index";
@@ -48,6 +49,15 @@ const queryClient = new QueryClient({
   },
 });
 
+// Component that renders GlobalMatchEventListener when user is authenticated
+function AuthenticatedGlobalListeners() {
+  const { user } = useAuth();
+  
+  if (!user) return null;
+  
+  return <GlobalMatchEventListener userId={user.id} />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -56,6 +66,7 @@ function App() {
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <AuthenticatedGlobalListeners />
             <AppLoadingGuard>
               <Routes>
                 <Route path="/" element={<Index />} />

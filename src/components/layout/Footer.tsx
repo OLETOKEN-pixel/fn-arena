@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Youtube } from 'lucide-react';
 import logoOleboy from '@/assets/logo-oleboy.png';
 
@@ -22,18 +22,33 @@ const TikTokIcon = () => (
 );
 
 export function Footer() {
+  const location = useLocation();
   const currentYear = new Date().getFullYear();
 
+  // Only show full footer on Home page
+  const isHomePage = location.pathname === '/';
+  
+  if (!isHomePage) {
+    return null;
+  }
+
   return (
-    <footer className="bg-sidebar border-t border-sidebar-border mt-auto">
+    <footer className="bg-sidebar border-t border-sidebar-border mt-auto relative">
+      {/* Gradient top border accent */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      
       <div className="max-w-screen-2xl mx-auto px-4 lg:px-8 xl:px-12 py-10">
         {/* Main Grid - 3 columns desktop, stacked mobile */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
           
           {/* Left Column: Brand + Description + Legal Links */}
           <div className="space-y-4">
-            <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-              <img src={logoOleboy} alt="OleBoy Token" className="w-10 h-10 object-contain" />
+            <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity group">
+              <img 
+                src={logoOleboy} 
+                alt="OleBoy Token" 
+                className="w-11 h-11 object-contain transition-transform duration-200 group-hover:scale-105" 
+              />
               <span className="font-display font-bold text-lg">
                 OleBoy <span className="text-accent">Token</span>
               </span>
@@ -44,19 +59,19 @@ export function Footer() {
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
               <Link 
                 to="/rules" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 How To Play
               </Link>
               <Link 
                 to="/terms" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Terms of Service
               </Link>
               <Link 
                 to="/privacy" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Privacy Policy
               </Link>
@@ -65,41 +80,41 @@ export function Footer() {
           
           {/* Center Column: Navigation */}
           <div>
-            <h4 className="font-semibold mb-4 text-foreground">Navigation</h4>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <h4 className="font-display font-semibold mb-4 text-foreground">Navigation</h4>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
               <Link 
                 to="/matches" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Matches
               </Link>
               <Link 
                 to="/leaderboard" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Leaderboard
               </Link>
               <Link 
                 to="/challenges" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Challenges
               </Link>
               <Link 
                 to="/buy" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Shop
               </Link>
               <Link 
                 to="/teams" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Teams
               </Link>
               <Link 
                 to="/profile" 
-                className="text-muted-foreground hover:text-primary transition-colors"
+                className="text-muted-foreground hover:text-primary transition-colors duration-200"
               >
                 Profile
               </Link>
@@ -108,13 +123,13 @@ export function Footer() {
           
           {/* Right Column: Connect / Social */}
           <div className="md:text-right">
-            <h4 className="font-semibold mb-4 text-foreground">Connect</h4>
+            <h4 className="font-display font-semibold mb-4 text-foreground">Connect</h4>
             <div className="flex gap-3 md:justify-end">
               <a 
                 href="https://discord.gg/lovable-dev" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent transition-all duration-200 hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent/50 hover:bg-accent/10 transition-all duration-200"
                 aria-label="Discord"
               >
                 <DiscordIcon />
@@ -123,7 +138,7 @@ export function Footer() {
                 href="https://x.com/oleboytokens" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent transition-all duration-200 hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent/50 hover:bg-accent/10 transition-all duration-200"
                 aria-label="X (Twitter)"
               >
                 <XIcon />
@@ -132,7 +147,7 @@ export function Footer() {
                 href="https://www.tiktok.com/@oleboytokens" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent transition-all duration-200 hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent/50 hover:bg-accent/10 transition-all duration-200"
                 aria-label="TikTok"
               >
                 <TikTokIcon />
@@ -141,7 +156,7 @@ export function Footer() {
                 href="#" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent transition-all duration-200 hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+                className="w-10 h-10 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-accent hover:border-accent/50 hover:bg-accent/10 transition-all duration-200"
                 aria-label="YouTube"
               >
                 <Youtube className="w-4 h-4" />
@@ -151,7 +166,7 @@ export function Footer() {
         </div>
         
         {/* Copyright bottom row */}
-        <div className="mt-10 pt-6 border-t border-border">
+        <div className="mt-10 pt-6 border-t border-border/50">
           <p className="text-xs text-muted-foreground text-center md:text-right">
             © {currentYear} OleBoy Token. All Rights Reserved.
           </p>

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Swords, Filter } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { MatchCard } from '@/components/matches/MatchCard';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useOpenMatches, type MatchFilters } from '@/hooks/useMatches';
 import { REGIONS, PLATFORMS, GAME_MODES, TEAM_SIZES, type Match, type Region, type Platform, type GameMode, type TeamSize } from '@/types';
+import { cn } from '@/lib/utils';
 
 export default function Matches() {
   const navigate = useNavigate();
@@ -138,11 +139,14 @@ export default function Matches() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold">Live Matches</h1>
+            <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+              <Swords className="w-8 h-8 text-primary" />
+              Live Matches
+            </h1>
             <p className="text-muted-foreground">Browse and join open FN matches</p>
           </div>
           {user && (
-            <Button asChild className="glow-blue">
+            <Button asChild className="glow-blue btn-premium">
               <Link to="/matches/create">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Match
@@ -151,102 +155,115 @@ export default function Matches() {
           )}
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by username or match ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        {/* Filters - Premium Glass Style */}
+        <div className="p-4 rounded-xl bg-card/60 backdrop-blur-sm border border-border/50">
+          <div className="flex flex-wrap gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by username or match ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-background/50"
+              />
+            </div>
+
+            <Select value={regionFilter} onValueChange={(v) => setRegionFilter(v as Region | 'all')}>
+              <SelectTrigger className="w-[130px] bg-background/50">
+                <SelectValue placeholder="Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Regions</SelectItem>
+                {REGIONS.map(r => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={platformFilter} onValueChange={(v) => setPlatformFilter(v as Platform | 'all')}>
+              <SelectTrigger className="w-[130px] bg-background/50">
+                <SelectValue placeholder="Platform" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Platforms</SelectItem>
+                {PLATFORMS.map(p => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={modeFilter} onValueChange={(v) => setModeFilter(v as GameMode | 'all')}>
+              <SelectTrigger className="w-[130px] bg-background/50">
+                <SelectValue placeholder="Mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Modes</SelectItem>
+                {GAME_MODES.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={String(sizeFilter)} onValueChange={(v) => setSizeFilter(v === 'all' ? 'all' : parseInt(v) as TeamSize)}>
+              <SelectTrigger className="w-[120px] bg-background/50">
+                <SelectValue placeholder="Size" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sizes</SelectItem>
+                {TEAM_SIZES.map(ts => (
+                  <SelectItem key={ts.value} value={String(ts.value)}>{ts.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-[140px] bg-background/50">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="entry_fee_high">Highest Fee</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-
-          <Select value={regionFilter} onValueChange={(v) => setRegionFilter(v as Region | 'all')}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Region" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Regions</SelectItem>
-              {REGIONS.map(r => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={platformFilter} onValueChange={(v) => setPlatformFilter(v as Platform | 'all')}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Platform" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Platforms</SelectItem>
-              {PLATFORMS.map(p => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={modeFilter} onValueChange={(v) => setModeFilter(v as GameMode | 'all')}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Modes</SelectItem>
-              {GAME_MODES.map(m => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={String(sizeFilter)} onValueChange={(v) => setSizeFilter(v === 'all' ? 'all' : parseInt(v) as TeamSize)}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Size" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sizes</SelectItem>
-              {TEAM_SIZES.map(ts => (
-                <SelectItem key={ts.value} value={String(ts.value)}>{ts.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="entry_fee_high">Highest Fee</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Matches Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-[350px] rounded-lg" />
+              <Skeleton key={i} className="h-[350px] rounded-xl skeleton-premium" />
             ))}
           </div>
         ) : matches.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No open matches found</p>
+          <div className="text-center py-16">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
+              <Swords className="w-9 h-9 text-primary/60" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">No open matches found</h3>
+            <p className="text-muted-foreground mb-6">Be the first to create one!</p>
             {user && (
-              <Button asChild>
+              <Button asChild className="glow-blue">
                 <Link to="/matches/create">Create the First Match</Link>
               </Button>
             )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {matches.map((match) => (
-              <MatchCard 
-                key={match.id} 
-                match={match} 
-                onJoin={handleJoin}
-                isJoining={joining === match.id}
-              />
+            {matches.map((match, index) => (
+              <div 
+                key={match.id}
+                className={cn(
+                  "animate-card-enter",
+                  `stagger-${Math.min(index + 1, 6)}`
+                )}
+              >
+                <MatchCard 
+                  match={match} 
+                  onJoin={handleJoin}
+                  isJoining={joining === match.id}
+                />
+              </div>
             ))}
           </div>
         )}

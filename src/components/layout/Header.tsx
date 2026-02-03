@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogIn, LogOut, Menu, X, Gift } from 'lucide-react';
+import { LogIn, LogOut, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,7 +12,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNotifications } from '@/hooks/useNotifications';
 import { useVipStatus } from '@/hooks/useVipStatus';
 import { CoinIcon } from '@/components/common/CoinIcon';
 import { PlayerSearchBar } from '@/components/common/PlayerSearchBar';
@@ -20,7 +19,6 @@ import { NotificationsDropdown } from '@/components/notifications/NotificationsD
 import { VipBanner } from '@/components/vip/VipBanner';
 import { VipModal } from '@/components/vip/VipModal';
 import { TipModal } from '@/components/vip/TipModal';
-import { cn } from '@/lib/utils';
 
 // Social Icons
 const XIcon = () => (
@@ -35,14 +33,8 @@ const TikTokIcon = () => (
   </svg>
 );
 
-interface HeaderProps {
-  onMobileMenuToggle?: () => void;
-  isMobileMenuOpen?: boolean;
-}
-
-export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
+export function Header() {
   const { user, profile, wallet, signOut } = useAuth();
-  const { unreadCount } = useNotifications();
   const { isVip } = useVipStatus();
   const navigate = useNavigate();
   const [showVipModal, setShowVipModal] = useState(false);
@@ -56,23 +48,8 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 h-16 glass-header">
       <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
-        {/* Left side: Mobile menu + Search */}
+        {/* Left side: Search (no hamburger on mobile anymore) */}
         <div className="flex items-center gap-3">
-          {/* Mobile menu toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden hover:bg-secondary/80"
-            onClick={onMobileMenuToggle}
-          >
-            {isMobileMenuOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
-          </Button>
-
-          {/* Player Search Bar */}
           <PlayerSearchBar />
         </div>
 
@@ -196,7 +173,7 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
             </>
           ) : (
             <div className="flex items-center gap-3">
-              {/* Clickable coin for non-logged users - links to auth with redirect to buy */}
+              {/* Clickable coin for non-logged users */}
               <Link 
                 to="/auth?next=/buy" 
                 className="group"
@@ -223,7 +200,7 @@ export function Header({ onMobileMenuToggle, isMobileMenuOpen }: HeaderProps) {
       {/* VIP Modal */}
       <VipModal open={showVipModal} onOpenChange={setShowVipModal} />
 
-      {/* Tip Modal (VIP only, without pre-selected recipient) */}
+      {/* Tip Modal */}
       <TipModal
         open={showTipModal}
         onOpenChange={setShowTipModal}

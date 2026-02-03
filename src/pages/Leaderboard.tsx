@@ -11,10 +11,10 @@ import { supabase } from '@/integrations/supabase/client';
 import type { LeaderboardEntry } from '@/types';
 import { cn } from '@/lib/utils';
 
-const rankIcons = [
-  { icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  { icon: Medal, color: 'text-gray-400', bg: 'bg-gray-400/10' },
-  { icon: Award, color: 'text-amber-600', bg: 'bg-amber-600/10' },
+const rankConfig = [
+  { icon: Trophy, color: 'text-yellow-400', bg: 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/10', ring: 'ring-yellow-500/30' },
+  { icon: Medal, color: 'text-gray-300', bg: 'bg-gradient-to-r from-gray-400/20 to-gray-500/10', ring: 'ring-gray-400/30' },
+  { icon: Award, color: 'text-amber-600', bg: 'bg-gradient-to-r from-amber-600/20 to-amber-700/10', ring: 'ring-amber-600/30' },
 ];
 
 export default function Leaderboard() {
@@ -61,24 +61,27 @@ export default function Leaderboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-3xl font-bold flex items-center gap-3">
-              <Trophy className="w-8 h-8 text-yellow-400" />
+              <div className="relative">
+                <Trophy className="w-8 h-8 text-yellow-400" />
+                <div className="absolute inset-0 w-8 h-8 bg-yellow-400/30 blur-lg rounded-full" />
+              </div>
               Leaderboard
             </h1>
             <p className="text-muted-foreground">All-time top players ranked by earnings</p>
           </div>
         </div>
 
-        {/* Leaderboard Table */}
-        <Card className="bg-card border-border">
-          <CardHeader>
+        {/* Leaderboard Card */}
+        <Card className="card-glass">
+          <CardHeader className="border-b border-border/50">
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-primary" />
               Rankings
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {loading && page === 1 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 p-4">
                 {[...Array(10)].map((_, i) => (
                   <div key={i} className="flex items-center gap-4 p-3">
                     <Skeleton className="w-8 h-8" />
@@ -90,29 +93,42 @@ export default function Leaderboard() {
                 ))}
               </div>
             ) : entries.length === 0 ? (
-              <p className="text-center text-muted-foreground py-12">
-                No players on the leaderboard yet. Start competing!
-              </p>
+              <div className="text-center py-16">
+                <Trophy className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+                <p className="text-muted-foreground">
+                  No players on the leaderboard yet. Start competing!
+                </p>
+              </div>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-border/50">
                 {entries.map((entry, index) => {
-                  const RankIcon = rankIcons[index]?.icon;
-                  const rankColor = rankIcons[index]?.color;
-                  const rankBg = rankIcons[index]?.bg;
+                  const config = rankConfig[index];
+                  const RankIcon = config?.icon;
 
                   return (
                     <div
                       key={entry.id}
                       className={cn(
-                        'flex items-center gap-4 p-3 rounded-lg transition-colors hover:bg-secondary/50 cursor-pointer',
-                        index < 3 && rankBg
+                        'flex items-center gap-4 p-4 transition-all duration-200 cursor-pointer group',
+                        'hover:bg-secondary/50',
+                        config?.bg,
+                        index < 3 && 'ring-1 ring-inset',
+                        config?.ring,
+                        index === 0 && "animate-card-enter stagger-1",
+                        index === 1 && "animate-card-enter stagger-2",
+                        index === 2 && "animate-card-enter stagger-3"
                       )}
                       onClick={() => entry.user_id && setSelectedUserId(entry.user_id)}
                     >
                       {/* Rank */}
-                      <div className="w-10 text-center">
+                      <div className="w-12 text-center">
                         {RankIcon ? (
-                          <RankIcon className={cn('w-6 h-6 mx-auto', rankColor)} />
+                          <div className="relative inline-block">
+                            <RankIcon className={cn('w-7 h-7 mx-auto', config?.color)} />
+                            {index === 0 && (
+                              <div className="absolute inset-0 w-7 h-7 bg-yellow-400/20 blur-md rounded-full mx-auto" />
+                            )}
+                          </div>
                         ) : (
                           <span className="text-lg font-bold text-muted-foreground">
                             #{index + 1}
@@ -121,16 +137,22 @@ export default function Leaderboard() {
                       </div>
 
                       {/* Avatar */}
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={entry.avatar_url ?? undefined} />
-                        <AvatarFallback className="bg-primary/20 text-primary">
+                      <Avatar className={cn(
+                        "w-11 h-11 ring-2 ring-offset-2 ring-offset-background transition-all",
+                        index < 3 ? config?.ring : "ring-border/50",
+                        "group-hover:ring-primary/50"
+                      )}>
+                        <AvatarImage src={entry.avatar_url ?? undefined} className="object-cover" />
+                        <AvatarFallback className="bg-primary/20 text-primary font-semibold">
                           {entry.username?.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
 
-                      {/* Name */}
+                      {/* Name & Stats */}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{entry.username}</p>
+                        <p className="font-medium truncate group-hover:text-primary transition-colors">
+                          {entry.username}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {entry.wins} wins / {entry.total_matches} matches
                         </p>
@@ -145,6 +167,7 @@ export default function Leaderboard() {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="hover-lift"
                         onClick={(e) => {
                           e.stopPropagation();
                           entry.user_id && setSelectedUserId(entry.user_id);
@@ -158,11 +181,12 @@ export default function Leaderboard() {
 
                 {/* Load More */}
                 {hasMore && (
-                  <div className="pt-4 text-center">
+                  <div className="p-6 text-center">
                     <Button
                       variant="outline"
                       onClick={loadMore}
                       disabled={loading}
+                      className="hover-lift"
                     >
                       {loading ? 'Loading...' : (
                         <>

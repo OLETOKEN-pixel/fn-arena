@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MatchCard } from '@/components/matches/MatchCard';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 import type { Match } from '@/types';
 
 export function LiveMatchesCompact() {
@@ -55,43 +56,62 @@ export function LiveMatchesCompact() {
   }, []);
 
   return (
-    <Card className="flex-1 min-h-0 flex flex-col bg-card border-border overflow-hidden">
-      <CardHeader className="py-3 px-4 flex-shrink-0">
+    <Card className="flex-1 min-h-0 flex flex-col overflow-hidden card-glass">
+      <CardHeader className="py-3 px-4 flex-shrink-0 border-b border-border/50">
         <CardTitle className="flex items-center justify-between text-base">
           <span className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-primary" />
-            Live Matches
+            <div className="relative">
+              <Zap className="w-5 h-5 text-primary" />
+              <div className="absolute inset-0 w-5 h-5 bg-primary/30 blur-md rounded-full" />
+            </div>
+            <span>Live Matches</span>
+            {matches.length > 0 && (
+              <span className="px-2 py-0.5 text-xs font-medium bg-success/20 text-success rounded-full animate-pulse">
+                {matches.length} open
+              </span>
+            )}
           </span>
-          <Button variant="ghost" size="sm" asChild className="text-xs">
+          <Button variant="ghost" size="sm" asChild className="text-xs group">
             <Link to="/matches" className="flex items-center gap-1">
               View All
-              <ArrowRight className="w-3 h-3" />
+              <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto px-4 pb-4">
+      <CardContent className="flex-1 overflow-y-auto px-4 pb-4 pt-4">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-40 w-full rounded-lg" />
+              <Skeleton key={i} className="h-44 w-full rounded-xl skeleton-premium" />
             ))}
           </div>
         ) : matches.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center py-8">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Swords className="w-8 h-8 text-primary" />
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mb-4 animate-pulse-soft">
+              <Swords className="w-9 h-9 text-primary" />
             </div>
-            <p className="text-muted-foreground mb-4">No open matches right now</p>
+            <h3 className="font-semibold mb-1">No open matches</h3>
+            <p className="text-muted-foreground text-sm mb-4">Be the first to create one!</p>
             <Button asChild className="glow-blue">
-              <Link to="/matches/create">Create the First Match</Link>
+              <Link to="/matches/create">Create Match</Link>
             </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {matches.map((match) => (
-              <MatchCard key={match.id} match={match} />
+            {matches.map((match, index) => (
+              <div 
+                key={match.id} 
+                className={cn(
+                  "animate-card-enter",
+                  index === 0 && "stagger-1",
+                  index === 1 && "stagger-2",
+                  index === 2 && "stagger-3"
+                )}
+              >
+                <MatchCard match={match} />
+              </div>
             ))}
           </div>
         )}

@@ -115,11 +115,11 @@ export default function AdminMatchDetail() {
     }
   }, [isAdmin, id]);
 
-  const handleResolve = async (action: 'team_a_wins' | 'team_b_wins' | 'refund') => {
+  const handleResolve = async (action: 'TEAM_A_WIN' | 'TEAM_B_WIN' | 'REFUND_BOTH') => {
     if (!match) return;
     
     // Require notes for non-refund actions
-    if (action !== 'refund' && !adminNotes.trim()) {
+    if (action !== 'REFUND_BOTH' && !adminNotes.trim()) {
       toast({
         title: 'Note richieste',
         description: 'Inserisci una motivazione per la risoluzione.',
@@ -475,7 +475,7 @@ export default function AdminMatchDetail() {
               />
               <div className="flex flex-wrap gap-3">
                 <Button
-                  onClick={() => handleResolve('team_a_wins')}
+                  onClick={() => handleResolve('TEAM_A_WIN')}
                   disabled={resolving}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
@@ -483,7 +483,7 @@ export default function AdminMatchDetail() {
                   Team A Vince
                 </Button>
                 <Button
-                  onClick={() => handleResolve('team_b_wins')}
+                  onClick={() => handleResolve('TEAM_B_WIN')}
                   disabled={resolving}
                   className="bg-orange-600 hover:bg-orange-700"
                 >
@@ -491,7 +491,7 @@ export default function AdminMatchDetail() {
                   Team B Vince
                 </Button>
                 <Button
-                  onClick={() => handleResolve('refund')}
+                  onClick={() => handleResolve('REFUND_BOTH')}
                   disabled={resolving}
                   variant="outline"
                 >

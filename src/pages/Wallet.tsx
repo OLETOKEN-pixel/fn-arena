@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Wallet as WalletIcon, Lock, Coins, Plus, Banknote, Clock, CheckCircle, XCircle, CreditCard, ExternalLink, Info } from 'lucide-react';
+import { Wallet as WalletIcon, Lock, Coins, Plus, Banknote, Clock, CheckCircle, XCircle, CreditCard, Info, ChevronDown, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,15 +15,17 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/custom-badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 
 const MIN_WITHDRAWAL = 10;
 const WITHDRAWAL_FEE = 0.50;
 
-const withdrawalStatusConfig: Record<string, { icon: React.ReactNode; variant: 'default' | 'destructive' | 'outline' | 'warning' }> = {
-  pending: { icon: <Clock className="w-3 h-3" />, variant: 'warning' },
-  approved: { icon: <CheckCircle className="w-3 h-3" />, variant: 'default' },
-  completed: { icon: <CheckCircle className="w-3 h-3" />, variant: 'default' },
-  rejected: { icon: <XCircle className="w-3 h-3" />, variant: 'destructive' },
+const withdrawalStatusConfig: Record<string, { icon: React.ReactNode; variant: 'default' | 'destructive' | 'outline' | 'warning'; color: string }> = {
+  pending: { icon: <Clock className="w-3 h-3" />, variant: 'warning', color: 'text-warning' },
+  approved: { icon: <CheckCircle className="w-3 h-3" />, variant: 'default', color: 'text-success' },
+  completed: { icon: <CheckCircle className="w-3 h-3" />, variant: 'default', color: 'text-success' },
+  rejected: { icon: <XCircle className="w-3 h-3" />, variant: 'destructive', color: 'text-destructive' },
 };
 
 interface StripeConnectedAccount {
@@ -43,6 +45,7 @@ export default function Wallet() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
   
   // Stripe Connect state
   const [stripeAccount, setStripeAccount] = useState<StripeConnectedAccount | null>(null);
@@ -63,7 +66,6 @@ export default function Wallet() {
         title: 'Verifica completata',
         description: 'Il tuo account Stripe è stato configurato. Puoi ora effettuare prelievi.',
       });
-      // Remove query params
       navigate('/wallet', { replace: true });
     } else if (stripeRefresh === 'true') {
       toast({
@@ -85,7 +87,6 @@ export default function Wallet() {
     if (!user) return;
 
     const fetchData = async () => {
-      // Fetch transactions
       const { data: txData } = await supabase
         .from('transactions')
         .select('*')
@@ -97,7 +98,6 @@ export default function Wallet() {
         setTransactions(txData as Transaction[]);
       }
 
-      // Fetch withdrawal requests
       const { data: wdData } = await supabase
         .from('withdrawal_requests')
         .select('*')
@@ -108,7 +108,6 @@ export default function Wallet() {
         setWithdrawals(wdData as WithdrawalRequest[]);
       }
 
-      // Fetch Stripe connected account status
       const { data: stripeData } = await supabase
         .from('stripe_connected_accounts')
         .select('*')
@@ -126,7 +125,6 @@ export default function Wallet() {
     refreshWallet();
   }, [user, refreshWallet]);
 
-  // Connect to Stripe
   const handleConnectStripe = async () => {
     setConnectingStripe(true);
     try {
@@ -137,7 +135,6 @@ export default function Wallet() {
       if (data?.url) {
         window.location.href = data.url;
       } else if (data?.payouts_enabled) {
-        // Already verified
         setStripeAccount(prev => prev ? { ...prev, payouts_enabled: true } : null);
         toast({
           title: 'Account già verificato',
@@ -147,7 +144,6 @@ export default function Wallet() {
     } catch (error: unknown) {
       console.error('Stripe connect error:', error);
       
-      // Extract detailed error message from response
       let errorMessage = 'Impossibile avviare la verifica Stripe. Riprova.';
       let requestId: string | null = null;
       
@@ -167,7 +163,6 @@ export default function Wallet() {
         errorMessage = body?.error || body?.details || errObj.message || errorMessage;
         requestId = body?.stripeRequestId || null;
         
-        // Log full error for debugging
         console.error('Stripe error details:', JSON.stringify(body, null, 2));
       }
       
@@ -183,7 +178,6 @@ export default function Wallet() {
     }
   };
 
-  // Withdraw
   const handleWithdraw = async () => {
     const amount = parseFloat(withdrawAmount);
     const totalDeduction = amount + WITHDRAWAL_FEE;
@@ -224,7 +218,6 @@ export default function Wallet() {
         setWithdrawAmount('');
         refreshWallet();
         
-        // Refresh withdrawals
         const { data: wdData } = await supabase
           .from('withdrawal_requests')
           .select('*')
@@ -249,85 +242,150 @@ export default function Wallet() {
   const canWithdraw = (wallet?.balance ?? 0) >= (MIN_WITHDRAWAL + WITHDRAWAL_FEE);
   const isStripeVerified = stripeAccount?.payouts_enabled === true;
 
-  if (authLoading) return <MainLayout><Skeleton className="h-96" /></MainLayout>;
+  if (authLoading) return (
+    <MainLayout>
+      <div className="max-w-4xl mx-auto space-y-6 animate-page-enter">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+        </div>
+      </div>
+    </MainLayout>
+  );
 
   return (
     <MainLayout>
-      <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="font-display text-3xl font-bold">Wallet</h1>
+      <div className="max-w-4xl mx-auto space-y-8 animate-page-enter">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+            <WalletIcon className="w-7 h-7 text-primary" />
+          </div>
+          <div>
+            <h1 className="font-display text-3xl font-bold tracking-tight">Wallet</h1>
+            <p className="text-muted-foreground">Gestisci il tuo saldo e le transazioni</p>
+          </div>
+        </div>
 
-        {/* Balance Cards */}
+        {/* Balance Cards - Premium Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-2">
+          {/* Available Balance */}
+          <Card className="card-premium card-hover overflow-hidden animate-card-enter stagger-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent" />
+            <CardHeader className="pb-2 relative">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <WalletIcon className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <WalletIcon className="w-4 h-4 text-primary" />
+                </div>
                 Saldo Disponibile
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <CoinDisplay amount={wallet?.balance ?? 0} size="lg" className="glow-text-gold" />
+            <CardContent className="relative">
+              <div className="flex items-baseline gap-1">
+                <span className="font-display text-4xl font-bold tracking-tight glow-text-gold">
+                  €{(wallet?.balance ?? 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 mt-2 text-xs text-success">
+                <TrendingUp className="w-3 h-3" />
+                <span>Pronto all'uso</span>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border">
-            <CardHeader className="pb-2">
+          {/* Locked Balance */}
+          <Card className="card-premium card-hover overflow-hidden animate-card-enter stagger-2">
+            <div className="absolute inset-0 bg-gradient-to-br from-warning/5 via-transparent to-transparent" />
+            <CardHeader className="pb-2 relative">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Lock className="w-4 h-4" />
-                Bloccato (In Match)
+                <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <Lock className="w-4 h-4 text-warning" />
+                </div>
+                Bloccato
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <CoinDisplay amount={wallet?.locked_balance ?? 0} size="lg" />
+            <CardContent className="relative">
+              <div className="flex items-baseline gap-1">
+                <span className="font-display text-4xl font-bold tracking-tight text-warning">
+                  €{(wallet?.locked_balance ?? 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>In match attivi</span>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-accent/20 to-accent/5 border-accent/20">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-accent flex items-center gap-2">
-                <Coins className="w-4 h-4" />
+          {/* Total Balance */}
+          <Card className="relative overflow-hidden animate-card-enter stagger-3 border-0">
+            <div className="absolute inset-0 gradient-gold opacity-90" />
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/20" />
+            <CardHeader className="pb-2 relative">
+              <CardTitle className="text-sm font-medium text-accent-foreground/80 flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-black/20 flex items-center justify-center">
+                  <Coins className="w-4 h-4 text-accent-foreground" />
+                </div>
                 Saldo Totale
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <CoinDisplay 
-                amount={(wallet?.balance ?? 0) + (wallet?.locked_balance ?? 0)} 
-                size="lg" 
-                className="glow-text-gold"
-              />
+            <CardContent className="relative">
+              <div className="flex items-baseline gap-1">
+                <span className="font-display text-4xl font-bold tracking-tight text-accent-foreground drop-shadow-lg">
+                  €{((wallet?.balance ?? 0) + (wallet?.locked_balance ?? 0)).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 mt-2 text-xs text-accent-foreground/70">
+                <Coins className="w-3 h-3" />
+                <span>Patrimonio totale</span>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Actions */}
+        {/* Quick Actions - Premium */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Buy Coins */}
-          <Card className="bg-card border-border">
-            <CardContent className="py-6 flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Hai bisogno di Coins?</h3>
-                <p className="text-sm text-muted-foreground">
-                  Acquista Coins per creare e unirti ai match
-                </p>
+          <Card className="card-premium card-hover animate-card-enter stagger-4 overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardContent className="py-6 flex items-center justify-between relative">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <ArrowDownLeft className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-lg">Acquista Coins</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Ricarica il tuo wallet
+                  </p>
+                </div>
               </div>
-              <Button asChild>
+              <Button asChild variant="premium" className="glow-blue-soft">
                 <Link to="/buy">
                   <Plus className="w-4 h-4 mr-2" />
-                  Compra Coins
+                  Compra
                 </Link>
               </Button>
             </CardContent>
           </Card>
 
           {/* Withdraw */}
-          <Card className="bg-card border-border">
-            <CardContent className="py-6">
+          <Card className="card-premium card-hover animate-card-enter stagger-5 overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-success/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <CardContent className="py-6 relative">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">Preleva</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Min €{MIN_WITHDRAWAL} • Comm. €{WITHDRAWAL_FEE}
-                  </p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <ArrowUpRight className="w-6 h-6 text-success" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-lg">Preleva</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Min €{MIN_WITHDRAWAL} • Comm. €{WITHDRAWAL_FEE}
+                    </p>
+                  </div>
                 </div>
                 
                 {!isStripeVerified ? (
@@ -335,6 +393,7 @@ export default function Wallet() {
                     variant="outline" 
                     onClick={handleConnectStripe}
                     disabled={connectingStripe}
+                    className="border-primary/30 hover:border-primary hover:bg-primary/10"
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
                     {connectingStripe ? 'Caricamento...' : 'Configura Stripe'}
@@ -342,14 +401,14 @@ export default function Wallet() {
                 ) : (
                   <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" disabled={!canWithdraw}>
+                      <Button variant="outline" disabled={!canWithdraw} className="border-success/30 hover:border-success hover:bg-success/10">
                         <Banknote className="w-4 h-4 mr-2" />
                         Preleva
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="card-premium border-0">
                       <DialogHeader>
-                        <DialogTitle>Richiedi Prelievo</DialogTitle>
+                        <DialogTitle className="font-display text-xl">Richiedi Prelievo</DialogTitle>
                         <DialogDescription>
                           Minimo €{MIN_WITHDRAWAL} • Commissione €{WITHDRAWAL_FEE}
                         </DialogDescription>
@@ -365,6 +424,7 @@ export default function Wallet() {
                             value={withdrawAmount}
                             onChange={(e) => setWithdrawAmount(e.target.value)}
                             placeholder={`${MIN_WITHDRAWAL}.00`}
+                            className="text-lg font-mono"
                           />
                           <p className="text-xs text-muted-foreground">
                             Disponibile: €{(wallet?.balance ?? 0).toFixed(2)}
@@ -372,30 +432,31 @@ export default function Wallet() {
                         </div>
 
                         {withdrawAmount && parseFloat(withdrawAmount) >= MIN_WITHDRAWAL && (
-                          <div className="p-3 bg-secondary rounded-lg space-y-1 text-sm">
+                          <div className="p-4 bg-secondary/50 rounded-xl space-y-2 text-sm border border-border">
                             <div className="flex justify-between">
-                              <span>Importo richiesto</span>
-                              <span>€{parseFloat(withdrawAmount).toFixed(2)}</span>
+                              <span className="text-muted-foreground">Importo richiesto</span>
+                              <span className="font-mono font-medium">€{parseFloat(withdrawAmount).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-muted-foreground">
                               <span>Commissione</span>
-                              <span>€{WITHDRAWAL_FEE.toFixed(2)}</span>
+                              <span className="font-mono">-€{WITHDRAWAL_FEE.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between font-medium border-t border-border pt-1">
+                            <div className="flex justify-between font-semibold border-t border-border pt-2">
                               <span>Scalato dal saldo</span>
-                              <span>€{(parseFloat(withdrawAmount) + WITHDRAWAL_FEE).toFixed(2)}</span>
+                              <span className="font-mono text-primary">€{(parseFloat(withdrawAmount) + WITHDRAWAL_FEE).toFixed(2)}</span>
                             </div>
                           </div>
                         )}
                       </div>
 
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setWithdrawOpen(false)}>
+                        <Button variant="ghost" onClick={() => setWithdrawOpen(false)}>
                           Annulla
                         </Button>
                         <Button 
                           onClick={handleWithdraw} 
                           disabled={submitting || parseFloat(withdrawAmount) < MIN_WITHDRAWAL}
+                          variant="premium"
                         >
                           {submitting ? 'Elaborazione...' : 'Conferma Prelievo'}
                         </Button>
@@ -407,48 +468,70 @@ export default function Wallet() {
               
               {/* Stripe status info */}
               {!isStripeVerified && (
-                <div className="mt-3 p-3 bg-secondary/50 rounded-lg text-sm text-muted-foreground flex items-start gap-2">
-                  <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div className="mt-4 p-3 bg-secondary/50 rounded-xl text-sm text-muted-foreground flex items-start gap-3 border border-border/50">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Info className="w-4 h-4 text-primary" />
+                  </div>
                   <span>
                     Completa la verifica Stripe per ricevere i pagamenti sul tuo conto bancario.
                   </span>
                 </div>
               )}
               {isStripeVerified && (
-                <div className="mt-3 flex items-center gap-2 text-sm text-green-500">
+                <div className="mt-4 flex items-center gap-2 text-sm text-success">
+                  <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
                   <CheckCircle className="w-4 h-4" />
-                  <span>Account Stripe verificato</span>
+                  <span className="font-medium">Account Stripe verificato</span>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Withdrawal Requests */}
+        {/* Withdrawal Requests - Premium */}
         {withdrawals.length > 0 && (
-          <Card className="bg-card border-border">
+          <Card className="card-premium animate-card-enter stagger-6">
             <CardHeader>
-              <CardTitle>Richieste di Prelievo</CardTitle>
+              <CardTitle className="font-display flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Banknote className="w-4 h-4 text-primary" />
+                </div>
+                Richieste di Prelievo
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {withdrawals.map((wd) => (
                   <div
                     key={wd.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary"
+                    className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary/70 transition-colors border border-border/50"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-background flex items-center justify-center">
-                        <Banknote className="w-4 h-4 text-primary" />
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                        wd.status === 'completed' || wd.status === 'approved' 
+                          ? 'bg-success/10' 
+                          : wd.status === 'pending' 
+                            ? 'bg-warning/10' 
+                            : 'bg-destructive/10'
+                      )}>
+                        <Banknote className={cn(
+                          "w-5 h-5",
+                          withdrawalStatusConfig[wd.status]?.color || 'text-muted-foreground'
+                        )} />
                       </div>
                       <div>
-                        <p className="font-medium">€{wd.amount.toFixed(2)} via Stripe</p>
+                        <p className="font-display font-bold">€{wd.amount.toFixed(2)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(wd.created_at).toLocaleDateString()}
+                          {new Date(wd.created_at).toLocaleDateString('it-IT', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
                         </p>
                       </div>
                     </div>
-                    <Badge variant={withdrawalStatusConfig[wd.status]?.variant || 'outline'} className="flex items-center gap-1">
+                    <Badge variant={withdrawalStatusConfig[wd.status]?.variant || 'outline'} className="flex items-center gap-1.5 px-3">
                       {withdrawalStatusConfig[wd.status]?.icon}
                       {wd.status === 'pending' && 'In attesa'}
                       {wd.status === 'approved' && 'Approvato'}
@@ -462,8 +545,35 @@ export default function Wallet() {
           </Card>
         )}
 
-        {/* Transactions */}
-        <TransactionHistory transactions={transactions} loading={loading} />
+        {/* Transaction History - Collapsible Premium */}
+        <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+          <Card className="card-premium overflow-hidden">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-secondary/30 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="font-display flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-primary" />
+                    </div>
+                    Storico Transazioni
+                    <Badge variant="secondary" className="ml-2 font-mono">
+                      {transactions.length}
+                    </Badge>
+                  </CardTitle>
+                  <ChevronDown className={cn(
+                    "w-5 h-5 text-muted-foreground transition-transform duration-300",
+                    historyOpen && "rotate-180"
+                  )} />
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                <TransactionHistory transactions={transactions} loading={loading} />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       </div>
     </MainLayout>
   );

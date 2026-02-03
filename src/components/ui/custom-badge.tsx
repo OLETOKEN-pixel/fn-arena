@@ -3,7 +3,7 @@ import type { MatchStatus, Region, Platform, GameMode } from '@/types';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'primary' | 'accent' | 'success' | 'warning' | 'destructive' | 'outline';
+  variant?: 'default' | 'primary' | 'accent' | 'success' | 'warning' | 'destructive' | 'outline' | 'secondary';
   size?: 'sm' | 'md';
   className?: string;
 }
@@ -20,6 +20,7 @@ export function Badge({
       size === 'sm' && 'px-2 py-0.5 text-xs',
       size === 'md' && 'px-3 py-1 text-sm',
       variant === 'default' && 'bg-secondary text-secondary-foreground',
+      variant === 'secondary' && 'bg-muted text-muted-foreground',
       variant === 'primary' && 'bg-primary/20 text-primary',
       variant === 'accent' && 'bg-accent/20 text-accent',
       variant === 'success' && 'bg-success/20 text-success',

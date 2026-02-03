@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { BottomNav } from './BottomNav';
 import { cn } from '@/lib/utils';
 import { useSoundNotifications } from '@/hooks/useSoundNotifications';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -14,6 +16,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { unlockAudio, audioUnlocked } = useSoundNotifications();
   const hasUnlockedRef = useRef(false);
+  const isMobile = useIsMobile();
 
   // ========== GLOBAL AUDIO UNLOCK ON FIRST INTERACTION ==========
   // This ensures audio works even in background tabs after user interacts once
@@ -43,7 +46,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sidebar */}
+      {/* Sidebar - Hidden on mobile, shown on desktop */}
       <div className={cn(
         'fixed inset-0 z-50 bg-background/80 backdrop-blur-sm lg:hidden',
         isMobileMenuOpen ? 'block' : 'hidden'
@@ -64,16 +67,22 @@ export function MainLayout({ children }: MainLayoutProps) {
             isMobileMenuOpen={isMobileMenuOpen}
           />
           
-          <main className="flex-1 px-4 lg:px-8 xl:px-12 py-4 lg:py-6">
+          <main className={cn(
+            "flex-1 px-4 lg:px-8 xl:px-12 py-4 lg:py-6 animate-page-enter",
+            isMobile && "pb-24" // Extra padding for bottom nav on mobile
+          )}>
             <div className="max-w-screen-2xl mx-auto w-full">
               {children}
             </div>
           </main>
           
-          {/* Global Footer */}
+          {/* Global Footer - Only shows on Home page */}
           <Footer />
         </div>
       </div>
+
+      {/* Bottom Navigation for Mobile */}
+      {isMobile && <BottomNav />}
     </div>
   );
 }

@@ -1,203 +1,197 @@
 
 
-# Fix Completo: Match DISPUTED + Audio Notifications
+# Piano Fix Completo: Admin Resolve + Match Disputed + Audio 100%
 
 ## REPORT BUG TROVATI
 
-### BUG 1: Match va in DISPUTED anche con WIN/LOSS corretti (CRITICO)
+### BUG #1: Admin Resolve non funziona (CRITICO)
 
-**Causa Root**: Mismatch tra segno degli importi nelle transazioni lock.
+**Errore**: "Invalid action. Use TEAM_A_WIN, TEAM_B_WIN, or REFUND_BOTH"
 
-| Funzione | Valore Amount | Stato |
-|----------|---------------|-------|
-| `create_match_1v1` | `+entry_fee` (positivo) | Corretto |
-| `join_match_v2` | `-entry_fee` (negativo) | **ERRATO** |
+**File interessato**: `src/pages/AdminMatchDetail.tsx` linee 118, 478, 486, 494
 
-**Prova dal DB**:
-```
-Match: b091045d-f192-4126-9040-eef4cebfe1f8 (status: disputed)
-Risultati: Team A = WIN, Team B = LOSS (corretti, complementari)
-
-Transazioni lock:
-- Creator (ea30bfbf): amount = +0.50
-- Joiner (6adc41b1): amount = -0.50
-```
-
-**Cosa succede in try_finalize_match**:
-```sql
-SUM(t.amount) FROM transactions WHERE type='lock' AND match_id=...
-```
-- Atteso per 1v1: `entry_fee * 2` = 1.00
-- Reale: `0.50 + (-0.50)` = 0.00
-- Risultato: MISMATCH → disputed!
-
-**File interessato**: `supabase/migrations/20260202200946_f899e5db-553a-4428-bfec-0978b521e79f.sql`
-
-**Linee da correggere in join_match_v2**:
-- Linea 108 (1v1): `VALUES (v_caller_id, 'lock', -v_entry_fee, ...)` → usare `v_entry_fee` (positivo)
-- Linea 215 (team cover): `VALUES (v_caller_id, 'lock', -v_total_cost, ...)` → usare `v_total_cost` (positivo)
-- Linea 228 (team split): `VALUES (v_member_id, 'lock', -v_entry_fee, ...)` → usare `v_entry_fee` (positivo)
-
----
-
-### BUG 2: Audio non suona (blocco prefers-reduced-motion)
-
-**Causa**: Il hook `useSoundNotifications.ts` blocca l'audio se il sistema operativo ha "Riduci movimento" attivo.
-
+**Problema**: I pulsanti di risoluzione inviano valori sbagliati:
 ```typescript
-// Linea 30-32
-const prefersReducedMotion = typeof window !== 'undefined' 
-  ? window.matchMedia('(prefers-reduced-motion: reduce)').matches 
-  : false;
+// SBAGLIATO (linea 118)
+const handleResolve = async (action: 'team_a_wins' | 'team_b_wins' | 'refund') => {
 
-// Linea 86
-if (prefersReducedMotion) return; // ← BLOCCA TUTTO L'AUDIO
+// Pulsanti (linee 478, 486, 494)
+onClick={() => handleResolve('team_a_wins')}  // SBAGLIATO
+onClick={() => handleResolve('team_b_wins')}  // SBAGLIATO
+onClick={() => handleResolve('refund')}       // SBAGLIATO
 ```
 
-**Problema**: "Riduci movimento" dovrebbe bloccare solo le animazioni CSS, NON l'audio. Molti utenti hanno questa preferenza attiva senza saperlo.
-
-**Fix**: Rimuovere il check `prefersReducedMotion` dalla funzione `playSound`.
-
----
-
-### VERIFICHE POSITIVE (Funzionano correttamente)
-
-| Componente | Stato | Note |
-|------------|-------|------|
-| Eventi `match_events` | ✅ OK | Vengono creati correttamente |
-| `set_player_ready` | ✅ OK | Emette `ready` e `all_ready` |
-| `player_joined` eventi | ✅ OK | Targetta creator correttamente |
-| `GlobalMatchEventListener` | ✅ OK | Montato in App.tsx |
-| `submit_team_declaration` | ✅ OK | Accetta WIN/LOSS uppercase |
-| Realtime subscription | ✅ OK | Vedo eventi nel DB |
-
----
-
-## PIANO FIX
-
-### FASE 1: Fix join_match_v2 (Importi POSITIVI)
-
-Creare nuova migration che aggiorna `join_match_v2` per usare importi positivi:
-
+**Contratto DB** (`admin_resolve_match_v3` linea 49):
 ```sql
--- 1v1 join (linea 108)
+IF p_action NOT IN ('TEAM_A_WIN', 'TEAM_B_WIN', 'REFUND_BOTH') THEN
+  RETURN jsonb_build_object('success', false, 'error', 'Invalid action...');
+```
+
+**Fix**: Cambiare il frontend per inviare i valori esatti richiesti dal DB.
+
+---
+
+### BUG #2: Match va in DISPUTED (GIA' FIXATO NEL DB)
+
+**Stato**: Il DB e' stato gia' aggiornato con la migration `20260203175004` che usa importi POSITIVI.
+
+**Verifica DB**: La funzione `join_match_v2` ora ha:
+```sql
 INSERT INTO transactions (user_id, type, amount, description, match_id)
 VALUES (v_caller_id, 'lock', v_entry_fee, 'Match entry fee', p_match_id);
---                         ^^^^^^^^^^^^ POSITIVO (non -v_entry_fee)
-
--- Team cover (linea 215)
-INSERT INTO transactions (user_id, type, amount, description, match_id)
-VALUES (v_caller_id, 'lock', v_total_cost, 'Team match entry (cover mode)', p_match_id);
---                         ^^^^^^^^^^^^ POSITIVO (non -v_total_cost)
-
--- Team split (linea 228)
-INSERT INTO transactions (user_id, type, amount, description, match_id)
-VALUES (v_member_id, 'lock', v_entry_fee, 'Team match entry (split mode)', p_match_id);
---                         ^^^^^^^^^^^^ POSITIVO (non -v_entry_fee)
+-- v_entry_fee e' POSITIVO (senza segno meno)
 ```
 
-### FASE 2: Fix Audio Hook (Rimuovere blocco reduced-motion)
+**Problema legacy**: I match creati PRIMA del fix (come `b091045d-f192-4126-9040-eef4cebfe1f8`) hanno ancora transazioni negative e non possono essere finalizzati automaticamente. Devono essere risolti manualmente dall'admin.
 
-Modificare `src/hooks/useSoundNotifications.ts`:
+**Nuovi match**: Funzioneranno correttamente con lock positivi.
+
+---
+
+### BUG #3: Audio Notifications (PARZIALMENTE FUNZIONANTE)
+
+**Cosa funziona**:
+- `GlobalMatchEventListener` e' montato globalmente in `App.tsx`
+- `set_player_ready` emette eventi `ready` e `all_ready` correttamente
+- `join_match_v2` emette eventi `player_joined` 
+- Audio unlock e' implementato correttamente
+- `useSoundNotifications.ts` NON blocca piu' l'audio per `prefersReducedMotion`
+
+**Potenziale problema**: Realtime subscription potrebbe non essere sempre affidabile.
+
+**Miglioramento consigliato**: Aggiungere fallback polling per garantire audio 100%.
+
+---
+
+## MODIFICHE RICHIESTE
+
+### FASE 1: Fix AdminMatchDetail.tsx (CRITICO)
+
+Modificare il frontend per allineare i valori delle action al contratto DB:
 
 ```typescript
-// RIMUOVERE questa riga nel playSound:
-if (prefersReducedMotion) return;
+// Linea 118: Cambiare tipo
+const handleResolve = async (action: 'TEAM_A_WIN' | 'TEAM_B_WIN' | 'REFUND_BOTH') => {
 
-// MANTENERE prefersReducedMotion solo per animazioni UI, NON per audio
+// Linea 122: Aggiornare check
+if (action !== 'REFUND_BOTH' && !adminNotes.trim()) {
+
+// Linea 478: Aggiornare onClick
+onClick={() => handleResolve('TEAM_A_WIN')}
+
+// Linea 486: Aggiornare onClick  
+onClick={() => handleResolve('TEAM_B_WIN')}
+
+// Linea 494: Aggiornare onClick
+onClick={() => handleResolve('REFUND_BOTH')}
 ```
 
-### FASE 3: Migliorare targeting eventi (team opposto)
+### FASE 2: Aggiungere Polling Fallback per Audio 100%
 
-Attualmente `player_joined` viene emesso solo al `creator_id`. Per team matches, dovrebbe essere emesso a TUTTI i membri del team opposto.
+Aggiungere al `GlobalMatchEventListener` un polling ogni 3 secondi per garantire che gli eventi arrivino anche se il realtime fallisce:
 
-Fix in `join_match_v2`:
+```typescript
+// Nuovo hook per fallback polling
+const lastSeenRef = useRef<string | null>(null);
+
+useEffect(() => {
+  if (!userId) return;
+  
+  const pollEvents = async () => {
+    // Query per eventi nuovi dove target_user_ids contiene userId
+    const { data } = await supabase
+      .from('match_events')
+      .select('*')
+      .contains('target_user_ids', [userId])
+      .gt('created_at', lastSeenRef.current || new Date(Date.now() - 30000).toISOString())
+      .order('created_at', { ascending: true })
+      .limit(10);
+    
+    if (data && data.length > 0) {
+      for (const event of data) {
+        // Skip if already processed via realtime
+        if (event.actor_user_id !== userId) {
+          playSound('match_accepted');
+          // Show toast based on event type
+        }
+      }
+      lastSeenRef.current = data[data.length - 1].created_at;
+    }
+  };
+  
+  const interval = setInterval(pollEvents, 3000);
+  return () => clearInterval(interval);
+}, [userId, playSound]);
+```
+
+---
+
+## RIEPILOGO FILE DA MODIFICARE
+
+| File | Modifica | Priorita' |
+|------|----------|-----------|
+| `src/pages/AdminMatchDetail.tsx` | Fix action values per admin resolve | CRITICA |
+| `src/components/common/GlobalMatchEventListener.tsx` | Aggiungere polling fallback | ALTA |
+
+---
+
+## DATABASE - NESSUNA MODIFICA NECESSARIA
+
+Il database e' gia' corretto:
+
+1. **`join_match_v2`**: Usa lock positivi (fix applicato)
+2. **`set_player_ready`**: Emette eventi `ready` e `all_ready`
+3. **`submit_team_declaration`**: Normalizza input uppercase, emette `result_declared`
+4. **`admin_resolve_match_v3`**: Accetta solo valori corretti
+
+---
+
+## CHECKLIST TEST
+
+### Test 1: Admin Resolve Match
+- [ ] Aprire `/admin/matches/{id}` per un match disputed
+- [ ] Cliccare "Team A Vince" → deve chiamare RPC con `'TEAM_A_WIN'`
+- [ ] Cliccare "Team B Vince" → deve chiamare RPC con `'TEAM_B_WIN'`
+- [ ] Cliccare "Rimborsa Entrambi" → deve chiamare RPC con `'REFUND_BOTH'`
+- [ ] Nessun errore "Invalid action"
+
+### Test 2: Match 1v1 Nuovo (Post-Fix)
+- [ ] User A crea match
+- [ ] User B joina → transazione lock con amount POSITIVO
+- [ ] User A sente audio su join (da qualsiasi pagina)
+- [ ] User B ready → User A sente audio
+- [ ] User A ready → entrambi sentono audio "Match started"
+- [ ] Dichiarazione WIN/LOSS → finalizzazione corretta (non disputed)
+
+### Test 3: Match Team 2v2/3v3/4v4
+- [ ] Stessi test del 1v1 ma con team completi
+- [ ] Tutti i membri del team opposto ricevono audio su join
+- [ ] Audio funziona anche con tab in background
+
+### Test 4: Audio Fallback
+- [ ] Simulare disconnessione realtime
+- [ ] Verificare che polling fallback recuperi gli eventi
+- [ ] Audio suona anche senza realtime attivo
+
+---
+
+## NOTE TECNICHE
+
+### Perche' il match attuale e' disputed
+
+Il match `b091045d-f192-4126-9040-eef4cebfe1f8` ha:
+- Lock Team A: +0.50 (creatore, corretto)
+- Lock Team B: -0.50 (joiner, bug pre-fix)
+- Somma: 0.00 invece di 1.00
+
+La funzione `try_finalize_match` verifica:
 ```sql
--- Invece di:
-PERFORM emit_match_event(..., ARRAY[v_match.creator_id], ...);
-
--- Usare:
-SELECT array_agg(user_id) INTO v_opponent_ids
-FROM match_participants
-WHERE match_id = p_match_id AND team_side != v_team_side;
-
-PERFORM emit_match_event(..., v_opponent_ids, ...);
+SELECT SUM(t.amount) FROM transactions t 
+WHERE t.match_id = p_match_id AND t.type = 'lock'
 ```
+Atteso: 0.50 * 2 = 1.00
+Reale: 0.50 + (-0.50) = 0.00
+Risultato: MISMATCH → disputed
 
----
-
-## FILE DA MODIFICARE
-
-| File | Azione | Priorita |
-|------|--------|----------|
-| `supabase/migrations/[new].sql` | Fix join_match_v2: amount positivo + targeting team opposto | CRITICA |
-| `src/hooks/useSoundNotifications.ts` | Rimuovere blocco prefersReducedMotion | ALTA |
-
----
-
-## FLUSSO DOPO IL FIX
-
-```text
-1. User A crea match (create_match_1v1)
-   → transactions: lock +0.50 ✓
-   
-2. User B joina match (join_match_v2 FIXED)
-   → transactions: lock +0.50 ✓ (non più -0.50)
-   → emit player_joined a User A
-   → User A sente audio (se reduced-motion fix applicato)
-
-3. Ready up
-   → eventi ready/all_ready correttamente targetizzati
-   → audio suona a tutti i partecipanti
-
-4. Dichiarazione risultato (WIN/LOSS)
-   → try_finalize_match
-   → SUM(locks) = 0.50 + 0.50 = 1.00 ✓
-   → expected = 0.50 * 2 = 1.00 ✓
-   → MATCH! → payout → completed (non più disputed)
-```
-
----
-
-## TECHNICAL DETAILS
-
-### Perche try_finalize_match si aspetta importi positivi?
-
-La logica per team matches verifica:
-```sql
-SUM(t.amount) FROM transactions 
-WHERE type='lock' AND status='completed' AND user_id = payer_id
-```
-
-E confronta con `entry_fee * team_size`.
-
-Se `entry_fee = 0.50` e `team_size = 1`:
-- Expected: `0.50 * 1 = 0.50` per ogni team
-- Totale atteso: `0.50 + 0.50 = 1.00`
-
-Con lock negativi:
-- Reale: `0.50 + (-0.50) = 0.00`
-- MISMATCH → disputed
-
-### Perche reduced-motion blocca l'audio?
-
-Il codice originale usava `prefersReducedMotion` come "safety check" generale, ma questo e' semanticamente sbagliato. La preferenza "Riduci movimento" e' specifica per animazioni CSS/JavaScript che possono causare motion sickness, NON per notifiche audio.
-
----
-
-## CHECKLIST POST-FIX
-
-1. Deploy migration
-2. Verificare con query:
-   ```sql
-   SELECT pg_get_functiondef(oid) FROM pg_proc WHERE proname = 'join_match_v2';
-   -- Cercare: amount = v_entry_fee (positivo)
-   ```
-
-3. Test end-to-end:
-   - [ ] 1v1: Create → Join → Ready → Result → Completed (non disputed)
-   - [ ] Audio suona su player_joined
-   - [ ] Audio suona su ready/all_ready
-   - [ ] Audio funziona anche con reduced-motion attivo
-   - [ ] 2v2/3v3/4v4: stessi test
+**Soluzione**: Risolvere manualmente con admin (dopo il fix AdminMatchDetail).
 

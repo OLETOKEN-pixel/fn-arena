@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Users, Trophy, Clock, CheckCircle2, AlertTriangle, XCircle, EyeOff } from 'lucide-react';
+import { Users, Trophy, Clock, CheckCircle2, AlertTriangle, XCircle, EyeOff, Zap, Swords, Crown, Skull } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,19 +14,24 @@ interface MyMatchCardProps {
   currentUserId: string;
 }
 
-// Status configuration
-const statusConfig: Record<MatchStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
+// Status configuration with premium styling
+const statusConfig: Record<MatchStatus, { 
+  label: string; 
+  variant: 'default' | 'secondary' | 'destructive' | 'outline'; 
+  icon: React.ReactNode;
+  glow?: string;
+}> = {
   open: { label: 'OPEN', variant: 'secondary', icon: <Clock className="w-3 h-3" /> },
-  ready_check: { label: 'READY CHECK', variant: 'default', icon: <Users className="w-3 h-3" /> },
-  in_progress: { label: 'IN PROGRESS', variant: 'default', icon: <Clock className="w-3 h-3 animate-pulse" /> },
-  result_pending: { label: 'SUBMIT RESULT', variant: 'default', icon: <Trophy className="w-3 h-3" /> },
+  ready_check: { label: 'READY CHECK', variant: 'default', icon: <Zap className="w-3 h-3" />, glow: 'glow-blue-soft' },
+  in_progress: { label: 'LIVE', variant: 'default', icon: <Swords className="w-3 h-3 animate-pulse" />, glow: 'glow-success' },
+  result_pending: { label: 'SUBMIT RESULT', variant: 'default', icon: <Trophy className="w-3 h-3" />, glow: 'glow-gold-soft' },
   completed: { label: 'COMPLETED', variant: 'secondary', icon: <CheckCircle2 className="w-3 h-3" /> },
   disputed: { label: 'DISPUTED', variant: 'destructive', icon: <AlertTriangle className="w-3 h-3" /> },
   canceled: { label: 'CANCELED', variant: 'outline', icon: <XCircle className="w-3 h-3" /> },
   admin_resolved: { label: 'RESOLVED', variant: 'secondary', icon: <CheckCircle2 className="w-3 h-3" /> },
   joined: { label: 'JOINED', variant: 'secondary', icon: <Users className="w-3 h-3" /> },
-  full: { label: 'FULL', variant: 'default', icon: <Users className="w-3 h-3" /> },
-  started: { label: 'LIVE', variant: 'default', icon: <Clock className="w-3 h-3 animate-pulse" /> },
+  full: { label: 'READY CHECK', variant: 'default', icon: <Zap className="w-3 h-3" />, glow: 'glow-blue-soft' },
+  started: { label: 'LIVE', variant: 'default', icon: <Swords className="w-3 h-3 animate-pulse" />, glow: 'glow-success' },
   finished: { label: 'FINISHED', variant: 'secondary', icon: <CheckCircle2 className="w-3 h-3" /> },
   expired: { label: 'EXPIRED', variant: 'outline', icon: <XCircle className="w-3 h-3" /> },
 };
@@ -54,119 +59,186 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
   const isWinner = match.result?.winner_user_id === currentUserId;
   const isCompleted = match.status === 'completed' || match.status === 'admin_resolved' || match.status === 'finished';
 
-  // Anonymity: Hide opponent identity until all are ready
+  // Anonymity: Hide opponent identity until all are ready OR match is completed
   const allReady = match.participants?.every(p => p.ready) ?? false;
-  const showOpponentIdentity = (match.status !== 'ready_check' && match.status !== 'full') || allReady;
+  const showOpponentIdentity = isCompleted || (match.status !== 'ready_check' && match.status !== 'full') || allReady;
 
   return (
     <Card className={cn(
-      'bg-card border-border hover:border-primary/50 transition-all duration-200',
-      actionRequired && 'ring-2 ring-primary ring-offset-2 ring-offset-background',
-      match.status === 'disputed' && 'ring-2 ring-destructive ring-offset-2 ring-offset-background'
+      'card-premium card-hover overflow-hidden relative group',
+      actionRequired && 'ring-2 ring-primary/50 animate-pulse-glow',
+      match.status === 'disputed' && 'ring-2 ring-destructive/50',
+      isCompleted && isWinner && 'ring-1 ring-accent/30',
+      config.glow
     )}>
-      <CardHeader className="pb-2">
+      {/* Action Required Overlay */}
+      {actionRequired && (
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
+      )}
+
+      <CardHeader className="pb-3 relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Badge variant={config.variant} className="flex items-center gap-1">
+            <Badge variant={config.variant} className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1",
+              match.status === 'in_progress' && 'bg-success text-success-foreground'
+            )}>
               {config.icon}
               {config.label}
             </Badge>
             {actionRequired && (
-              <Badge variant="destructive" className="animate-pulse">
+              <Badge variant="destructive" className="animate-pulse flex items-center gap-1">
+                <Zap className="w-3 h-3" />
                 Action Required
               </Badge>
             )}
           </div>
           {isCompleted && (
             <Badge variant={isWinner ? 'default' : 'secondary'} className={cn(
-              isWinner && 'bg-success text-success-foreground'
+              "flex items-center gap-1.5 px-3",
+              isWinner ? 'bg-gradient-to-r from-accent to-accent-glow text-accent-foreground glow-gold-soft' : 'bg-muted'
             )}>
+              {isWinner ? <Crown className="w-3 h-3" /> : <Skull className="w-3 h-3" />}
               {isWinner ? 'WON' : 'LOST'}
             </Badge>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Opponent Info */}
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">vs</span>
-          {opponent ? (
-            showOpponentIdentity ? (
-              <>
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={opponent.profile?.avatar_url ?? undefined} />
-                  <AvatarFallback className="bg-primary/20 text-primary text-xs">
-                    {opponent.profile?.username?.charAt(0).toUpperCase() ?? '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium text-sm">{opponent.profile?.username}</p>
-                  <p className="text-xs text-muted-foreground">{opponent.profile?.epic_username}</p>
-                </div>
-              </>
+      <CardContent className="space-y-4 relative">
+        {/* VS Section - Premium */}
+        <div className="flex items-center gap-4 p-3 rounded-xl bg-secondary/50 border border-border/50">
+          {/* Current User */}
+          <div className="flex-1 flex items-center gap-2">
+            <Avatar className="w-10 h-10 ring-2 ring-primary/30">
+              <AvatarImage src={participant?.profile?.avatar_url ?? undefined} />
+              <AvatarFallback className="bg-primary/20 text-primary font-bold">
+                {participant?.profile?.username?.charAt(0).toUpperCase() ?? 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{participant?.profile?.username ?? 'You'}</p>
+              <p className="text-xs text-muted-foreground truncate">{participant?.profile?.epic_username}</p>
+            </div>
+          </div>
+
+          {/* VS Badge */}
+          <div className="flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center border border-border">
+              <span className="font-display font-bold text-sm">VS</span>
+            </div>
+          </div>
+
+          {/* Opponent */}
+          <div className="flex-1 flex items-center gap-2 justify-end text-right">
+            {opponent ? (
+              showOpponentIdentity ? (
+                <>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm truncate">{opponent.profile?.username}</p>
+                    <p className="text-xs text-muted-foreground truncate">{opponent.profile?.epic_username}</p>
+                  </div>
+                  <Avatar className="w-10 h-10 ring-2 ring-border">
+                    <AvatarImage src={opponent.profile?.avatar_url ?? undefined} />
+                    <AvatarFallback className="bg-muted text-muted-foreground font-bold">
+                      {opponent.profile?.username?.charAt(0).toUpperCase() ?? '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="font-medium text-sm text-muted-foreground italic">Hidden</p>
+                    <p className="text-xs text-muted-foreground">Ready up to reveal</p>
+                  </div>
+                  <Avatar className="w-10 h-10 ring-2 ring-muted">
+                    <AvatarFallback className="bg-muted text-muted-foreground">
+                      <EyeOff className="w-4 h-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                </>
+              )
             ) : (
               <>
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback className="bg-muted text-muted-foreground">
-                    <EyeOff className="w-4 h-4" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Waiting...</p>
+                </div>
+                <Avatar className="w-10 h-10 ring-2 ring-dashed ring-border">
+                  <AvatarFallback className="bg-transparent text-muted-foreground">
+                    <Users className="w-4 h-4" />
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="font-medium text-sm text-muted-foreground italic">Hidden</p>
-                  <p className="text-xs text-muted-foreground">Ready up to reveal</p>
-                </div>
               </>
-            )
-          ) : (
-            <span className="text-muted-foreground text-sm">Waiting for opponent...</span>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Match Info */}
-        <div className="flex flex-wrap gap-2">
+        {/* Match Info Tags */}
+        <div className="flex flex-wrap gap-2 justify-center">
           <ModeBadge mode={match.mode} />
           <RegionBadge region={match.region} />
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="p-2 rounded bg-secondary">
-            <p className="text-xs text-muted-foreground">Entry</p>
-            <CoinDisplay amount={match.entry_fee} size="sm" />
+        {/* Stats Grid - Premium */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-3 rounded-xl bg-secondary/50 text-center border border-border/30">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Entry</p>
+            <p className="font-mono font-bold text-sm text-primary">€{match.entry_fee}</p>
           </div>
-          <div className="p-2 rounded bg-secondary">
-            <p className="text-xs text-muted-foreground">Prize</p>
-            <CoinDisplay amount={prizePool} size="sm" />
+          <div className="p-3 rounded-xl bg-gradient-to-br from-accent/10 to-transparent text-center border border-accent/20">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Prize</p>
+            <p className="font-mono font-bold text-sm text-accent">€{prizePool.toFixed(0)}</p>
           </div>
-          <div className="p-2 rounded bg-secondary">
-            <p className="text-xs text-muted-foreground">First to</p>
-            <p className="font-bold text-sm">{match.first_to}</p>
+          <div className="p-3 rounded-xl bg-secondary/50 text-center border border-border/30">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">First to</p>
+            <p className="font-mono font-bold text-sm">{match.first_to}</p>
           </div>
         </div>
 
-        {/* Ready Status */}
+        {/* Ready Status - Premium */}
         {(match.status === 'ready_check' || match.status === 'full') && (
-          <div className="flex items-center justify-between p-2 rounded bg-secondary">
-            <span className="text-sm text-muted-foreground">Ready Status</span>
-            <div className="flex items-center gap-2">
-              <span className="font-bold">{readyCount}/{totalParticipants}</span>
+          <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
+            <span className="text-sm text-muted-foreground flex items-center gap-2">
+              <Zap className="w-4 h-4 text-primary" />
+              Ready Status
+            </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {[...Array(totalParticipants)].map((_, i) => (
+                  <div 
+                    key={i}
+                    className={cn(
+                      "w-2 h-2 rounded-full transition-colors",
+                      i < readyCount ? "bg-success" : "bg-muted"
+                    )}
+                  />
+                ))}
+              </div>
+              <span className="font-mono font-bold">{readyCount}/{totalParticipants}</span>
               {participant?.ready ? (
-                <CheckCircle2 className="w-4 h-4 text-success" />
+                <CheckCircle2 className="w-5 h-5 text-success" />
               ) : (
-                <Clock className="w-4 h-4 text-warning animate-pulse" />
+                <Clock className="w-5 h-5 text-warning animate-pulse" />
               )}
             </div>
           </div>
         )}
 
-        {/* Action Button */}
-        <Button asChild className={cn(
-          'w-full',
-          actionRequired && 'glow-blue'
-        )}>
-          <Link to={`/my-matches/${match.id}`}>
-            {needsReadyUp ? 'Ready Up' : needsResult ? 'Submit Result' : 'View Details'}
+        {/* Action Button - Premium */}
+        <Button 
+          asChild 
+          className={cn(
+            'w-full h-12',
+            actionRequired ? 'btn-premium glow-blue' : 'btn-premium'
+          )}
+          variant={actionRequired ? 'default' : 'outline'}
+        >
+          <Link to={`/my-matches/${match.id}`} className="flex items-center justify-center gap-2">
+            {needsReadyUp && <Zap className="w-4 h-4" />}
+            {needsResult && <Trophy className="w-4 h-4" />}
+            <span className="font-display font-bold">
+              {needsReadyUp ? 'Ready Up Now' : needsResult ? 'Submit Result' : 'View Details'}
+            </span>
           </Link>
         </Button>
       </CardContent>

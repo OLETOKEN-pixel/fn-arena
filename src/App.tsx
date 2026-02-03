@@ -18,7 +18,6 @@ import CreateMatch from "./pages/CreateMatch";
 import Profile from "./pages/Profile";
 import Teams from "./pages/Teams";
 import TeamDetails from "./pages/TeamDetails";
-import Notifications from "./pages/Notifications";
 import Wallet from "./pages/Wallet";
 import BuyCoins from "./pages/BuyCoins";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -38,7 +37,6 @@ import Privacy from "./pages/Privacy";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Performance defaults (safe): reduce refetch under load
       retry: 1,
       staleTime: 10_000,
       refetchOnWindowFocus: false,
@@ -79,7 +77,6 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/teams" element={<Teams />} />
                 <Route path="/teams/:id" element={<TeamDetails />} />
-                <Route path="/notifications" element={<Notifications />} />
                 <Route path="/wallet" element={<Wallet />} />
                 <Route path="/buy" element={<BuyCoins />} />
                 <Route path="/payment/success" element={<PaymentSuccess />} />

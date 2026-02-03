@@ -84,7 +84,7 @@ export default function MyMatches() {
   }, [user, authLoading, navigate, location.pathname]);
 
   // Filter matches based on status
-  const activeStatuses: MatchStatus[] = ['ready_check', 'in_progress', 'result_pending', 'disputed'];
+  const activeStatuses: MatchStatus[] = ['ready_check', 'in_progress', 'result_pending', 'disputed', 'full'];
   const completedStatuses: MatchStatus[] = ['completed', 'admin_resolved', 'canceled', 'finished'];
 
   const filteredMatches = matches.filter(match => {
@@ -98,7 +98,7 @@ export default function MyMatches() {
     const participant = match.participants?.find(p => p.user_id === user?.id);
     if (!participant) return false;
     
-    if (match.status === 'ready_check' && !participant.ready) return true;
+    if ((match.status === 'ready_check' || match.status === 'full') && !participant.ready) return true;
     if ((match.status === 'in_progress' || match.status === 'result_pending') && !participant.result_choice) return true;
     
     return false;

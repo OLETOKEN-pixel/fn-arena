@@ -135,7 +135,7 @@ export function ReadyUpSection({ match, currentUserId, onReadyChange }: ReadyUpS
         </div>
 
         {/* Ready Up Button */}
-        {!isReady && match.status === 'ready_check' && (
+        {!isReady && (match.status === 'ready_check' || match.status === 'full') && (
           <Button
             size="lg"
             className="w-full bg-success hover:bg-success/90 glow-green text-lg py-6"

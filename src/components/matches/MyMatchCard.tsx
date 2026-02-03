@@ -46,7 +46,7 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
   const prizePool = match.entry_fee * maxParticipants * 0.95;
   
   // Check if user needs to take action
-  const needsReadyUp = match.status === 'ready_check' && participant && !participant.ready;
+  const needsReadyUp = (match.status === 'ready_check' || match.status === 'full') && participant && !participant.ready;
   const needsResult = (match.status === 'in_progress' || match.status === 'result_pending') && participant && !participant.result_choice;
   const actionRequired = needsReadyUp || needsResult;
   
@@ -56,7 +56,7 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
 
   // Anonymity: Hide opponent identity until all are ready
   const allReady = match.participants?.every(p => p.ready) ?? false;
-  const showOpponentIdentity = match.status !== 'ready_check' || allReady;
+  const showOpponentIdentity = (match.status !== 'ready_check' && match.status !== 'full') || allReady;
 
   return (
     <Card className={cn(
@@ -146,7 +146,7 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
         </div>
 
         {/* Ready Status */}
-        {match.status === 'ready_check' && (
+        {(match.status === 'ready_check' || match.status === 'full') && (
           <div className="flex items-center justify-between p-2 rounded bg-secondary">
             <span className="text-sm text-muted-foreground">Ready Status</span>
             <div className="flex items-center gap-2">

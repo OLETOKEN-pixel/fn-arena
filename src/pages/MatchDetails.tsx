@@ -490,7 +490,7 @@ export default function MatchDetails() {
   const canCancel = !isAdminSpectator && isCreator && match.status === 'open';
   const canLeave = !isAdminSpectator && isParticipant && !isCreator && match.status === 'ready_check' && !participant?.ready;
   
-  const showReadyUp = !isAdminSpectator && match.status === 'ready_check' && isParticipant;
+  const showReadyUp = !isAdminSpectator && (match.status === 'ready_check' || match.status === 'full') && isParticipant;
   const showResultDeclaration = !isAdminSpectator && isParticipant && (match.status === 'in_progress' || match.status === 'result_pending');
   
   // Show team join UI for team matches when in join mode

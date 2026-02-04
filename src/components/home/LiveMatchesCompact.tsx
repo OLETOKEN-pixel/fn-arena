@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Zap, ArrowRight, Swords } from 'lucide-react';
+import { Zap, ArrowRight, Swords, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -88,14 +88,23 @@ export function LiveMatchesCompact() {
             ))}
           </div>
         ) : matches.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center py-8">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mb-4 animate-pulse-soft">
-              <Swords className="w-9 h-9 text-primary" />
+          <div className="h-full flex flex-col items-center justify-center text-center py-12">
+            {/* Enhanced empty state */}
+            <div className="relative mb-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center animate-pulse-soft">
+                <Swords className="w-11 h-11 text-primary" />
+              </div>
+              <div className="absolute -inset-3 bg-primary/10 rounded-full blur-2xl animate-pulse" />
             </div>
-            <h3 className="font-semibold mb-1">No open matches</h3>
-            <p className="text-muted-foreground text-sm mb-4">Be the first to create one!</p>
-            <Button asChild className="glow-blue">
-              <Link to="/matches/create">Create Match</Link>
+            <h3 className="font-display text-xl font-semibold mb-2">No open matches</h3>
+            <p className="text-muted-foreground mb-6 max-w-xs">
+              Be the first to create a competitive match and start earning!
+            </p>
+            <Button asChild className="glow-blue btn-premium group">
+              <Link to="/matches/create">
+                <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-300" />
+                Create Match
+              </Link>
             </Button>
           </div>
         ) : (

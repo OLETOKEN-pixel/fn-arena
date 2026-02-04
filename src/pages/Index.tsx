@@ -8,38 +8,36 @@ import { WalletSnapshot } from '@/components/home/WalletSnapshot';
 import { FeatureCardsMini } from '@/components/home/FeatureCardsMini';
 import { VideoBanner } from '@/components/home/VideoBanner';
 import { useIsDesktop } from '@/hooks/use-mobile';
-import { cn } from '@/lib/utils';
 
 export default function Index() {
   const isDesktop = useIsDesktop();
 
   return (
     <MainLayout>
-      {/* Desktop: Balanced premium layout with max-width */}
-      {/* Mobile: Keep original layout unchanged */}
       <div className="flex flex-col gap-4 lg:gap-6">
-        {/* HERO */}
+        {/* Hero Section - Full width within container */}
         <HeroCompact />
         
-        {/* STATS BAR - Mobile only */}
+        {/* Stats Bar - Mobile only */}
         {!isDesktop && <StatsBar />}
         
-        {/* MAIN GRID */}
+        {/* Main Content Grid */}
         {isDesktop ? (
-          // Desktop: Balanced 2:1 grid with minmax for proper sizing
-          <div className="grid grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] gap-6">
-            {/* Left: Live Matches + Progress */}
+          /* Desktop Layout: 2-column with minmax for 1920×1080 balance */
+          <div className="grid grid-cols-[minmax(0,2fr)_minmax(380px,1fr)] gap-6 items-start">
+            {/* Left Column: Live Matches + Progress */}
             <div className="flex flex-col gap-4">
               <LiveMatchesCompact />
               <ProgressCard />
             </div>
             
-            {/* Right: Video Banner - stretches to match left column height */}
-            <VideoBanner className="h-full" />
+            {/* Right Column: Video Banner */}
+            {/* Height matches left column content naturally */}
+            <VideoBanner className="h-auto min-h-[400px]" />
           </div>
         ) : (
-          // Mobile: Original single-column layout
-          <div className="grid grid-cols-1 gap-4">
+          /* Mobile Layout: Single column, unchanged */
+          <div className="flex flex-col gap-4">
             <LiveMatchesCompact />
             <div className="flex flex-col gap-3">
               <LeaderboardCompact />
@@ -49,7 +47,7 @@ export default function Index() {
           </div>
         )}
 
-        {/* FEATURE CARDS - Mobile only */}
+        {/* Feature Cards - Mobile only */}
         {!isDesktop && <FeatureCardsMini />}
       </div>
     </MainLayout>

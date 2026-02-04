@@ -611,8 +611,30 @@
   }
 }
 
+/* ===== LAYOUT DEBUG MODE ===== */
+body.layout-debug-mode [data-layout-container] {
+  outline: 2px dashed hsl(217 95% 65% / 0.5) !important;
+  outline-offset: -2px;
+}
+
+body.layout-debug-mode .lg\:max-w-\[1400px\],
+body.layout-debug-mode .page-container {
+  outline: 2px solid hsl(45 95% 55% / 0.4) !important;
+  outline-offset: -2px;
+}
+
+body.layout-debug-mode header {
+  outline: 1px dashed hsl(152 80% 50% / 0.5) !important;
+}
+
+body.layout-debug-mode aside {
+  outline: 1px dashed hsl(0 85% 55% / 0.5) !important;
+}
+
 /* ===== DESKTOP LAYOUT UTILITIES (lg: >= 1024px) ===== */
+/* Target: 1920×1080 @ 100% zoom as primary viewport */
 @media (min-width: 1024px) {
+  /* Main page container - consistent across all pages */
   .page-container {
     width: 100%;
     max-width: var(--content-max-width);
@@ -622,28 +644,70 @@
     padding-right: var(--content-padding-x);
   }
   
+  /* Content area min-height based on header */
   .content-area {
     min-height: calc(100vh - var(--header-height));
   }
   
-  /* Desktop-balanced 2:1 grid */
+  /* ===== PREMIUM GRID UTILITIES ===== */
+  
+  /* Desktop-balanced 2:1 grid (Home page, Match details) */
+  /* Uses minmax to prevent stretching on 1920+ viewports */
   .grid-desktop-2-1 {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+    grid-template-columns: minmax(0, 2fr) minmax(380px, 1fr);
     gap: 1.5rem;
+    align-items: start;
   }
   
-  /* Desktop 3-column grid */
+  /* Desktop 3-column grid (Match cards, Teams, etc.) */
   .grid-desktop-3 {
     display: grid;
-    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, minmax(320px, 1fr));
     gap: 1rem;
   }
   
-  /* Desktop 2-column equal grid */
+  /* Desktop 2-column equal grid (Profile, Settings) */
   .grid-desktop-2 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+  
+  /* Desktop 4-column grid (Stats, mini cards) */
+  .grid-desktop-4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
     gap: 1rem;
+  }
+  
+  /* ===== CARD HEIGHT UTILITIES ===== */
+  .card-h-sm { min-height: 120px; }
+  .card-h-md { min-height: 200px; }
+  .card-h-lg { min-height: 320px; }
+  .card-h-xl { min-height: 480px; }
+  
+  /* ===== SPACING SCALE FOR 1920 ===== */
+  .desktop-gap-sm { gap: 1rem; }
+  .desktop-gap-md { gap: 1.5rem; }
+  .desktop-gap-lg { gap: 2rem; }
+  .desktop-gap-xl { gap: 2.5rem; }
+}
+
+/* ===== TYPOGRAPHY SCALE FOR LARGE VIEWPORTS ===== */
+@media (min-width: 1024px) {
+  .text-display-lg {
+    font-size: clamp(2rem, 2.5vw, 3rem);
+    line-height: 1.1;
+  }
+  
+  .text-display-md {
+    font-size: clamp(1.5rem, 2vw, 2.25rem);
+    line-height: 1.2;
+  }
+  
+  .text-display-sm {
+    font-size: clamp(1.125rem, 1.5vw, 1.5rem);
+    line-height: 1.3;
   }
 }

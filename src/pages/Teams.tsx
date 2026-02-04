@@ -198,11 +198,12 @@ export default function Teams() {
 
   return (
     <MainLayout showChat={false}>
+      {/* Container handled by MainLayout for 1920×1080 balance */}
       <div className="space-y-6">
-        {/* Header - container handled by MainLayout */}
+        {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-3">
+            <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-3">
               <div className="relative">
                 <Users className="w-7 h-7 text-primary" />
                 <div className="absolute inset-0 w-7 h-7 bg-primary/20 blur-lg rounded-full" />

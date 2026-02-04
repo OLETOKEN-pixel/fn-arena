@@ -316,7 +316,7 @@ export function NotificationsDropdown() {
     );
   }
 
-  // Desktop: Use Popover
+  // Desktop: Use Popover - Sized properly for 1920×1080
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -324,7 +324,7 @@ export function NotificationsDropdown() {
       </PopoverTrigger>
       <PopoverContent 
         align="end" 
-        className="w-96 p-0 bg-card/95 backdrop-blur-xl border-border shadow-xl max-h-[70vh] flex flex-col"
+        className="w-[420px] p-0 bg-card/95 backdrop-blur-xl border-border shadow-xl max-h-[600px] flex flex-col"
         sideOffset={8}
       >
         <NotificationsContent onClose={() => setOpen(false)} />

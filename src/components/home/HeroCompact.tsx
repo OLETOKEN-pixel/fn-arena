@@ -8,7 +8,7 @@ export function HeroCompact() {
   const { user } = useAuth();
 
   return (
-    <section className="relative py-6 lg:py-8 overflow-hidden">
+    <section className="relative py-5 lg:py-8 overflow-hidden">
       {/* Premium background effects */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/8 via-transparent to-accent/8 rounded-2xl" />
       <div className="absolute inset-0 gradient-radial opacity-50" />
@@ -18,24 +18,24 @@ export function HeroCompact() {
         <div className="absolute inset-0 rounded-2xl border border-primary/20 animate-pulse-soft" />
       </div>
       
-      <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6">
+      <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 lg:gap-6">
         {/* Left: Logo + Title */}
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-4 lg:gap-5">
           <div className="relative">
             {/* Glow effect behind logo */}
             <div className="absolute inset-0 bg-accent/20 blur-2xl rounded-full scale-150" />
             <img 
               src={logoOleboy} 
               alt="OLEBOY TOKEN" 
-              className="relative w-16 h-16 lg:w-20 lg:h-20 object-contain animate-float drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+              className="relative w-14 h-14 lg:w-20 lg:h-20 object-contain animate-float drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]"
             />
           </div>
           <div>
-            <h1 className="font-display text-2xl lg:text-4xl font-bold tracking-tight">
+            <h1 className="font-display text-xl lg:text-4xl font-bold tracking-tight">
               <span className="text-foreground">OLEBOY</span>{' '}
               <span className="text-accent glow-text-gold">TOKEN</span>
             </h1>
-            <p className="text-sm lg:text-base text-muted-foreground mt-1">
+            <p className="text-xs lg:text-base text-muted-foreground mt-0.5 lg:mt-1">
               Competitive FN Platform
             </p>
           </div>

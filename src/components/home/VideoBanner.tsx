@@ -73,8 +73,8 @@ export function VideoBanner({ className }: VideoBannerProps) {
         className
       )}
     >
-      {/* Video container with proper aspect ratio */}
-      <div className="relative flex-1 min-h-[400px]">
+      {/* Video container with proper height for 1920×1080 */}
+      <div className="relative flex-1 min-h-[500px] lg:min-h-[560px]">
         {/* Video element */}
         <video
           ref={videoRef}
@@ -107,25 +107,25 @@ export function VideoBanner({ className }: VideoBannerProps) {
           }}
         />
 
-        {/* Content overlay */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10">
-          <h2 className="font-display text-2xl lg:text-3xl font-bold text-foreground mb-2 drop-shadow-lg">
+        {/* Content overlay - Bigger typography for 1920 */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 lg:p-8 z-10">
+          <h2 className="font-display text-2xl lg:text-4xl font-bold text-foreground mb-2 lg:mb-3 drop-shadow-lg">
             OleBoy Token Arena
           </h2>
-          <p className="text-muted-foreground text-sm lg:text-base mb-6 drop-shadow-md">
+          <p className="text-muted-foreground text-sm lg:text-lg mb-6 lg:mb-8 drop-shadow-md">
             Compete. Win. Earn.
           </p>
-          <div className="flex gap-3">
-            <Button asChild className="glow-blue btn-premium group">
+          <div className="flex gap-3 lg:gap-4">
+            <Button asChild className="glow-blue btn-premium group lg:h-12 lg:px-6 lg:text-base">
               <Link to="/matches/create">
-                <Swords className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
+                <Swords className="w-4 h-4 lg:w-5 lg:h-5 mr-2 transition-transform group-hover:rotate-12" />
                 Create Match
               </Link>
             </Button>
-            <Button variant="outline" asChild className="hover-lift backdrop-blur-sm bg-background/30 border-border/50 group">
+            <Button variant="outline" asChild className="hover-lift backdrop-blur-sm bg-background/30 border-border/50 group lg:h-12 lg:px-6 lg:text-base">
               <Link to="/matches">
                 Browse
-                <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5 ml-2 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
           </div>

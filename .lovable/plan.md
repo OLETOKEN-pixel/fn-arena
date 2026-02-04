@@ -1,424 +1,370 @@
 
-# COMPLETE ULTRA PREMIUM REDESIGN - FULL IMPLEMENTATION
+# Desktop-Only Home Page Redesign
 
-## CRITICAL ISSUES IDENTIFIED
+## Summary
+This plan implements a complete desktop-only redesign of the Home page and related layout components. All changes will be wrapped in responsive breakpoint conditions (lg: >= 1024px) to ensure **mobile/tablet remains completely unchanged**.
 
-### Issue #1: Mobile Sidebar Still Visible (CRITICAL)
-**Problem**: On mobile, the left sidebar is still being rendered (just hidden off-screen). The hamburger menu in the header opens it. This makes mobile unusable.
+---
 
-**Current Code (MainLayout.tsx)**:
+## CHANGES OVERVIEW
+
+### Files to Modify
+| File | Purpose |
+|------|---------|
+| `src/pages/Index.tsx` | New desktop-only home layout |
+| `src/components/layout/Header.tsx` | Remove "Send Tip", coins opens overlay |
+| `src/components/layout/Sidebar.tsx` | Premium sidebar styling |
+| `src/components/layout/BottomNav.tsx` | Hide on desktop (already done, verify) |
+| `src/components/home/LiveMatchesCompact.tsx` | Enhanced premium empty state |
+| `src/hooks/use-mobile.tsx` | Add `useIsDesktop` hook |
+
+### Files to Create
+| File | Purpose |
+|------|---------|
+| `src/components/home/VideoBanner.tsx` | Desktop video banner component |
+| `src/components/wallet/CoinsOverlay.tsx` | Buy coins + VIP tip overlay modal |
+
+### Assets to Copy
+| From | To |
+|------|-----|
+| `user-uploads://VIDEO_BANNER_SITO.mov` | `public/videos/banner.mp4` |
+
+---
+
+## DETAILED IMPLEMENTATION
+
+### 1. Hook: useIsDesktop (src/hooks/use-mobile.tsx)
+
+Add a new `useIsDesktop` hook alongside existing `useIsMobile`:
+
 ```typescript
-// Line 50-60: Sidebar is still rendered on mobile, just transformed off-screen
-<div className={cn(
-  'fixed left-0 top-0 z-50 h-full transform transition-transform duration-300 lg:translate-x-0',
-  isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-)}>
-  <Sidebar />
+const DESKTOP_BREAKPOINT = 1024;
+
+export function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = React.useState<boolean | undefined>(undefined);
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT}px)`);
+    const onChange = () => {
+      setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
+    };
+    mql.addEventListener("change", onChange);
+    setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  return !!isDesktop;
+}
+```
+
+---
+
+### 2. Video Banner Component (src/components/home/VideoBanner.tsx)
+
+**Features:**
+- Video autoplay loop with audio enabled by default
+- Mute/unmute toggle button with premium styling
+- Fallback for browser autoplay policy: if muted required, show "Click to unmute" CTA
+- Premium frame with glow, rounded corners
+- Overlay text: "OleBoy Token Arena" + subtitle + CTA buttons
+
+**Structure:**
+```text
++---------------------------------------+
+|  [Video - autoplay, loop]             |
+|                                       |
+|    +--------------------------+       |
+|    | OleBoy Token Arena       |       |
+|    | Compete. Win. Earn.      |       |
+|    | [Create Match] [Browse]  |       |
+|    +--------------------------+       |
+|                                       |
+|  [Mute/Unmute Icon]                   |
++---------------------------------------+
+```
+
+**Key implementation details:**
+- Use `<video>` element with `autoPlay muted loop playsInline`
+- On mount, try to play with audio: if browser blocks, keep muted and show unmute CTA
+- Premium border glow effect (gold/primary gradient)
+- Responsive within desktop column (not stretched)
+- Video source: `/videos/banner.mp4`
+
+---
+
+### 3. Coins Overlay Modal (src/components/wallet/CoinsOverlay.tsx)
+
+**Features:**
+- Triggered by clicking the coins button in header (desktop only)
+- Two tabs: "Buy Coins" and "Send Tip" (VIP only)
+- Premium animated modal with blur backdrop
+
+**Buy Coins Tab:**
+- Package grid (5, 10, 15, 20, 25, 50 coins)
+- Custom amount input
+- Total with processing fee
+- "Pay Now" button calling existing `create-checkout` edge function
+- Uses existing checkout logic from BuyCoins.tsx
+
+**Send Tip Tab:**
+- Only visible/enabled if user is VIP
+- If not VIP: show locked state with "VIP Required" badge
+- Player search input (uses existing `search_players_public` RPC)
+- Amount input with quick buttons (1, 5, 10, 25)
+- Send button using existing `sendTip` from `useVipStatus`
+
+**Modal animations:**
+- Fade + scale entrance
+- Blur backdrop
+- Smooth tab transitions
+
+---
+
+### 4. Home Page Layout (src/pages/Index.tsx)
+
+**Desktop Layout (lg+):**
+```text
++------------------------------------------+
+| HeroCompact                              |
++------------------------------------------+
+| LiveMatches (2/3)    | VideoBanner (1/3) |
+|                      |                   |
+|                      |                   |
++------------------------------------------+
+| ProgressCard                             |
++------------------------------------------+
+```
+
+**Mobile Layout (unchanged):**
+```text
++------------------+
+| HeroCompact      |
++------------------+
+| StatsBar         |  <-- Keep on mobile
++------------------+
+| LiveMatches      |
++------------------+
+| Leaderboard      |  <-- Keep on mobile
++------------------+
+| WalletSnapshot   |  <-- Keep on mobile
++------------------+
+| ProgressCard     |
++------------------+
+| FeatureCardsMini |  <-- Keep on mobile
++------------------+
+```
+
+**Implementation:**
+```tsx
+export default function Index() {
+  const isDesktop = useIsDesktop();
+
+  return (
+    <MainLayout>
+      <div className="flex flex-col gap-4">
+        <HeroCompact />
+        
+        {/* Desktop: Remove StatsBar completely */}
+        {!isDesktop && <StatsBar />}
+        
+        {/* Main Grid */}
+        <div className={cn(
+          "grid gap-4",
+          isDesktop 
+            ? "grid-cols-[2fr_1fr] max-w-[1400px] mx-auto" 
+            : "grid-cols-1 lg:grid-cols-3"
+        )}>
+          {/* Left: Live Matches + Progress */}
+          <div className="flex flex-col gap-4">
+            <LiveMatchesCompact />
+            <ProgressCard />
+          </div>
+          
+          {/* Right: Desktop=Video, Mobile=Leaderboard+Wallet */}
+          {isDesktop ? (
+            <VideoBanner />
+          ) : (
+            <div className="flex flex-col gap-3">
+              <LeaderboardCompact />
+              <WalletSnapshot />
+            </div>
+          )}
+        </div>
+
+        {/* Mobile only: Feature cards */}
+        {!isDesktop && <FeatureCardsMini />}
+      </div>
+    </MainLayout>
+  );
+}
+```
+
+---
+
+### 5. Header Changes (src/components/layout/Header.tsx)
+
+**Desktop Changes:**
+- Remove "Send Tip" button entirely on desktop
+- Change coins button from `<Link to="/wallet">` to `<button onClick>` that opens `CoinsOverlay`
+- Keep VIP banner, social icons, notifications, user menu
+
+**Implementation:**
+```tsx
+// In Header component
+const [showCoinsOverlay, setShowCoinsOverlay] = useState(false);
+const isDesktop = useIsDesktop();
+
+// Replace the wallet Link with:
+{isDesktop ? (
+  <button
+    onClick={() => setShowCoinsOverlay(true)}
+    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary border border-border/50 hover:border-primary/30 transition-all duration-200 group"
+  >
+    <CoinIcon size="sm" className="..." />
+    <span className="font-mono font-semibold text-sm">
+      {wallet?.balance?.toFixed(2) ?? '0.00'}
+    </span>
+  </button>
+) : (
+  <Link to="/wallet" className="...">
+    {/* Same content */}
+  </Link>
+)}
+
+// Remove "Send Tip" button on desktop:
+{user && !isDesktop && (
+  <Button onClick={() => setShowTipModal(true)} variant="gold">
+    <Gift /> Send Tip
+  </Button>
+)}
+
+// Add overlay:
+<CoinsOverlay open={showCoinsOverlay} onOpenChange={setShowCoinsOverlay} />
+```
+
+---
+
+### 6. Premium Sidebar (src/components/layout/Sidebar.tsx)
+
+**Enhancements for desktop:**
+- Group nav items: Core (Home, Live Matches, My Matches) | Social (Challenges, Highlights, Teams, Leaderboard) | Account (Wallet, Profile)
+- Add section labels with premium styling
+- Enhanced hover effects with subtle background slide
+- Active state with stronger gradient glow
+- Better icon sizing and spacing
+
+**Visual improvements:**
+```tsx
+// Add section dividers
+<li className="pt-4 pb-1 px-3">
+  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">
+    Core
+  </span>
+</li>
+
+// Enhanced nav item styling
+className={cn(
+  'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative group',
+  isActive 
+    ? 'bg-gradient-to-r from-primary/20 to-primary/5 text-primary shadow-[0_0_20px_rgba(79,142,255,0.2)]' 
+    : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+  isLocked && 'opacity-50'
+)}
+```
+
+---
+
+### 7. LiveMatchesCompact Enhancement
+
+**Improve empty state:**
+```tsx
+// Enhanced empty state
+<div className="h-full flex flex-col items-center justify-center text-center py-12">
+  <div className="relative">
+    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center mb-6 animate-pulse-soft">
+      <Swords className="w-11 h-11 text-primary" />
+    </div>
+    <div className="absolute -inset-2 bg-primary/10 rounded-full blur-xl animate-pulse" />
+  </div>
+  <h3 className="font-display text-xl font-semibold mb-2">No open matches</h3>
+  <p className="text-muted-foreground mb-6 max-w-xs">
+    Be the first to create a competitive match and start earning!
+  </p>
+  <Button asChild className="glow-blue btn-premium group">
+    <Link to="/matches/create">
+      <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform" />
+      Create Match
+    </Link>
+  </Button>
 </div>
 ```
 
-**Fix**: Remove sidebar completely on mobile, remove hamburger menu button, rely ONLY on BottomNav for mobile navigation.
+---
 
-### Issue #2: Notifications Page Still Exists (User Requested Removal)
-**Problem**: Route `/notifications` still exists in App.tsx (line 82). User explicitly requested ALL notification management to happen in the dropdown panel.
+### 8. BottomNav - Hide on Desktop
 
-**Fix**: 
-- Remove route from App.tsx
-- Remove link from NotificationsDropdown footer
-- Add inline team invite Accept/Decline buttons to NotificationsDropdown
-- Add filters (All/Unread/Invites) to dropdown
-- Make dropdown a bottom sheet on mobile
-
-### Issue #3: NotificationsDropdown Missing Team Invite Actions
-**Problem**: The dropdown shows team invites but has no Accept/Decline buttons inline. The `respondToInvite` function exists in `useNotifications.ts` but is not being used in the dropdown.
-
-**Current Code (NotificationsDropdown.tsx)**:
-```typescript
-// Lines 117-155: No Accept/Decline buttons for team_invite type
-{payload?.match_id && (
-  <Link to={`/matches/${payload.match_id}`}>View</Link>
-)}
-// Missing: team_invite handling with Accept/Decline
+Already implemented with `lg:hidden` class, but verify:
+```tsx
+<nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
 ```
 
-### Issue #4: Many Pages/Components Not Premium
-**Files NOT touched in previous work**:
-- `src/pages/MyMatches.tsx` - basic styling
-- `src/pages/Matches.tsx` - basic filter bar, no animations
-- `src/pages/Index.tsx` - components inside need premium treatment
-- `src/pages/Profile.tsx` - basic cards, no premium effects
-- `src/pages/Teams.tsx` - basic list
-- `src/pages/TeamDetails.tsx` - not checked
-- `src/pages/Challenges.tsx` - partially styled
-- `src/pages/Leaderboard.tsx` - basic table
-- `src/pages/MatchDetails.tsx` - needs full esports premium treatment
-- `src/components/home/StatsBar.tsx` - basic pills
-- `src/components/home/HeroCompact.tsx` - basic
-- `src/components/home/LiveMatchesCompact.tsx` - basic
-- `src/components/home/LeaderboardCompact.tsx` - not checked
-- `src/components/home/ProgressCard.tsx` - not checked
-- `src/components/home/WalletSnapshot.tsx` - not checked
-- `src/components/home/FeatureCardsMini.tsx` - not checked
-
-### Issue #5: Animations Not Consistent
-**Problem**: Some components have animations, others don't. Need unified animation system:
-- Page entrance animations (already in MainLayout but not used everywhere)
-- Card stagger animations
-- Button hover/press feedback
-- Skeleton shimmer
-- Tab indicator animations
-- Dropdown animations
+Also hide FeatureCardsMini on desktop since navigation is in sidebar.
 
 ---
 
-## COMPLETE FIX PLAN
+## TECHNICAL NOTES
 
-### PHASE 1: Mobile Layout Fix (CRITICAL PRIORITY)
+### Breakpoint Strategy
+- **Desktop**: `lg:` (>=1024px)
+- All desktop-specific code uses `useIsDesktop()` hook
+- CSS classes use `lg:` prefix for desktop styles
+- Mobile code paths remain completely untouched
 
-**1.1 MainLayout.tsx - Remove Sidebar on Mobile**
-```typescript
-// Remove hamburger button from Header on mobile
-// Remove sidebar render on mobile completely
-// Only use BottomNav for mobile navigation
+### Video Autoplay Policy
+1. First attempt: play with audio
+2. If blocked: keep muted, show prominent "🔊 Click to unmute" button
+3. User click on video or button enables audio
+4. Remember preference in localStorage
 
-return (
-  <div className="min-h-screen bg-background">
-    {/* Sidebar - Desktop ONLY */}
-    <div className="hidden lg:block">
-      <Sidebar />
-    </div>
+### Max-Width Container
+Home page desktop content constrained to `max-w-[1400px]` with `mx-auto` for balanced layout on large screens.
 
-    {/* Main content */}
-    <div className="lg:pl-64">
-      <Header /> {/* Remove onMobileMenuToggle prop */}
-      <main className="flex-1 px-4 lg:px-8 xl:px-12 py-4 lg:py-6 animate-page-enter pb-safe">
-        {children}
-      </main>
-      <Footer />
-    </div>
-
-    {/* Bottom Navigation - Mobile ONLY */}
-    <div className="lg:hidden">
-      <BottomNav />
-    </div>
-  </div>
-);
-```
-
-**1.2 Header.tsx - Remove Mobile Menu Toggle**
-- Remove hamburger button completely
-- Clean up unused props
-- Keep header slim on mobile
-
-**1.3 BottomNav.tsx - Enhance Premium Styling**
-- Add more items: Home, Matches, My Games, Wallet, Profile, More (dropdown)
-- Enhance animations: active indicator slide, icon scale
-- Add safe area padding for notch devices
-- Premium glass effect
-
-### PHASE 2: Notifications System Overhaul (HIGH PRIORITY)
-
-**2.1 Remove Notifications Page Route**
-```typescript
-// App.tsx - Remove line 82
-// <Route path="/notifications" element={<Notifications />} />
-```
-
-**2.2 NotificationsDropdown.tsx - Full Premium Redesign**
-
-**Structure**:
-```text
-+------------------------------------------+
-| Header: "Notifications" (N) | Settings   |
-+------------------------------------------+
-| Filter Tabs: All | Unread | Invites      |
-+------------------------------------------+
-| ScrollArea (infinite scroll)             |
-|                                          |
-| [Match Notification]                     |
-|   Icon | Title | Time                    |
-|   Message                       [View]   |
-|                                          |
-| [Team Invite Notification]               |
-|   Users Icon | "Team X invited you"      |
-|   Message                                |
-|   [Accept] [Decline]                     |
-|                                          |
-+------------------------------------------+
-| Footer: Mark All Read | Clear            |
-+------------------------------------------+
-```
-
-**Key Features**:
-- Glass panel with blur effect
-- Filter tabs (All/Unread/Invites)
-- Inline Accept/Decline buttons for team invites
-- Loading states with shimmer
-- Empty state illustration
-- Mobile: Use Sheet (bottom sheet) instead of Popover
-
-**2.3 Mobile Bottom Sheet for Notifications**
-```typescript
-const isMobile = useIsMobile();
-
-if (isMobile) {
-  return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5" />
-          {unreadCount > 0 && <Badge />}
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="bottom" className="h-[85vh] p-0">
-        {/* Same content as popover */}
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-return <Popover>...</Popover>;
-```
-
-### PHASE 3: All Pages Premium Redesign
-
-**3.1 Home Page Components**
-- `HeroCompact.tsx`: Add gradient background, floating animation on logo, premium CTA buttons
-- `StatsBar.tsx`: Glass cards, animated counters, hover glow
-- `LiveMatchesCompact.tsx`: Stagger entrance for cards, premium empty state
-- `LeaderboardCompact.tsx`: Medal animations, row hover effects
-- `ProgressCard.tsx`: Animated progress bars, glass design
-- `WalletSnapshot.tsx`: Gold glow on coin, animated balance
-- `FeatureCardsMini.tsx`: Icon glow on hover, subtle float animation
-
-**3.2 Matches Page (src/pages/Matches.tsx)**
-- Premium filter bar with glass effect
-- Animated filter dropdowns
-- Card grid with stagger entrance animation
-- Premium empty state with illustration
-- Match cards already updated but need entrance animation
-
-**3.3 My Matches Page (src/pages/MyMatches.tsx)**
-- Animated tab indicator
-- Action required counter with pulse
-- Card stagger entrance
-- Premium empty states per tab
-- MyMatchCard already updated
-
-**3.4 Match Details Page (src/pages/MatchDetails.tsx)**
-- Esports-style layout with VS separator
-- Animated progress stepper
-- Team cards with gradient backgrounds
-- Premium ready-up section
-- Enhanced proof/screenshot area
-- Chat with premium message bubbles
-
-**3.5 Profile Page (src/pages/Profile.tsx)**
-- Large avatar with edit overlay animation
-- Stats cards with animated numbers
-- Section tabs with animated indicator
-- Premium form inputs with focus effects
-- VIP badge with gold glow animation
-- Connected accounts with platform colors
-
-**3.6 Teams Page (src/pages/Teams.tsx)**
-- Team cards with gradient borders
-- Member avatar stack with overlap
-- Owner crown with gold glow
-- Create team modal with premium styling
-
-**3.7 Challenges Page (src/pages/Challenges.tsx)**
-- XP counter with animated increment
-- Challenge cards with progress animation
-- Claimed state with checkmark animation
-- Shop section with premium avatar previews
-
-**3.8 Leaderboard Page (src/pages/Leaderboard.tsx)**
-- Top 3 podium cards with medal animations
-- Table rows with hover highlight
-- Rank indicators with appropriate icons
-- Earnings with coin animation
-
-**3.9 Wallet Page (src/pages/Wallet.tsx)**
-- Already updated with collapsible history
-- Verify all animations work
-
-### PHASE 4: Global Animation System
-
-**4.1 Add Missing Keyframes to tailwind.config.ts**
-```javascript
-keyframes: {
-  // Stagger entrance for card grids
-  "stagger-in": {
-    "0%": { opacity: "0", transform: "translateY(20px)" },
-    "100%": { opacity: "1", transform: "translateY(0)" }
-  },
-  
-  // Counter animation
-  "count-up": {
-    "0%": { opacity: "0", transform: "translateY(10px)" },
-    "100%": { opacity: "1", transform: "translateY(0)" }
-  },
-  
-  // Tab indicator slide
-  "tab-indicator": {
-    "0%": { transform: "scaleX(0.8)" },
-    "100%": { transform: "scaleX(1)" }
-  },
-  
-  // Pulse glow for action required
-  "pulse-action": {
-    "0%, 100%": { boxShadow: "0 0 0 0 hsl(var(--destructive) / 0.4)" },
-    "50%": { boxShadow: "0 0 0 8px hsl(var(--destructive) / 0)" }
-  }
-}
-```
-
-**4.2 Utility Classes for Common Patterns**
-```css
-/* Card entrance with stagger */
-.card-entrance {
-  @apply opacity-0;
-  animation: stagger-in 0.4s ease-out forwards;
-}
-.card-entrance:nth-child(1) { animation-delay: 0ms; }
-.card-entrance:nth-child(2) { animation-delay: 50ms; }
-.card-entrance:nth-child(3) { animation-delay: 100ms; }
-/* etc */
-
-/* Premium hover for cards */
-.card-premium-hover {
-  @apply transition-all duration-300;
-}
-.card-premium-hover:hover {
-  @apply -translate-y-1 shadow-lg border-primary/30;
-}
-
-/* Action required pulse */
-.action-required {
-  animation: pulse-action 2s infinite;
-}
-```
-
-### PHASE 5: Component-Level Premium Details
-
-**5.1 All Buttons**
-- Hover: lift (-translate-y-0.5) + glow
-- Active: scale(0.98)
-- Focus: ring with glow
-- Loading: spinner + disabled state
-- Gold variant: shimmer effect
-
-**5.2 All Cards**
-- Border: gradient or glow on hover
-- Shadow: premium shadow system
-- Hover: lift + border glow
-- Skeleton: shimmer animation
-
-**5.3 All Inputs**
-- Focus: border glow animation
-- Error: red glow + shake
-- Success: green checkmark fade
-- Placeholder: elegant
-
-**5.4 All Badges**
-- Status-specific colors and glows
-- Pulse animation for live/active states
-- Gold glow for premium badges
-
-**5.5 All Empty States**
-- Illustration (icon in gradient circle)
-- Helpful text
-- CTA button
-- Subtle background pattern
-
-**5.6 All Loading States**
-- Premium skeleton with shimmer
-- Spinner with brand colors
-- Staggered skeleton appearance
+### Performance
+- Video uses `preload="metadata"` to avoid loading full video immediately
+- Lazy load video component on desktop only
+- No additional dependencies required
 
 ---
 
-## FILES TO MODIFY (COMPLETE LIST)
+## FILES SUMMARY
 
-### Layout Files (Priority 1)
-1. `src/components/layout/MainLayout.tsx` - Remove sidebar on mobile
-2. `src/components/layout/Header.tsx` - Remove hamburger, clean up
-3. `src/components/layout/BottomNav.tsx` - Enhance premium styling
-4. `src/components/layout/Sidebar.tsx` - Desktop only, enhanced
+**Modified (5 files):**
+1. `src/hooks/use-mobile.tsx` - Add useIsDesktop hook
+2. `src/pages/Index.tsx` - Desktop layout with video banner
+3. `src/components/layout/Header.tsx` - Coins overlay, remove Send Tip
+4. `src/components/layout/Sidebar.tsx` - Premium grouping/styling
+5. `src/components/home/LiveMatchesCompact.tsx` - Enhanced empty state
 
-### Notifications (Priority 2)
-5. `src/App.tsx` - Remove /notifications route
-6. `src/components/notifications/NotificationsDropdown.tsx` - Full redesign with team invite actions
+**Created (2 files):**
+1. `src/components/home/VideoBanner.tsx` - Video banner component
+2. `src/components/wallet/CoinsOverlay.tsx` - Buy coins + tip modal
 
-### Home Components (Priority 3)
-7. `src/components/home/HeroCompact.tsx` - Premium animations
-8. `src/components/home/StatsBar.tsx` - Glass cards, animated
-9. `src/components/home/LiveMatchesCompact.tsx` - Card stagger
-10. `src/components/home/LeaderboardCompact.tsx` - Premium table
-11. `src/components/home/ProgressCard.tsx` - Animated progress
-12. `src/components/home/WalletSnapshot.tsx` - Gold glow
-13. `src/components/home/FeatureCardsMini.tsx` - Icon animations
-
-### Pages (Priority 4)
-14. `src/pages/Index.tsx` - Page animation wrapper
-15. `src/pages/Matches.tsx` - Premium filters, card stagger
-16. `src/pages/MyMatches.tsx` - Animated tabs, premium states
-17. `src/pages/MatchDetails.tsx` - Esports layout
-18. `src/pages/Profile.tsx` - Premium sections
-19. `src/pages/Teams.tsx` - Card animations
-20. `src/pages/TeamDetails.tsx` - Premium actions
-21. `src/pages/Challenges.tsx` - Progress animations
-22. `src/pages/Leaderboard.tsx` - Podium, table hover
-
-### Core Styles (Priority 5)
-23. `src/index.css` - Add utility classes
-24. `tailwind.config.ts` - Add keyframes
+**Assets (1 file):**
+1. Copy video to `public/videos/banner.mp4`
 
 ---
 
-## TEST CHECKLIST
+## CHECKLIST
 
-### Mobile Tests
-- [ ] Open site on mobile - NO sidebar visible
-- [ ] BottomNav works for all navigation
-- [ ] Notifications open as bottom sheet
-- [ ] All pages scroll correctly
-- [ ] Touch targets >= 44px
-- [ ] No horizontal scroll
-
-### Notifications Tests
-- [ ] /notifications route returns 404
-- [ ] Team invite shows Accept/Decline in dropdown
-- [ ] Accept invite works
-- [ ] Decline invite works
-- [ ] Mark all read works
-- [ ] Filter tabs work
-
-### Animation Tests
-- [ ] Page entrance smooth
-- [ ] Card stagger on grid mount
-- [ ] Button hover/press feedback
-- [ ] Tab indicator slides
-- [ ] Skeleton shimmer smooth
-- [ ] No layout shift
-
-### Premium Visual Tests
-- [ ] All buttons have hover effects
-- [ ] All cards have proper shadows
-- [ ] Empty states are beautiful
-- [ ] Loading states are premium
-- [ ] No "basic" unstyled elements
-
----
-
-## EXECUTION ORDER
-
-1. **First**: Fix mobile layout (MainLayout, Header, BottomNav)
-2. **Second**: Notifications overhaul (remove route, enhance dropdown)
-3. **Third**: Home page components (all 7 files)
-4. **Fourth**: All other pages (8 files)
-5. **Fifth**: Animation system and utilities
-6. **Sixth**: Final polish and testing
-
-This plan covers EVERY component, EVERY page, and EVERY detail that was missed in the previous incomplete work.
+- [x] StatsBar (4 cards) hidden on desktop
+- [x] LeaderboardCompact hidden on desktop
+- [x] WalletSnapshot hidden on desktop  
+- [x] FeatureCardsMini (bottom buttons) hidden on desktop
+- [x] Video banner replaces right column on desktop
+- [x] Sidebar premium styling
+- [x] "Send Tip" removed from header on desktop
+- [x] Coins button opens overlay on desktop
+- [x] Overlay has Buy Coins + VIP Tip tabs
+- [x] Mobile remains 100% unchanged
+- [x] Layout max-width 1400px, balanced grid
+- [x] All animations premium but performant

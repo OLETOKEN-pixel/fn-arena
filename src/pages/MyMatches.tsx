@@ -113,7 +113,7 @@ export default function MyMatches() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Page content - container handled by MainLayout */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">

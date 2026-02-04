@@ -198,7 +198,7 @@ export default function Highlights() {
 
   return (
     <MainLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Hero Section */}
         <Card className="bg-gradient-to-br from-primary/10 via-card to-accent/10 border-primary/20">
           <CardHeader>

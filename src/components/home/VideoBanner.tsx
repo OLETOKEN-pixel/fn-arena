@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
-export function VideoBanner() {
+interface VideoBannerProps {
+  className?: string;
+}
+
+export function VideoBanner({ className }: VideoBannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [showUnmuteHint, setShowUnmuteHint] = useState(true);
@@ -52,7 +56,12 @@ export function VideoBanner() {
   };
 
   return (
-    <div className="relative h-full min-h-[400px] rounded-2xl overflow-hidden group">
+    <div className={cn(
+      "relative rounded-2xl overflow-hidden group",
+      // Height: Fill parent grid cell on desktop, min-height on mobile
+      "h-full min-h-[400px] lg:min-h-0",
+      className
+    )}>
       {/* Premium border glow */}
       <div className="absolute -inset-[1px] bg-gradient-to-br from-primary/40 via-accent/30 to-primary/40 rounded-2xl opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
       

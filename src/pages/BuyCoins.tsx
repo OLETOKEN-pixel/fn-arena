@@ -82,7 +82,7 @@ export default function BuyCoins() {
 
   return (
     <MainLayout showChat={false}>
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6 lg:max-w-4xl lg:mx-auto">
         {/* Back button */}
         <Link
           to="/wallet"

@@ -54,10 +54,19 @@ export function MainLayout({ children }: MainLayoutProps) {
           <Header />
           
           <main className={cn(
-            "flex-1 px-4 lg:px-8 xl:px-12 py-4 lg:py-6 animate-page-enter",
+            "flex-1 py-4 lg:py-6 animate-page-enter",
+            // Mobile: standard padding
+            "px-4",
+            // Desktop: no horizontal padding (handled by inner container)
+            "lg:px-8",
             isMobile && "pb-24" // Extra padding for bottom nav on mobile
           )}>
-            <div className="max-w-screen-2xl mx-auto w-full">
+            <div className={cn(
+              // Mobile: full width
+              "w-full",
+              // Desktop: centered with controlled max-width
+              "lg:max-w-[1400px] lg:mx-auto"
+            )}>
               {children}
             </div>
           </main>

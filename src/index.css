@@ -12,6 +12,12 @@
 
 @layer base {
   :root {
+    /* ===== LAYOUT CUSTOM PROPERTIES ===== */
+    --header-height: 64px;
+    --sidebar-width: 256px;
+    --content-max-width: 1400px;
+    --content-padding-x: 2rem;
+    
     /* ===== PREMIUM COLOR PALETTE ===== */
     /* Background layers - deeper, richer blacks */
     --background: 225 25% 4%;
@@ -602,5 +608,42 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== DESKTOP LAYOUT UTILITIES (lg: >= 1024px) ===== */
+@media (min-width: 1024px) {
+  .page-container {
+    width: 100%;
+    max-width: var(--content-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--content-padding-x);
+    padding-right: var(--content-padding-x);
+  }
+  
+  .content-area {
+    min-height: calc(100vh - var(--header-height));
+  }
+  
+  /* Desktop-balanced 2:1 grid */
+  .grid-desktop-2-1 {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+    gap: 1.5rem;
+  }
+  
+  /* Desktop 3-column grid */
+  .grid-desktop-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  
+  /* Desktop 2-column equal grid */
+  .grid-desktop-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
   }
 }

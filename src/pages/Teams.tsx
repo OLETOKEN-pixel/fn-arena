@@ -199,7 +199,7 @@ export default function Teams() {
   return (
     <MainLayout showChat={false}>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header - container handled by MainLayout */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-3">

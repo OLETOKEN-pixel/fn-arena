@@ -238,7 +238,7 @@ export default function Profile() {
 
   return (
     <MainLayout>
-      <div className="h-[calc(100vh-120px)] flex flex-col gap-4">
+      <div className="lg:min-h-[calc(100vh-var(--header-height)-3rem)] flex flex-col gap-4">
         {/* Profile Incomplete Alert */}
         {!isProfileComplete && (
           <Alert variant="destructive">

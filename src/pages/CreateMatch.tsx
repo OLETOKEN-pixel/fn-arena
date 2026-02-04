@@ -190,7 +190,7 @@ export default function CreateMatch() {
 
   return (
     <MainLayout showChat={false}>
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="space-y-6 lg:max-w-2xl lg:mx-auto">
         {/* Back button */}
         <Link
           to="/matches"

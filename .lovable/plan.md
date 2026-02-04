@@ -1,11 +1,17 @@
 
 # COMPLETE DESKTOP LAYOUT FIX & PREMIUM REDESIGN
 
+## STATUS: ✅ IMPLEMENTED
+
+### Changes Applied:
+- Added CSS custom properties for layout (--header-height, --sidebar-width, --content-max-width)
+- Fixed MainLayout container with `lg:max-w-[1400px] lg:mx-auto`
+- Updated Home page with `minmax()` grid for balanced 2:1 layout
+- Fixed VideoBanner height matching
+- Applied consistent containers to all pages
+- All changes are desktop-only (lg: breakpoint >= 1024px)
+
 ## DIAGNOSTIC ANALYSIS
-
-### Root Causes of Preview vs Production Discrepancy
-
-After analyzing the codebase, I've identified the following issues causing layout differences between Lovable editor preview and real production viewports:
 
 #### Issue 1: Uncontrolled Container Width
 **Location**: `MainLayout.tsx` line 60

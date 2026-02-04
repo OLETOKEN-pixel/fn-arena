@@ -45,18 +45,19 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar - Desktop ONLY (hidden on mobile completely) */}
+      {/* Wider sidebar (300px) for 1920×1080 premium feel */}
       <div className="hidden lg:block fixed left-0 top-0 h-full z-50">
         <Sidebar />
       </div>
 
-      {/* Main content area - offset by sidebar on desktop */}
-      <div className="lg:pl-64">
+      {/* Main content area - offset by 300px sidebar on desktop */}
+      <div className="lg:pl-[300px]">
         <div className="flex flex-col min-h-screen">
           <Header />
           
           {/* Main content with proper container for 1920×1080 */}
           <main className={cn(
-            "flex-1 py-4 lg:py-6 animate-page-enter",
+            "flex-1 py-4 lg:py-8 animate-page-enter",
             // Mobile: standard padding
             "px-4",
             // Desktop: remove padding here, let inner container handle it
@@ -64,15 +65,15 @@ export function MainLayout({ children }: MainLayoutProps) {
             // Extra padding for bottom nav on mobile
             isMobile && "pb-24"
           )}>
-            {/* Desktop container: max-w-1400px, centered, with horizontal padding */}
-            {/* This is the KEY fix for 1920×1080 - stable max-width that doesn't stretch */}
+            {/* Desktop container: max-w-1680px for FULL 1920 usage */}
+            {/* This fills the space properly on 1920×1080 */}
             <div 
               data-layout-container
               className={cn(
                 // Mobile: full width
                 "w-full",
-                // Desktop: controlled max-width for balanced layout on 1920×1080
-                "lg:max-w-[1400px] lg:mx-auto lg:px-8"
+                // Desktop: wider max-width (1680px) with generous padding
+                "lg:max-w-[1680px] lg:mx-auto lg:px-10"
               )}
             >
               {children}

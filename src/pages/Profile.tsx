@@ -239,7 +239,7 @@ export default function Profile() {
   return (
     <MainLayout>
       {/* Profile uses full container width for 1920×1080 */}
-      <div className="min-h-0 lg:min-h-[calc(100vh-var(--header-height)-4rem)] flex flex-col gap-4 lg:gap-6">
+      <div className="min-h-0 lg:min-h-[calc(100vh-var(--header-height)-4rem)] flex flex-col gap-4 lg:gap-8">
         {/* Profile Incomplete Alert */}
         {!isProfileComplete && (
           <Alert variant="destructive">
@@ -249,55 +249,55 @@ export default function Profile() {
           </Alert>
         )}
 
-        {/* Profile Summary Header */}
+        {/* Profile Summary Header - Bigger on desktop */}
         <Card className="bg-gradient-to-r from-card to-card/80 border-border shrink-0">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
+          <CardContent className="p-4 lg:p-6">
+            <div className="flex items-center justify-between flex-wrap gap-4 lg:gap-6">
+              <div className="flex items-center gap-4 lg:gap-6">
                 <button
                   onClick={() => setShowAvatarModal(true)}
                   className="relative group cursor-pointer"
                 >
-                  <Avatar className="w-16 h-16 border-2 border-primary/30 group-hover:border-primary transition-colors">
+                  <Avatar className="w-16 h-16 lg:w-20 lg:h-20 border-2 border-primary/30 group-hover:border-primary transition-colors">
                     <AvatarImage 
                       src={discordAvatarUrl || profile.avatar_url || undefined} 
                       alt={profile.username}
                       className="object-cover"
                     />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xl lg:text-2xl">
                       {profile.username?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                 <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="text-xs text-white font-medium">Edit</span>
+                    <span className="text-xs lg:text-sm text-white font-medium">Edit</span>
                   </div>
                 </button>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-bold">{discordDisplayName}</h1>
+                  <div className="flex items-center gap-2 lg:gap-3">
+                    <h1 className="text-xl lg:text-2xl font-bold">{discordDisplayName}</h1>
                     {isVip && (
-                      <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-black text-xs">
-                        <Crown className="w-3 h-3 mr-1" /> VIP
+                      <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-black text-xs lg:text-sm">
+                        <Crown className="w-3 h-3 lg:w-4 lg:h-4 mr-1" /> VIP
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{profile.email}</p>
+                  <p className="text-sm lg:text-base text-muted-foreground">{profile.email}</p>
                   {isDiscordConnected && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <DiscordIcon className="w-3 h-3" />
+                    <p className="text-xs lg:text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                      <DiscordIcon className="w-3 h-3 lg:w-4 lg:h-4" />
                       Username synced from Discord
                     </p>
                   )}
                 </div>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex gap-2 lg:gap-3">
                 {!isVip && (
                   <Button 
                     variant="outline" 
-                    size="sm"
+                    size="default"
                     onClick={() => setShowVipModal(true)}
-                    className="border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                    className="border-amber-500/50 text-amber-500 hover:bg-amber-500/10 lg:h-11 lg:px-5"
                   >
                     <Crown className="w-4 h-4 mr-1" /> Become VIP
                   </Button>
@@ -307,11 +307,11 @@ export default function Profile() {
           </CardContent>
         </Card>
         
-        {/* Main Content: Sidebar + Panel - Responsive grid for 1920 */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 lg:gap-6 min-h-0">
-          {/* Section Navigation */}
-          <Card className="p-2 lg:p-3 h-fit shrink-0">
-            <nav className="flex lg:flex-col gap-1">
+        {/* Main Content: Sidebar + Panel - WIDER for 1920 */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 lg:gap-8 min-h-0">
+          {/* Section Navigation - Bigger on desktop */}
+          <Card className="p-2 lg:p-4 h-fit shrink-0">
+            <nav className="flex lg:flex-col gap-1 lg:gap-2">
               {sections.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
@@ -320,23 +320,23 @@ export default function Profile() {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-200 w-full",
+                      "flex items-center gap-3 lg:gap-4 px-3 lg:px-4 py-2.5 lg:py-3.5 rounded-lg lg:rounded-xl text-left transition-all duration-200 w-full",
                       isActive 
                         ? "bg-primary/10 text-primary" 
                         : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                     )}
                   >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="font-medium text-sm">{section.label}</span>
+                    <Icon className="w-4 h-4 lg:w-5 lg:h-5 shrink-0" />
+                    <span className="font-medium text-sm lg:text-base">{section.label}</span>
                   </button>
                 );
               })}
             </nav>
           </Card>
           
-          {/* Content Panel */}
+          {/* Content Panel - Bigger padding on desktop */}
           <Card className="overflow-y-auto">
-            <CardContent className="p-4 lg:p-6">
+            <CardContent className="p-4 lg:p-8">
               {/* Account Section */}
               {activeSection === 'account' && (
                 <div className="space-y-5">

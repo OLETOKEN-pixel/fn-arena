@@ -13,11 +13,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useOpenMatches, type MatchFilters } from '@/hooks/useMatches';
 import { REGIONS, PLATFORMS, GAME_MODES, TEAM_SIZES, type Match, type Region, type Platform, type GameMode, type TeamSize } from '@/types';
 import { cn } from '@/lib/utils';
+import { useIsDesktop } from '@/hooks/use-mobile';
 
 export default function Matches() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, wallet, isProfileComplete, refreshWallet } = useAuth();
+  const isDesktop = useIsDesktop();
   const [joining, setJoining] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -135,41 +137,58 @@ export default function Matches() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        {/* Page content - container handled by MainLayout */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="space-y-6 lg:space-y-8">
+        {/* Page Header - Bigger on desktop */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 lg:gap-6">
           <div>
-            <h1 className="font-display text-3xl font-bold flex items-center gap-3">
-              <Swords className="w-8 h-8 text-primary" />
+            <h1 className="font-display text-3xl lg:text-4xl font-bold flex items-center gap-3 lg:gap-4">
+              <div className="relative">
+                <Swords className="w-8 h-8 lg:w-10 lg:h-10 text-primary" />
+                {isDesktop && (
+                  <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
+                )}
+              </div>
               Live Matches
             </h1>
-            <p className="text-muted-foreground">Browse and join open FN matches</p>
+            <p className="text-muted-foreground text-sm lg:text-base mt-1">
+              Browse and join open FN matches
+            </p>
           </div>
           {user && (
-            <Button asChild className="glow-blue btn-premium">
+            <Button 
+              asChild 
+              className={cn(
+                "glow-blue btn-premium",
+                isDesktop && "h-12 px-6 text-base font-bold"
+              )}
+            >
               <Link to="/matches/create">
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-5 h-5 mr-2" />
                 Create Match
               </Link>
             </Button>
           )}
         </div>
 
-        {/* Filters - Premium Glass Style */}
-        <div className="p-4 rounded-xl bg-card/60 backdrop-blur-sm border border-border/50">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        {/* Filters - Premium Glass Style, Full width on 1920 */}
+        <div className="p-4 lg:p-5 rounded-xl lg:rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50">
+          <div className="flex flex-wrap gap-3 lg:gap-4">
+            {/* Search - Wider on desktop */}
+            <div className="relative flex-1 min-w-[200px] lg:min-w-[320px]">
+              <Search className="absolute left-3 lg:left-4 top-1/2 -translate-y-1/2 w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground" />
               <Input
                 placeholder="Search by username or match ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-background/50"
+                className={cn(
+                  "pl-10 bg-background/50",
+                  isDesktop && "pl-12 h-12 text-base"
+                )}
               />
             </div>
 
             <Select value={regionFilter} onValueChange={(v) => setRegionFilter(v as Region | 'all')}>
-              <SelectTrigger className="w-[130px] bg-background/50">
+              <SelectTrigger className={cn("w-[130px] bg-background/50", isDesktop && "w-[150px] h-12")}>
                 <SelectValue placeholder="Region" />
               </SelectTrigger>
               <SelectContent>
@@ -181,7 +200,7 @@ export default function Matches() {
             </Select>
 
             <Select value={platformFilter} onValueChange={(v) => setPlatformFilter(v as Platform | 'all')}>
-              <SelectTrigger className="w-[130px] bg-background/50">
+              <SelectTrigger className={cn("w-[130px] bg-background/50", isDesktop && "w-[150px] h-12")}>
                 <SelectValue placeholder="Platform" />
               </SelectTrigger>
               <SelectContent>
@@ -193,7 +212,7 @@ export default function Matches() {
             </Select>
 
             <Select value={modeFilter} onValueChange={(v) => setModeFilter(v as GameMode | 'all')}>
-              <SelectTrigger className="w-[130px] bg-background/50">
+              <SelectTrigger className={cn("w-[130px] bg-background/50", isDesktop && "w-[150px] h-12")}>
                 <SelectValue placeholder="Mode" />
               </SelectTrigger>
               <SelectContent>
@@ -205,7 +224,7 @@ export default function Matches() {
             </Select>
 
             <Select value={String(sizeFilter)} onValueChange={(v) => setSizeFilter(v === 'all' ? 'all' : parseInt(v) as TeamSize)}>
-              <SelectTrigger className="w-[120px] bg-background/50">
+              <SelectTrigger className={cn("w-[120px] bg-background/50", isDesktop && "w-[140px] h-12")}>
                 <SelectValue placeholder="Size" />
               </SelectTrigger>
               <SelectContent>
@@ -217,7 +236,7 @@ export default function Matches() {
             </Select>
 
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-              <SelectTrigger className="w-[140px] bg-background/50">
+              <SelectTrigger className={cn("w-[140px] bg-background/50", isDesktop && "w-[160px] h-12")}>
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -228,28 +247,44 @@ export default function Matches() {
           </div>
         </div>
 
-        {/* Matches Grid */}
+        {/* Matches Grid - 4 columns on 1920! */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-[350px] rounded-xl skeleton-premium" />
+          <div className={cn(
+            "grid grid-cols-1 md:grid-cols-2 gap-4",
+            isDesktop && "lg:grid-cols-4 lg:gap-5"
+          )}>
+            {[...Array(8)].map((_, i) => (
+              <Skeleton key={i} className="h-[380px] lg:h-[400px] rounded-xl lg:rounded-2xl skeleton-premium" />
             ))}
           </div>
         ) : matches.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
-              <Swords className="w-9 h-9 text-primary/60" />
+          /* Premium empty state */
+          <div className="text-center py-16 lg:py-24">
+            <div className={cn(
+              "mx-auto mb-6 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center",
+              "w-20 h-20 lg:w-28 lg:h-28"
+            )}>
+              <Swords className="w-9 h-9 lg:w-14 lg:h-14 text-primary/60" />
             </div>
-            <h3 className="font-semibold text-lg mb-2">No open matches found</h3>
-            <p className="text-muted-foreground mb-6">Be the first to create one!</p>
+            <h3 className="font-semibold text-lg lg:text-2xl mb-2 lg:mb-3">No open matches found</h3>
+            <p className="text-muted-foreground mb-6 lg:mb-8 lg:text-lg">Be the first to create one!</p>
             {user && (
-              <Button asChild className="glow-blue">
+              <Button 
+                asChild 
+                className={cn(
+                  "glow-blue",
+                  isDesktop && "h-14 px-8 text-lg font-bold"
+                )}
+              >
                 <Link to="/matches/create">Create the First Match</Link>
               </Button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className={cn(
+            "grid grid-cols-1 md:grid-cols-2 gap-4",
+            isDesktop && "lg:grid-cols-4 lg:gap-5"
+          )}>
             {matches.map((match, index) => (
               <div 
                 key={match.id}

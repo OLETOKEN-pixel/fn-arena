@@ -12,11 +12,11 @@
 
 @layer base {
   :root {
-    /* ===== LAYOUT CUSTOM PROPERTIES ===== */
+    /* ===== LAYOUT CUSTOM PROPERTIES (1920×1080 OPTIMIZED) ===== */
     --header-height: 64px;
-    --sidebar-width: 256px;
-    --content-max-width: 1400px;
-    --content-padding-x: 2rem;
+    --sidebar-width: 300px;
+    --content-max-width: 1680px;
+    --content-padding-x: 2.5rem;
     
     /* ===== PREMIUM COLOR PALETTE ===== */
     /* Background layers - deeper, richer blacks */
@@ -632,9 +632,9 @@ body.layout-debug-mode aside {
 }
 
 /* ===== DESKTOP LAYOUT UTILITIES (lg: >= 1024px) ===== */
-/* Target: 1920×1080 @ 100% zoom as primary viewport */
+/* Target: 1920×1080 @ 100% zoom as primary viewport - FILL THE SPACE! */
 @media (min-width: 1024px) {
-  /* Main page container - consistent across all pages */
+  /* Main page container - uses full 1680px for 1920 viewports */
   .page-container {
     width: 100%;
     max-width: var(--content-max-width);
@@ -649,49 +649,90 @@ body.layout-debug-mode aside {
     min-height: calc(100vh - var(--header-height));
   }
   
-  /* ===== PREMIUM GRID UTILITIES ===== */
+  /* ===== PREMIUM GRID UTILITIES FOR 1920×1080 ===== */
   
-  /* Desktop-balanced 2:1 grid (Home page, Match details) */
-  /* Uses minmax to prevent stretching on 1920+ viewports */
+  /* Desktop-balanced 2:1 grid (Home page - wider right column) */
   .grid-desktop-2-1 {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(380px, 1fr);
-    gap: 1.5rem;
+    grid-template-columns: minmax(0, 2fr) minmax(520px, 1fr);
+    gap: 2rem;
     align-items: start;
   }
   
-  /* Desktop 3-column grid (Match cards, Teams, etc.) */
+  /* Desktop 3-column grid (Match cards, Teams) */
   .grid-desktop-3 {
     display: grid;
-    grid-template-columns: repeat(3, minmax(320px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(360px, 1fr));
+    gap: 1.25rem;
+  }
+  
+  /* Desktop 4-column grid (Matches page - EliteTokens style) */
+  .grid-desktop-4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(320px, 1fr));
+    gap: 1.25rem;
   }
   
   /* Desktop 2-column equal grid (Profile, Settings) */
   .grid-desktop-2 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1.5rem;
+    gap: 2rem;
   }
   
-  /* Desktop 4-column grid (Stats, mini cards) */
-  .grid-desktop-4 {
+  /* Desktop 2-column with wide right panel (Match Details, Leaderboard) */
+  .grid-desktop-wide-right {
     display: grid;
-    grid-template-columns: repeat(4, minmax(200px, 1fr));
-    gap: 1rem;
+    grid-template-columns: minmax(0, 2fr) minmax(480px, 1fr);
+    gap: 2rem;
+    align-items: start;
   }
   
-  /* ===== CARD HEIGHT UTILITIES ===== */
-  .card-h-sm { min-height: 120px; }
-  .card-h-md { min-height: 200px; }
-  .card-h-lg { min-height: 320px; }
-  .card-h-xl { min-height: 480px; }
+  /* ===== CARD HEIGHT UTILITIES (Bigger for 1920) ===== */
+  .card-h-sm { min-height: 140px; }
+  .card-h-md { min-height: 220px; }
+  .card-h-lg { min-height: 360px; }
+  .card-h-xl { min-height: 520px; }
   
   /* ===== SPACING SCALE FOR 1920 ===== */
-  .desktop-gap-sm { gap: 1rem; }
-  .desktop-gap-md { gap: 1.5rem; }
-  .desktop-gap-lg { gap: 2rem; }
-  .desktop-gap-xl { gap: 2.5rem; }
+  .desktop-gap-sm { gap: 1.25rem; }
+  .desktop-gap-md { gap: 2rem; }
+  .desktop-gap-lg { gap: 2.5rem; }
+  .desktop-gap-xl { gap: 3rem; }
+  
+  /* ===== PREMIUM TYPOGRAPHY SCALE FOR 1920 ===== */
+  .text-desktop-hero {
+    font-size: clamp(2.5rem, 3vw, 3.5rem);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+  }
+  
+  .text-desktop-title {
+    font-size: clamp(1.75rem, 2.2vw, 2.5rem);
+    line-height: 1.2;
+  }
+  
+  .text-desktop-subtitle {
+    font-size: clamp(1.25rem, 1.5vw, 1.75rem);
+    line-height: 1.3;
+  }
+  
+  /* ===== PREMIUM BUTTON SIZES FOR DESKTOP ===== */
+  .btn-desktop-lg {
+    height: 52px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  
+  .btn-desktop-xl {
+    height: 56px;
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
 }
 
 /* ===== TYPOGRAPHY SCALE FOR LARGE VIEWPORTS ===== */

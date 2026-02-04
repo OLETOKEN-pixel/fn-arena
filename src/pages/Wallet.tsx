@@ -257,15 +257,15 @@ export default function Wallet() {
 
   return (
     <MainLayout>
-      <div className="space-y-8 animate-page-enter lg:max-w-4xl lg:mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-            <WalletIcon className="w-7 h-7 text-primary" />
+      <div className="space-y-8 lg:space-y-10 animate-page-enter lg:max-w-5xl lg:mx-auto">
+        {/* Header - Bigger on desktop */}
+        <div className="flex items-center gap-4 lg:gap-6">
+          <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+            <WalletIcon className="w-7 h-7 lg:w-8 lg:h-8 text-primary" />
           </div>
           <div>
-            <h1 className="font-display text-3xl font-bold tracking-tight">Wallet</h1>
-            <p className="text-muted-foreground">Gestisci il tuo saldo e le transazioni</p>
+            <h1 className="font-display text-3xl lg:text-4xl font-bold tracking-tight">Wallet</h1>
+            <p className="text-muted-foreground lg:text-lg">Gestisci il tuo saldo e le transazioni</p>
           </div>
         </div>
 

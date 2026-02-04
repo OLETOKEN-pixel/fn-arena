@@ -1,197 +1,192 @@
 
-# Desktop-Only Home Page Redesign
+# COMPLETE DESKTOP LAYOUT FIX & PREMIUM REDESIGN
 
-## Summary
-This plan implements a complete desktop-only redesign of the Home page and related layout components. All changes will be wrapped in responsive breakpoint conditions (lg: >= 1024px) to ensure **mobile/tablet remains completely unchanged**.
+## DIAGNOSTIC ANALYSIS
+
+### Root Causes of Preview vs Production Discrepancy
+
+After analyzing the codebase, I've identified the following issues causing layout differences between Lovable editor preview and real production viewports:
+
+#### Issue 1: Uncontrolled Container Width
+**Location**: `MainLayout.tsx` line 60
+```tsx
+<div className="max-w-screen-2xl mx-auto w-full">
+```
+- `max-w-screen-2xl` = 1536px, which is too wide for most viewports
+- On 1920px monitors, content stretches nearly edge-to-edge leaving awkward gaps
+- The Lovable preview has a narrower iframe, masking this problem
+
+#### Issue 2: Home Page Grid Without Proper Constraints  
+**Location**: `Index.tsx` line 33
+```tsx
+<div className="grid grid-cols-[2fr_1fr] gap-6">
+```
+- Fixed ratio grid without `minmax()` causes stretching on wide screens
+- No minimum width for video column = can get too narrow
+- No maximum width for match column = can get too wide
+
+#### Issue 3: Sidebar Width Not Accounted For
+**Location**: `MainLayout.tsx` line 52
+```tsx
+<div className="lg:pl-64">
+```
+- Sidebar is 256px (`w-64`) but content area calculation doesn't properly center remaining space
+- On 1920px: 1920 - 256 = 1664px of content area, but `max-w-screen-2xl` (1536px) doesn't fill it well
+
+#### Issue 4: Video Banner Height Issues
+**Location**: `VideoBanner.tsx` line 55
+```tsx
+<div className="relative h-full min-h-[400px] rounded-2xl overflow-hidden group">
+```
+- Using `h-full` depends on parent height which may not be set
+- `min-h-[400px]` is arbitrary and doesn't match sibling content heights
+- Causes unbalanced visual layout
+
+#### Issue 5: Missing CSS Custom Properties for Layout
+- No `--header-height` variable defined
+- No `--sidebar-width` variable
+- Makes responsive calculations difficult and error-prone
+
+#### Issue 6: Cards/Components Without Consistent Min Heights
+- Match cards, progress cards have inconsistent heights
+- Creates visual "holes" when content is shorter
 
 ---
 
-## CHANGES OVERVIEW
+## IMPLEMENTATION PLAN
 
-### Files to Modify
-| File | Purpose |
-|------|---------|
-| `src/pages/Index.tsx` | New desktop-only home layout |
-| `src/components/layout/Header.tsx` | Remove "Send Tip", coins opens overlay |
-| `src/components/layout/Sidebar.tsx` | Premium sidebar styling |
-| `src/components/layout/BottomNav.tsx` | Hide on desktop (already done, verify) |
-| `src/components/home/LiveMatchesCompact.tsx` | Enhanced premium empty state |
-| `src/hooks/use-mobile.tsx` | Add `useIsDesktop` hook |
+### PHASE 1: CSS Foundation (Global Layout System)
 
-### Files to Create
-| File | Purpose |
-|------|---------|
-| `src/components/home/VideoBanner.tsx` | Desktop video banner component |
-| `src/components/wallet/CoinsOverlay.tsx` | Buy coins + VIP tip overlay modal |
+#### 1.1 Add Layout Custom Properties to `index.css`
+```css
+:root {
+  --header-height: 64px;       /* h-16 = 4rem = 64px */
+  --sidebar-width: 256px;      /* w-64 = 16rem = 256px */
+  --content-max-width: 1400px; /* Optimal for 1920px with sidebar */
+  --content-padding-x: 2rem;   /* px-8 */
+}
 
-### Assets to Copy
-| From | To |
-|------|-----|
-| `user-uploads://VIDEO_BANNER_SITO.mov` | `public/videos/banner.mp4` |
+@media (min-width: 1024px) {
+  .page-container {
+    width: 100%;
+    max-width: var(--content-max-width);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--content-padding-x);
+    padding-right: var(--content-padding-x);
+  }
+  
+  .content-area {
+    min-height: calc(100vh - var(--header-height));
+  }
+}
+```
 
----
-
-## DETAILED IMPLEMENTATION
-
-### 1. Hook: useIsDesktop (src/hooks/use-mobile.tsx)
-
-Add a new `useIsDesktop` hook alongside existing `useIsMobile`:
-
-```typescript
-const DESKTOP_BREAKPOINT = 1024;
-
-export function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = React.useState<boolean | undefined>(undefined);
-
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(min-width: ${DESKTOP_BREAKPOINT}px)`);
-    const onChange = () => {
-      setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
-    };
-    mql.addEventListener("change", onChange);
-    setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
-    return () => mql.removeEventListener("change", onChange);
-  }, []);
-
-  return !!isDesktop;
+#### 1.2 Add Grid Utility Classes
+```css
+/* Desktop-only balanced grids */
+@media (min-width: 1024px) {
+  .grid-desktop-2-1 {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .grid-desktop-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 1rem;
+  }
 }
 ```
 
 ---
 
-### 2. Video Banner Component (src/components/home/VideoBanner.tsx)
+### PHASE 2: MainLayout.tsx Fixes
 
-**Features:**
-- Video autoplay loop with audio enabled by default
-- Mute/unmute toggle button with premium styling
-- Fallback for browser autoplay policy: if muted required, show "Click to unmute" CTA
-- Premium frame with glow, rounded corners
-- Overlay text: "OleBoy Token Arena" + subtitle + CTA buttons
+#### Changes:
+1. Add `--header-height` CSS variable to header
+2. Use controlled `max-w-[1400px]` for desktop content
+3. Add proper min-height calculation for content area
+4. Keep mobile layout completely unchanged
 
-**Structure:**
-```text
-+---------------------------------------+
-|  [Video - autoplay, loop]             |
-|                                       |
-|    +--------------------------+       |
-|    | OleBoy Token Arena       |       |
-|    | Compete. Win. Earn.      |       |
-|    | [Create Match] [Browse]  |       |
-|    +--------------------------+       |
-|                                       |
-|  [Mute/Unmute Icon]                   |
-+---------------------------------------+
+```tsx
+// Updated main content wrapper
+<main className={cn(
+  "flex-1 py-4 lg:py-6 animate-page-enter",
+  // Mobile: standard padding
+  "px-4",
+  // Desktop: controlled container
+  "lg:px-0",
+  isMobile && "pb-24"
+)}>
+  <div className={cn(
+    // Mobile: full width
+    "w-full",
+    // Desktop: centered with max-width
+    "lg:max-w-[1400px] lg:mx-auto lg:px-8"
+  )}>
+    {children}
+  </div>
+</main>
 ```
-
-**Key implementation details:**
-- Use `<video>` element with `autoPlay muted loop playsInline`
-- On mount, try to play with audio: if browser blocks, keep muted and show unmute CTA
-- Premium border glow effect (gold/primary gradient)
-- Responsive within desktop column (not stretched)
-- Video source: `/videos/banner.mp4`
 
 ---
 
-### 3. Coins Overlay Modal (src/components/wallet/CoinsOverlay.tsx)
+### PHASE 3: Home Page (`Index.tsx`) Complete Redesign
 
-**Features:**
-- Triggered by clicking the coins button in header (desktop only)
-- Two tabs: "Buy Coins" and "Send Tip" (VIP only)
-- Premium animated modal with blur backdrop
-
-**Buy Coins Tab:**
-- Package grid (5, 10, 15, 20, 25, 50 coins)
-- Custom amount input
-- Total with processing fee
-- "Pay Now" button calling existing `create-checkout` edge function
-- Uses existing checkout logic from BuyCoins.tsx
-
-**Send Tip Tab:**
-- Only visible/enabled if user is VIP
-- If not VIP: show locked state with "VIP Required" badge
-- Player search input (uses existing `search_players_public` RPC)
-- Amount input with quick buttons (1, 5, 10, 25)
-- Send button using existing `sendTip` from `useVipStatus`
-
-**Modal animations:**
-- Fade + scale entrance
-- Blur backdrop
-- Smooth tab transitions
-
----
-
-### 4. Home Page Layout (src/pages/Index.tsx)
-
-**Desktop Layout (lg+):**
+#### Desktop Layout Structure:
 ```text
-+------------------------------------------+
-| HeroCompact                              |
-+------------------------------------------+
-| LiveMatches (2/3)    | VideoBanner (1/3) |
-|                      |                   |
-|                      |                   |
-+------------------------------------------+
-| ProgressCard                             |
-+------------------------------------------+
++--------------------------------------------------+
+| HeroCompact (full width, max-w-[1400px])         |
++--------------------------------------------------+
+| LiveMatches (2fr)      | VideoBanner (minmax)    |
+| - min-w: 0             | - min-w: 360px          |
+| - Contains match grid  | - max-w: 480px          |
+|                        | - h: matches left col   |
++------------------------+-------------------------+
+| ProgressCard (full width)                        |
++--------------------------------------------------+
 ```
 
-**Mobile Layout (unchanged):**
-```text
-+------------------+
-| HeroCompact      |
-+------------------+
-| StatsBar         |  <-- Keep on mobile
-+------------------+
-| LiveMatches      |
-+------------------+
-| Leaderboard      |  <-- Keep on mobile
-+------------------+
-| WalletSnapshot   |  <-- Keep on mobile
-+------------------+
-| ProgressCard     |
-+------------------+
-| FeatureCardsMini |  <-- Keep on mobile
-+------------------+
-```
-
-**Implementation:**
+#### Code Changes:
 ```tsx
 export default function Index() {
   const isDesktop = useIsDesktop();
 
   return (
     <MainLayout>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 lg:gap-6">
         <HeroCompact />
         
-        {/* Desktop: Remove StatsBar completely */}
+        {/* STATS BAR - Mobile only */}
         {!isDesktop && <StatsBar />}
         
-        {/* Main Grid */}
-        <div className={cn(
-          "grid gap-4",
-          isDesktop 
-            ? "grid-cols-[2fr_1fr] max-w-[1400px] mx-auto" 
-            : "grid-cols-1 lg:grid-cols-3"
-        )}>
-          {/* Left: Live Matches + Progress */}
-          <div className="flex flex-col gap-4">
-            <LiveMatchesCompact />
-            <ProgressCard />
+        {/* MAIN GRID - Different layouts */}
+        {isDesktop ? (
+          <div className="grid grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] gap-6">
+            {/* Left Column */}
+            <div className="flex flex-col gap-4">
+              <LiveMatchesCompact />
+              <ProgressCard />
+            </div>
+            
+            {/* Right Column - Video Banner */}
+            <VideoBanner className="h-full" />
           </div>
-          
-          {/* Right: Desktop=Video, Mobile=Leaderboard+Wallet */}
-          {isDesktop ? (
-            <VideoBanner />
-          ) : (
+        ) : (
+          /* Mobile: unchanged */
+          <div className="grid grid-cols-1 gap-4">
+            <LiveMatchesCompact />
             <div className="flex flex-col gap-3">
               <LeaderboardCompact />
               <WalletSnapshot />
             </div>
-          )}
-        </div>
+            <ProgressCard />
+          </div>
+        )}
 
-        {/* Mobile only: Feature cards */}
+        {/* FEATURE CARDS - Mobile only */}
         {!isDesktop && <FeatureCardsMini />}
       </div>
     </MainLayout>
@@ -201,170 +196,175 @@ export default function Index() {
 
 ---
 
-### 5. Header Changes (src/components/layout/Header.tsx)
+### PHASE 4: VideoBanner.tsx Height Fix
 
-**Desktop Changes:**
-- Remove "Send Tip" button entirely on desktop
-- Change coins button from `<Link to="/wallet">` to `<button onClick>` that opens `CoinsOverlay`
-- Keep VIP banner, social icons, notifications, user menu
+#### Changes:
+1. Use CSS Grid for proper height matching
+2. Add proper aspect ratio for video
+3. Responsive height that matches sibling content
 
-**Implementation:**
 ```tsx
-// In Header component
-const [showCoinsOverlay, setShowCoinsOverlay] = useState(false);
-const isDesktop = useIsDesktop();
-
-// Replace the wallet Link with:
-{isDesktop ? (
-  <button
-    onClick={() => setShowCoinsOverlay(true)}
-    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-secondary/60 hover:bg-secondary border border-border/50 hover:border-primary/30 transition-all duration-200 group"
-  >
-    <CoinIcon size="sm" className="..." />
-    <span className="font-mono font-semibold text-sm">
-      {wallet?.balance?.toFixed(2) ?? '0.00'}
-    </span>
-  </button>
-) : (
-  <Link to="/wallet" className="...">
-    {/* Same content */}
-  </Link>
-)}
-
-// Remove "Send Tip" button on desktop:
-{user && !isDesktop && (
-  <Button onClick={() => setShowTipModal(true)} variant="gold">
-    <Gift /> Send Tip
-  </Button>
-)}
-
-// Add overlay:
-<CoinsOverlay open={showCoinsOverlay} onOpenChange={setShowCoinsOverlay} />
+// Updated container
+<div className={cn(
+  "relative rounded-2xl overflow-hidden group",
+  // Height: match parent grid cell
+  "h-full min-h-[500px] lg:min-h-0",
+  className
+)}>
 ```
 
 ---
 
-### 6. Premium Sidebar (src/components/layout/Sidebar.tsx)
+### PHASE 5: All Pages Premium Redesign
 
-**Enhancements for desktop:**
-- Group nav items: Core (Home, Live Matches, My Matches) | Social (Challenges, Highlights, Teams, Leaderboard) | Account (Wallet, Profile)
-- Add section labels with premium styling
-- Enhanced hover effects with subtle background slide
-- Active state with stronger gradient glow
-- Better icon sizing and spacing
+#### For each page, apply:
 
-**Visual improvements:**
+**A. Consistent Container:**
 ```tsx
-// Add section dividers
-<li className="pt-4 pb-1 px-3">
-  <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium">
-    Core
-  </span>
-</li>
+<div className="space-y-6 lg:max-w-[1400px] lg:mx-auto">
+```
 
-// Enhanced nav item styling
-className={cn(
-  'flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative group',
-  isActive 
-    ? 'bg-gradient-to-r from-primary/20 to-primary/5 text-primary shadow-[0_0_20px_rgba(79,142,255,0.2)]' 
-    : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
-  isLocked && 'opacity-50'
-)}
+**B. Responsive Grids:**
+```tsx
+// 3-column grid that doesn't break
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+```
+
+**C. Card Minimum Heights:**
+```tsx
+<Card className="min-h-[200px] flex flex-col">
+```
+
+#### Pages to Update:
+
+| Page | Key Changes |
+|------|-------------|
+| `Matches.tsx` | Add `lg:max-w-[1400px]` wrapper, fix grid gap |
+| `MyMatches.tsx` | Same container, consistent card heights |
+| `MatchDetails.tsx` | Two-column layout with `minmax()` |
+| `Profile.tsx` | Fix `h-[calc(100vh-120px)]` to use CSS var |
+| `Teams.tsx` | Consistent card grid |
+| `TeamDetails.tsx` | Premium member list styling |
+| `Challenges.tsx` | Fix `max-w-screen-xl` to `max-w-[1400px]` |
+| `Leaderboard.tsx` | Table within container |
+| `Wallet.tsx` | Balance cards with proper widths |
+| `Highlights.tsx` | Video grid responsive |
+
+---
+
+### PHASE 6: Header Refinements
+
+#### Changes:
+1. Add CSS variable for height
+2. Better spacing for 1920px viewports
+
+```tsx
+<header className="sticky top-0 z-30 h-16 glass-header"
+  style={{ '--header-height': '64px' } as React.CSSProperties}
+>
 ```
 
 ---
 
-### 7. LiveMatchesCompact Enhancement
+### PHASE 7: Sidebar Premium Polish
 
-**Improve empty state:**
+#### Changes:
+1. Better visual hierarchy
+2. Smoother hover states
+3. Active state glow refinement
+
+---
+
+### PHASE 8: Debug Overlay (Optional Development Tool)
+
+Create `src/components/dev/LayoutDebugOverlay.tsx`:
 ```tsx
-// Enhanced empty state
-<div className="h-full flex flex-col items-center justify-center text-center py-12">
-  <div className="relative">
-    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center mb-6 animate-pulse-soft">
-      <Swords className="w-11 h-11 text-primary" />
-    </div>
-    <div className="absolute -inset-2 bg-primary/10 rounded-full blur-xl animate-pulse" />
-  </div>
-  <h3 className="font-display text-xl font-semibold mb-2">No open matches</h3>
-  <p className="text-muted-foreground mb-6 max-w-xs">
-    Be the first to create a competitive match and start earning!
-  </p>
-  <Button asChild className="glow-blue btn-premium group">
-    <Link to="/matches/create">
-      <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform" />
-      Create Match
-    </Link>
-  </Button>
-</div>
+// Activated via ?debugLayout=1
+// Shows: viewport size, container width, breakpoint, header height
 ```
 
 ---
 
-### 8. BottomNav - Hide on Desktop
+## FILES TO MODIFY
 
-Already implemented with `lg:hidden` class, but verify:
+### Core Layout (Priority 1)
+| File | Changes |
+|------|---------|
+| `src/index.css` | Add CSS custom properties, layout utilities |
+| `src/components/layout/MainLayout.tsx` | Fix container width, add CSS vars |
+| `src/pages/Index.tsx` | Use `minmax()` grid, proper heights |
+| `src/components/home/VideoBanner.tsx` | Fix height matching |
+
+### All Pages (Priority 2)
+| File | Changes |
+|------|---------|
+| `src/pages/Matches.tsx` | Container + grid fix |
+| `src/pages/MyMatches.tsx` | Container + grid fix |
+| `src/pages/MatchDetails.tsx` | Two-column with minmax |
+| `src/pages/Profile.tsx` | Use CSS var for height calc |
+| `src/pages/Teams.tsx` | Container + card grid |
+| `src/pages/TeamDetails.tsx` | Premium styling |
+| `src/pages/Challenges.tsx` | Fix max-width |
+| `src/pages/Leaderboard.tsx` | Container wrap |
+| `src/pages/Wallet.tsx` | Balance card widths |
+| `src/pages/Highlights.tsx` | Video grid |
+| `src/pages/CreateMatch.tsx` | Form container |
+| `src/pages/BuyCoins.tsx` | Package grid |
+| `src/pages/Admin.tsx` | Table container |
+
+### Components (Priority 3)
+| File | Changes |
+|------|---------|
+| `src/components/home/LiveMatchesCompact.tsx` | Card min-heights |
+| `src/components/home/ProgressCard.tsx` | Consistent sizing |
+| `src/components/home/HeroCompact.tsx` | Spacing refinement |
+| `src/components/matches/MatchCard.tsx` | Fixed height |
+| `src/components/matches/MyMatchCard.tsx` | Fixed height |
+| `src/components/layout/Sidebar.tsx` | Premium polish |
+| `src/components/layout/Header.tsx` | CSS var integration |
+
+---
+
+## MOBILE PRESERVATION RULES
+
+All changes MUST follow these rules:
+
+1. **Use `lg:` prefix** for all desktop-specific classes
+2. **Use `useIsDesktop()` hook** for conditional rendering
+3. **Never modify** classes without breakpoint prefix on shared elements
+4. **Test at 375px, 768px, 1024px, 1440px, 1920px**
+
+Example pattern:
 ```tsx
-<nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+// CORRECT - Mobile unchanged, desktop modified
+<div className={cn(
+  "px-4",              // Mobile base
+  "lg:px-0 lg:max-w-[1400px] lg:mx-auto"  // Desktop override
+)}>
+
+// WRONG - Affects mobile
+<div className="max-w-[1400px] mx-auto">
 ```
 
-Also hide FeatureCardsMini on desktop since navigation is in sidebar.
-
 ---
 
-## TECHNICAL NOTES
+## VERIFICATION CHECKLIST
 
-### Breakpoint Strategy
-- **Desktop**: `lg:` (>=1024px)
-- All desktop-specific code uses `useIsDesktop()` hook
-- CSS classes use `lg:` prefix for desktop styles
-- Mobile code paths remain completely untouched
+### Per-Page Testing:
+```text
+□ 1920×1080 @ 100% zoom - No gaps, balanced layout
+□ 1440×900 - Content fits, no horizontal scroll
+□ 1366×768 - All elements visible
+□ 768×1024 (tablet) - Mobile layout active
+□ 375×812 (mobile) - Unchanged from before
+```
 
-### Video Autoplay Policy
-1. First attempt: play with audio
-2. If blocked: keep muted, show prominent "🔊 Click to unmute" button
-3. User click on video or button enables audio
-4. Remember preference in localStorage
-
-### Max-Width Container
-Home page desktop content constrained to `max-w-[1400px]` with `mx-auto` for balanced layout on large screens.
-
-### Performance
-- Video uses `preload="metadata"` to avoid loading full video immediately
-- Lazy load video component on desktop only
-- No additional dependencies required
-
----
-
-## FILES SUMMARY
-
-**Modified (5 files):**
-1. `src/hooks/use-mobile.tsx` - Add useIsDesktop hook
-2. `src/pages/Index.tsx` - Desktop layout with video banner
-3. `src/components/layout/Header.tsx` - Coins overlay, remove Send Tip
-4. `src/components/layout/Sidebar.tsx` - Premium grouping/styling
-5. `src/components/home/LiveMatchesCompact.tsx` - Enhanced empty state
-
-**Created (2 files):**
-1. `src/components/home/VideoBanner.tsx` - Video banner component
-2. `src/components/wallet/CoinsOverlay.tsx` - Buy coins + tip modal
-
-**Assets (1 file):**
-1. Copy video to `public/videos/banner.mp4`
-
----
-
-## CHECKLIST
-
-- [x] StatsBar (4 cards) hidden on desktop
-- [x] LeaderboardCompact hidden on desktop
-- [x] WalletSnapshot hidden on desktop  
-- [x] FeatureCardsMini (bottom buttons) hidden on desktop
-- [x] Video banner replaces right column on desktop
-- [x] Sidebar premium styling
-- [x] "Send Tip" removed from header on desktop
-- [x] Coins button opens overlay on desktop
-- [x] Overlay has Buy Coins + VIP Tip tabs
-- [x] Mobile remains 100% unchanged
-- [x] Layout max-width 1400px, balanced grid
-- [x] All animations premium but performant
+### Visual Checks:
+```text
+□ No stretched elements
+□ No empty gaps between sections
+□ Cards have consistent heights in grids
+□ Video banner matches sibling height
+□ Sidebar + content properly centered
+□ All animations smooth (60fps)
+```

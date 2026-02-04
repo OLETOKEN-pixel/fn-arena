@@ -72,6 +72,7 @@ export default function Notifications() {
 
   return (
     <MainLayout showChat={false}>
+      {/* Centered container for narrower content */}
       <div className="max-w-2xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

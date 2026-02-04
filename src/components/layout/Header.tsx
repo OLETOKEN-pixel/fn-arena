@@ -50,8 +50,9 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 glass-header">
-      <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-30 h-16 glass-header" style={{ '--header-height': '64px' } as React.CSSProperties}>
+      {/* Container aligned with main content for 1920×1080 */}
+      <div className="h-full px-4 lg:px-8 lg:max-w-[calc(1400px+4rem)] lg:mx-auto flex items-center justify-between gap-4">
         {/* Left side: Search */}
         <div className="flex items-center gap-3">
           <PlayerSearchBar />

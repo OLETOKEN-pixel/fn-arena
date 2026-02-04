@@ -56,9 +56,9 @@ export function LiveMatchesCompact() {
   }, []);
 
   return (
-    <Card className="flex-1 min-h-0 flex flex-col overflow-hidden card-glass">
-      <CardHeader className="py-3 px-4 flex-shrink-0 border-b border-border/50">
-        <CardTitle className="flex items-center justify-between text-base">
+    <Card className="flex-1 min-h-0 flex flex-col overflow-hidden card-glass min-h-[320px]">
+      <CardHeader className="py-3 lg:py-4 px-4 lg:px-5 flex-shrink-0 border-b border-border/50">
+        <CardTitle className="flex items-center justify-between text-base lg:text-lg">
           <span className="flex items-center gap-2">
             <div className="relative">
               <Zap className="w-5 h-5 text-primary" />
@@ -71,7 +71,7 @@ export function LiveMatchesCompact() {
               </span>
             )}
           </span>
-          <Button variant="ghost" size="sm" asChild className="text-xs group">
+          <Button variant="ghost" size="sm" asChild className="text-xs lg:text-sm group">
             <Link to="/matches" className="flex items-center gap-1">
               View All
               <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
@@ -80,7 +80,7 @@ export function LiveMatchesCompact() {
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto px-4 pb-4 pt-4">
+      <CardContent className="flex-1 overflow-y-auto px-4 lg:px-5 pb-4 pt-4">
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[...Array(3)].map((_, i) => (

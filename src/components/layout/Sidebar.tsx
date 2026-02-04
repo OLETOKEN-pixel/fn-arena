@@ -67,7 +67,10 @@ export function Sidebar() {
   }, {} as Record<string, NavItem[]>);
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-20 lg:w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
+    <aside 
+      className="fixed left-0 top-0 z-40 h-screen w-20 lg:w-64 bg-sidebar border-r border-sidebar-border flex flex-col"
+      style={{ '--sidebar-width': '256px' } as React.CSSProperties}
+    >
       {/* Logo */}
       <Link 
         to="/" 

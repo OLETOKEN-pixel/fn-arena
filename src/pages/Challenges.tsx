@@ -54,9 +54,10 @@ export default function Challenges() {
 
   return (
     <MainLayout>
+      {/* Container handled by MainLayout for 1920×1080 */}
       <div className="pb-8">
-        {/* Header - container handled by MainLayout */}
-        <div className="bg-gradient-to-b from-card/80 to-transparent border-b border-border/50 py-6 mb-6 -mx-4 lg:-mx-0 px-4 lg:px-0">
+        {/* Header */}
+        <div className="bg-gradient-to-b from-card/80 to-transparent border-b border-border/50 py-5 lg:py-6 mb-6 -mx-4 lg:-mx-0 px-4 lg:px-0">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>

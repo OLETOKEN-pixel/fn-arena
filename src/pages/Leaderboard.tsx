@@ -57,17 +57,18 @@ export default function Leaderboard() {
   return (
     <MainLayout>
       <div className="space-y-6">
+        {/* Page content - container handled by MainLayout for 1920×1080 */}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-display text-3xl font-bold flex items-center gap-3">
+            <h1 className="font-display text-2xl lg:text-3xl font-bold flex items-center gap-3">
               <div className="relative">
-                <Trophy className="w-8 h-8 text-yellow-400" />
-                <div className="absolute inset-0 w-8 h-8 bg-yellow-400/30 blur-lg rounded-full" />
+                <Trophy className="w-7 h-7 lg:w-8 lg:h-8 text-yellow-400" />
+                <div className="absolute inset-0 bg-yellow-400/30 blur-lg rounded-full" />
               </div>
               Leaderboard
             </h1>
-            <p className="text-muted-foreground">All-time top players ranked by earnings</p>
+            <p className="text-muted-foreground text-sm lg:text-base">All-time top players ranked by earnings</p>
           </div>
         </div>
 

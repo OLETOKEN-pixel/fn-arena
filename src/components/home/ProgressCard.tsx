@@ -42,12 +42,12 @@ export function ProgressCard() {
 
   return (
     <Card className={cn(
-      "p-4 transition-all duration-300",
+      "p-4 lg:p-5 transition-all duration-300",
       canAfford 
         ? "bg-gradient-to-r from-accent/15 via-card to-accent/15 border-accent/30 glow-gold-soft"
         : "bg-gradient-to-r from-primary/8 via-card to-accent/8 border-primary/20"
     )}>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 lg:gap-5">
         {/* XP Badge */}
         <div className="flex-shrink-0">
           <div className={cn(

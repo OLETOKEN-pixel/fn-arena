@@ -238,7 +238,8 @@ export default function Profile() {
 
   return (
     <MainLayout>
-      <div className="lg:min-h-[calc(100vh-var(--header-height)-3rem)] flex flex-col gap-4">
+      {/* Profile uses full container width for 1920×1080 */}
+      <div className="min-h-0 lg:min-h-[calc(100vh-var(--header-height)-4rem)] flex flex-col gap-4 lg:gap-6">
         {/* Profile Incomplete Alert */}
         {!isProfileComplete && (
           <Alert variant="destructive">
@@ -306,10 +307,10 @@ export default function Profile() {
           </CardContent>
         </Card>
         
-        {/* Main Content: Sidebar + Panel */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-4 min-h-0">
+        {/* Main Content: Sidebar + Panel - Responsive grid for 1920 */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 lg:gap-6 min-h-0">
           {/* Section Navigation */}
-          <Card className="p-2 h-fit shrink-0">
+          <Card className="p-2 lg:p-3 h-fit shrink-0">
             <nav className="flex lg:flex-col gap-1">
               {sections.map((section) => {
                 const Icon = section.icon;

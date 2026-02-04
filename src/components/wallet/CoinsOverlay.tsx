@@ -187,13 +187,14 @@ export function CoinsOverlay({ open, onOpenChange }: CoinsOverlayProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden bg-card/95 backdrop-blur-xl border-border">
+      {/* Wider dialog for 1920×1080 desktop - not micro */}
+      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden bg-card/95 backdrop-blur-xl border-border">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/50">
-          <DialogTitle className="flex items-center gap-2 text-xl">
+          <DialogTitle className="flex items-center gap-2 text-xl lg:text-2xl">
             <CoinIcon size="md" />
             Coins
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm lg:text-base">
             Buy coins or send tips to other players
           </DialogDescription>
         </DialogHeader>

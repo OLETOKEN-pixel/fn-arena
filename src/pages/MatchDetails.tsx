@@ -519,10 +519,11 @@ export default function MatchDetails() {
   const showChat = (isParticipant || isAdmin) && match.status !== 'open';
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* ===== COMPACT HEADER BAR ===== */}
+    <div className="min-h-screen flex flex-col bg-background overflow-hidden">
+      {/* ===== COMPACT HEADER BAR - Aligned for 1920×1080 ===== */}
       <div className="flex-shrink-0 border-b border-border/50 bg-card/95 backdrop-blur-sm">
-        <div className="max-w-[1920px] mx-auto px-3 py-2">
+        {/* Use max-w-[1400px] to match MainLayout container */}
+        <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-2">
           <div className="flex items-center justify-between gap-3">
             {/* Left - Back Button */}
             <Link
@@ -588,10 +589,11 @@ export default function MatchDetails() {
         </div>
       )}
 
-      {/* ===== MAIN CONTENT - FIXED HEIGHT LAYOUT ===== */}
+      {/* ===== MAIN CONTENT - Balanced for 1920×1080 ===== */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <div className="max-w-[1600px] mx-auto px-4 py-4 h-full">
-          <div className="flex flex-col lg:flex-row gap-4 h-full">
+        {/* Max-width container aligned with MainLayout */}
+        <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-4 h-full">
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
             
             {/* ===== LEFT COLUMN - Main Content ===== */}
             <div className="flex-1 flex flex-col gap-4 min-w-0">

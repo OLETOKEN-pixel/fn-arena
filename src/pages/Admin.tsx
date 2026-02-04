@@ -173,19 +173,20 @@ export default function Admin() {
 
   return (
     <MainLayout>
+      {/* Admin panel uses full width within MainLayout container */}
       <div className="space-y-4">
         {/* Header with Global Search */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-destructive" />
+            <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg bg-destructive/20 flex items-center justify-center">
+              <Shield className="w-5 h-5 lg:w-6 lg:h-6 text-destructive" />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold">Admin Panel</h1>
-              <p className="text-sm text-muted-foreground">Gestione completa</p>
+              <h1 className="font-display text-xl lg:text-2xl font-bold">Admin Panel</h1>
+              <p className="text-xs lg:text-sm text-muted-foreground">Gestione completa</p>
             </div>
           </div>
-          <div className="md:ml-auto">
+          <div className="lg:ml-auto">
             <GlobalSearchBar />
           </div>
         </div>

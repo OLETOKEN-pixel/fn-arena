@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { BottomNav } from './BottomNav';
+import { LayoutDebugOverlay } from '@/components/dev/LayoutDebugOverlay';
 import { cn } from '@/lib/utils';
 import { useSoundNotifications } from '@/hooks/useSoundNotifications';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -48,25 +49,32 @@ export function MainLayout({ children }: MainLayoutProps) {
         <Sidebar />
       </div>
 
-      {/* Main content area */}
+      {/* Main content area - offset by sidebar on desktop */}
       <div className="lg:pl-64">
         <div className="flex flex-col min-h-screen">
           <Header />
           
+          {/* Main content with proper container for 1920×1080 */}
           <main className={cn(
             "flex-1 py-4 lg:py-6 animate-page-enter",
             // Mobile: standard padding
             "px-4",
-            // Desktop: no horizontal padding (handled by inner container)
-            "lg:px-8",
-            isMobile && "pb-24" // Extra padding for bottom nav on mobile
+            // Desktop: remove padding here, let inner container handle it
+            "lg:px-0",
+            // Extra padding for bottom nav on mobile
+            isMobile && "pb-24"
           )}>
-            <div className={cn(
-              // Mobile: full width
-              "w-full",
-              // Desktop: centered with controlled max-width
-              "lg:max-w-[1400px] lg:mx-auto"
-            )}>
+            {/* Desktop container: max-w-1400px, centered, with horizontal padding */}
+            {/* This is the KEY fix for 1920×1080 - stable max-width that doesn't stretch */}
+            <div 
+              data-layout-container
+              className={cn(
+                // Mobile: full width
+                "w-full",
+                // Desktop: controlled max-width for balanced layout on 1920×1080
+                "lg:max-w-[1400px] lg:mx-auto lg:px-8"
+              )}
+            >
               {children}
             </div>
           </main>
@@ -78,6 +86,9 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* Bottom Navigation - Mobile ONLY */}
       {isMobile && <BottomNav />}
+
+      {/* Layout Debug Overlay - activated via ?layoutDebug=1 */}
+      <LayoutDebugOverlay />
     </div>
   );
 }

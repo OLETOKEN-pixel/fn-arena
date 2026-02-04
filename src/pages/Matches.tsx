@@ -136,7 +136,7 @@ export default function Matches() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Page content - container handled by MainLayout */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-bold flex items-center gap-3">

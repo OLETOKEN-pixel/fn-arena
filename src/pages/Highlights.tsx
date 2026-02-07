@@ -3,7 +3,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Youtube, Loader2, AlertCircle, Crown, Star } from 'lucide-react';
+import { Plus, Youtube, Loader2, AlertCircle, Crown, Star, Video, Info, ArrowRightLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,17 +41,35 @@ export default function Highlights() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const isAdmin = profile?.role === 'admin';
-  
+
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('all');
-  
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
   const [playingHighlight, setPlayingHighlight] = useState<Highlight | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Highlight | null>(null);
 
-  const { userVotedHighlightId, voteCounts, vote, isVoting, topVotedId, topVotedCount } = useHighlightVotes();
+  // Switch vote state
+  const [switchTarget, setSwitchTarget] = useState<Highlight | null>(null);
+
+  const {
+    userVotedHighlightId,
+    voteCounts,
+    isVoting,
+    getVoteState,
+    castVote,
+    removeVote,
+    switchVote,
+    topVotedId,
+    topVotedCount,
+  } = useHighlightVotes();
+
+  // Find the title of the currently voted highlight for the switch modal
+  const currentVotedTitle = userVotedHighlightId
+    ? highlights.find(h => h.id === userVotedHighlightId)?.title || 'another video'
+    : '';
 
   const fetchHighlights = useCallback(async () => {
     try {
@@ -65,7 +83,6 @@ export default function Highlights() {
       }
 
       const { data: highlightsData, error } = await query;
-
       if (error) throw error;
 
       if (!highlightsData || highlightsData.length === 0) {
@@ -74,7 +91,6 @@ export default function Highlights() {
       }
 
       const userIds = [...new Set(highlightsData.map(h => h.user_id))];
-      
       const { data: profilesData } = await supabase
         .from('profiles_public')
         .select('user_id, username, avatar_url')
@@ -82,20 +98,16 @@ export default function Highlights() {
 
       const profileMap = new Map(profilesData?.map(p => [p.user_id, p]) || []);
 
-      const enrichedHighlights: Highlight[] = highlightsData.map(h => ({
+      const enriched: Highlight[] = highlightsData.map(h => ({
         ...h,
         username: profileMap.get(h.user_id)?.username || 'Unknown',
         avatar_url: profileMap.get(h.user_id)?.avatar_url || null,
       }));
 
-      setHighlights(enrichedHighlights);
+      setHighlights(enriched);
     } catch (error) {
       console.error('Error fetching highlights:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load highlights',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to load highlights', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -106,16 +118,10 @@ export default function Highlights() {
 
     const channel = supabase
       .channel('highlights-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'highlights' },
-        () => fetchHighlights()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'highlights' }, () => fetchHighlights())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [fetchHighlights]);
 
   const handleAddHighlight = async (data: { youtubeUrl: string; title: string; youtubeVideoId: string }) => {
@@ -132,7 +138,6 @@ export default function Highlights() {
     });
 
     if (error) throw new Error('Failed to add highlight');
-
     toast({ title: 'Highlight added', description: 'Your video has been added successfully' });
   };
 
@@ -146,7 +151,6 @@ export default function Highlights() {
     }).eq('id', editingHighlight.id);
 
     if (error) throw new Error('Failed to update highlight');
-
     setEditingHighlight(null);
     toast({ title: 'Highlight updated', description: 'Your video has been updated successfully' });
   };
@@ -155,7 +159,6 @@ export default function Highlights() {
     if (!deleteConfirm) return;
 
     const { error } = await supabase.from('highlights').delete().eq('id', deleteConfirm.id);
-
     if (error) {
       toast({ title: 'Error', description: 'Failed to delete highlight', variant: 'destructive' });
       return;
@@ -165,19 +168,24 @@ export default function Highlights() {
     toast({ title: 'Highlight deleted', description: 'The video has been removed' });
   };
 
-  // Find the top voted highlight for Weekly Spotlight
+  const handleSwitchConfirm = async () => {
+    if (!switchTarget) return;
+    await switchVote(switchTarget.id);
+    setSwitchTarget(null);
+  };
+
   const topVotedHighlight = topVotedId ? highlights.find(h => h.id === topVotedId) : null;
 
   return (
     <MainLayout>
       <div className="space-y-6">
-        {/* Hero Section */}
+        {/* ===== HEADER ===== */}
         <Card className="bg-gradient-to-br from-primary/10 via-card to-accent/10 border-primary/20">
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <CardTitle className="flex items-center gap-2 text-2xl">
-                  <Youtube className="w-7 h-7 text-red-500" />
+                  <Youtube className="w-7 h-7 text-destructive" />
                   Community Highlights
                 </CardTitle>
                 <CardDescription className="mt-1">
@@ -194,7 +202,42 @@ export default function Highlights() {
           </CardHeader>
         </Card>
 
-        {/* Weekly Spotlight */}
+        {/* ===== INFO BANNER (ALWAYS VISIBLE) ===== */}
+        <Card className="border-border/50 bg-card/80">
+          <CardContent className="py-4 px-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 shrink-0 mt-0.5">
+                  <Video className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Share your best plays</p>
+                  <p className="text-xs text-muted-foreground">Upload your YouTube highlights for the community</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 shrink-0 mt-0.5">
+                  <Star className="w-4 h-4 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">1 vote per week</p>
+                  <p className="text-xs text-muted-foreground">You can change your vote anytime during the week</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 shrink-0 mt-0.5">
+                  <Crown className="w-4 h-4 text-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Weekly prize</p>
+                  <p className="text-xs text-muted-foreground">Awarded manually by staff to the top video</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ===== WEEKLY SPOTLIGHT ===== */}
         {topVotedHighlight && topVotedCount > 0 && (
           <Card className="border-accent/30 bg-gradient-to-r from-accent/10 via-card to-accent/5 overflow-hidden relative">
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
@@ -210,7 +253,6 @@ export default function Highlights() {
                 <p className="text-xs text-muted-foreground truncate">
                   <span className="font-semibold text-foreground">{topVotedHighlight.title}</span>
                   {' · '}{topVotedCount} vote{topVotedCount !== 1 ? 's' : ''}
-                  {' · '}Weekly prize awarded manually by staff
                 </p>
               </div>
               <Button
@@ -225,7 +267,7 @@ export default function Highlights() {
           </Card>
         )}
 
-        {/* Filters */}
+        {/* ===== FILTERS ===== */}
         <div className="flex items-center justify-between">
           <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
             <TabsList>
@@ -235,7 +277,7 @@ export default function Highlights() {
           </Tabs>
         </div>
 
-        {/* Content */}
+        {/* ===== CONTENT ===== */}
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -248,7 +290,7 @@ export default function Highlights() {
                 {filter === 'mine' ? 'No highlights yet' : 'No highlights found'}
               </h3>
               <p className="text-muted-foreground mb-4">
-                {filter === 'mine' 
+                {filter === 'mine'
                   ? "You haven't added any highlights yet"
                   : 'Be the first to share your epic plays!'
                 }
@@ -262,34 +304,39 @@ export default function Highlights() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {highlights.map((highlight) => (
-              <HighlightCard
-                key={highlight.id}
-                id={highlight.id}
-                youtubeVideoId={highlight.youtube_video_id}
-                title={highlight.title}
-                createdAt={highlight.created_at}
-                author={{
-                  userId: highlight.user_id,
-                  username: highlight.username || 'Unknown',
-                  avatarUrl: highlight.avatar_url,
-                }}
-                currentUserId={user?.id || null}
-                isAdmin={isAdmin}
-                onPlay={() => setPlayingHighlight(highlight)}
-                onEdit={() => setEditingHighlight(highlight)}
-                onDelete={() => setDeleteConfirm(highlight)}
-                voteCount={voteCounts[highlight.id] || 0}
-                isVoted={userVotedHighlightId === highlight.id}
-                onVote={() => vote(highlight.id)}
-                isVoting={isVoting}
-              />
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {highlights.map((highlight) => {
+              const state = getVoteState(highlight.id);
+              return (
+                <HighlightCard
+                  key={highlight.id}
+                  id={highlight.id}
+                  youtubeVideoId={highlight.youtube_video_id}
+                  title={highlight.title}
+                  createdAt={highlight.created_at}
+                  author={{
+                    userId: highlight.user_id,
+                    username: highlight.username || 'Unknown',
+                    avatarUrl: highlight.avatar_url,
+                  }}
+                  currentUserId={user?.id || null}
+                  isAdmin={isAdmin}
+                  onPlay={() => setPlayingHighlight(highlight)}
+                  onEdit={() => setEditingHighlight(highlight)}
+                  onDelete={() => setDeleteConfirm(highlight)}
+                  voteCount={voteCounts[highlight.id] || 0}
+                  voteState={state}
+                  onCastVote={() => castVote(highlight.id)}
+                  onRemoveVote={() => removeVote()}
+                  onSwitchVote={() => setSwitchTarget(highlight)}
+                  isVoting={isVoting}
+                />
+              );
+            })}
           </div>
         )}
 
-        {/* Modals */}
+        {/* ===== MODALS ===== */}
         <AddHighlightModal open={showAddModal} onOpenChange={setShowAddModal} onSubmit={handleAddHighlight} />
 
         {editingHighlight && (
@@ -311,7 +358,7 @@ export default function Highlights() {
           />
         )}
 
-        {/* Delete Confirmation */}
+        {/* ===== DELETE CONFIRM ===== */}
         <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -324,6 +371,31 @@ export default function Highlights() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={handleDeleteHighlight} className="bg-destructive hover:bg-destructive/90">
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* ===== SWITCH VOTE CONFIRM ===== */}
+        <AlertDialog open={!!switchTarget} onOpenChange={() => setSwitchTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <ArrowRightLeft className="w-5 h-5 text-accent" />
+                Switch Your Vote?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                You already voted for <span className="font-semibold text-foreground">"{currentVotedTitle}"</span>.
+                Do you want to move your vote to <span className="font-semibold text-foreground">"{switchTarget?.title}"</span>?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleSwitchConfirm}
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
+              >
+                Switch Vote
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -9,6 +9,28 @@ interface VoteCounts {
 
 export type VoteState = 'NOT_VOTED' | 'VOTED_THIS' | 'VOTED_OTHER';
 
+/**
+ * Format a Date as YYYY-MM-DD in LOCAL timezone (not UTC).
+ * This is critical: toISOString() would shift the date in non-UTC timezones.
+ */
+function formatLocalDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Get the Monday of the current ISO week (same logic as PostgreSQL date_trunc('week', now())).
+ */
+function getCurrentWeekMonday(): string {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const diff = day === 0 ? -6 : 1 - day; // days to subtract to reach Monday
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
+  return formatLocalDate(monday);
+}
+
 export function useHighlightVotes() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -17,22 +39,14 @@ export function useHighlightVotes() {
   const [isVoting, setIsVoting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Lock to prevent ANY concurrent operations — stays locked until cooldown ends
+  // Lock to prevent concurrent vote operations
   const lockRef = useRef(false);
-  // Track if we're in a cooldown after a vote to ignore realtime refetches
+  // Cooldown flag: when true, realtime events won't trigger refetch
   const cooldownRef = useRef(false);
 
-  const currentWeekStart = (() => {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(now.getFullYear(), now.getMonth(), diff);
-    monday.setHours(0, 0, 0, 0);
-    return monday.toISOString().split('T')[0];
-  })();
+  const currentWeekStart = getCurrentWeekMonday();
 
   const fetchVotes = useCallback(async () => {
-    // Skip refetch if we're in post-vote cooldown (optimistic state is authoritative)
     if (cooldownRef.current) return;
 
     try {
@@ -71,7 +85,6 @@ export function useHighlightVotes() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'highlight_votes' },
         () => {
-          // Only refetch if NOT in cooldown
           if (!cooldownRef.current) {
             fetchVotes();
           }
@@ -90,24 +103,19 @@ export function useHighlightVotes() {
     return 'VOTED_OTHER';
   }, [user, userVotedHighlightId]);
 
-  /**
-   * Core vote action. Handles optimistic UI, RPC call, cooldown, and rollback.
-   */
   const callVoteRpc = useCallback(async (
     highlightId: string,
     expectedAction: 'voted' | 'unvoted' | 'switched',
   ) => {
-    // Hard lock — reject if already processing
     if (lockRef.current) return;
     lockRef.current = true;
     cooldownRef.current = true;
     setIsVoting(true);
 
-    // Save pre-action state for rollback
     const prevVotedId = userVotedHighlightId;
     const prevCounts = { ...voteCounts };
 
-    // Apply optimistic update immediately
+    // Optimistic update
     if (expectedAction === 'voted') {
       setUserVotedHighlightId(highlightId);
       setVoteCounts(prev => ({
@@ -141,17 +149,14 @@ export function useHighlightVotes() {
         throw new Error(result.error || 'Vote failed');
       }
 
-      // If server action doesn't match what we expected, the RPC did something
-      // different (e.g. toggled when we expected insert). Refetch to get truth.
+      // If server returned a different action, refetch to get ground truth
       if (result.action !== expectedAction) {
-        console.warn(`Vote action mismatch: expected=${expectedAction}, got=${result.action}`);
-        // Temporarily lift cooldown to allow refetch
+        console.warn(`Vote mismatch: expected=${expectedAction}, got=${result.action}`);
         cooldownRef.current = false;
         await fetchVotes();
       }
     } catch (error: any) {
       console.error('Vote error:', error);
-      // Rollback optimistic update
       setUserVotedHighlightId(prevVotedId);
       setVoteCounts(prevCounts);
       toast({
@@ -161,11 +166,9 @@ export function useHighlightVotes() {
       });
     } finally {
       setIsVoting(false);
-      // Keep cooldown for 1.5s to let realtime events pass without overwriting state
       setTimeout(() => {
         cooldownRef.current = false;
         lockRef.current = false;
-        // Do a final sync after cooldown to ensure consistency
         fetchVotes();
       }, 1500);
     }
@@ -173,11 +176,7 @@ export function useHighlightVotes() {
 
   const castVote = useCallback(async (highlightId: string) => {
     if (!user) {
-      toast({
-        title: 'Login required',
-        description: 'Please login to vote',
-        variant: 'destructive',
-      });
+      toast({ title: 'Login required', description: 'Please login to vote', variant: 'destructive' });
       return;
     }
     if (lockRef.current) return;
@@ -194,7 +193,6 @@ export function useHighlightVotes() {
     await callVoteRpc(newHighlightId, 'switched');
   }, [user, userVotedHighlightId, callVoteRpc]);
 
-  // Top voted highlight
   const topVoted = Object.entries(voteCounts).reduce(
     (top, [id, count]) => (count > (top.count || 0) ? { id, count } : top),
     { id: null as string | null, count: 0 }

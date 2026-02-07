@@ -1,376 +1,275 @@
 
-# COMPLETE DESKTOP LAYOUT FIX & PREMIUM REDESIGN
 
-## STATUS: ✅ IMPLEMENTED
+# Premium Redesign: Leaderboard, Match Cards, Highlights Voting
 
-### Changes Applied:
-- Added CSS custom properties for layout (--header-height, --sidebar-width, --content-max-width)
-- Fixed MainLayout container with `lg:max-w-[1400px] lg:mx-auto`
-- Updated Home page with `minmax()` grid for balanced 2:1 layout
-- Fixed VideoBanner height matching
-- Applied consistent containers to all pages
-- All changes are desktop-only (lg: breakpoint >= 1024px)
-
-## DIAGNOSTIC ANALYSIS
-
-#### Issue 1: Uncontrolled Container Width
-**Location**: `MainLayout.tsx` line 60
-```tsx
-<div className="max-w-screen-2xl mx-auto w-full">
-```
-- `max-w-screen-2xl` = 1536px, which is too wide for most viewports
-- On 1920px monitors, content stretches nearly edge-to-edge leaving awkward gaps
-- The Lovable preview has a narrower iframe, masking this problem
-
-#### Issue 2: Home Page Grid Without Proper Constraints  
-**Location**: `Index.tsx` line 33
-```tsx
-<div className="grid grid-cols-[2fr_1fr] gap-6">
-```
-- Fixed ratio grid without `minmax()` causes stretching on wide screens
-- No minimum width for video column = can get too narrow
-- No maximum width for match column = can get too wide
-
-#### Issue 3: Sidebar Width Not Accounted For
-**Location**: `MainLayout.tsx` line 52
-```tsx
-<div className="lg:pl-64">
-```
-- Sidebar is 256px (`w-64`) but content area calculation doesn't properly center remaining space
-- On 1920px: 1920 - 256 = 1664px of content area, but `max-w-screen-2xl` (1536px) doesn't fill it well
-
-#### Issue 4: Video Banner Height Issues
-**Location**: `VideoBanner.tsx` line 55
-```tsx
-<div className="relative h-full min-h-[400px] rounded-2xl overflow-hidden group">
-```
-- Using `h-full` depends on parent height which may not be set
-- `min-h-[400px]` is arbitrary and doesn't match sibling content heights
-- Causes unbalanced visual layout
-
-#### Issue 5: Missing CSS Custom Properties for Layout
-- No `--header-height` variable defined
-- No `--sidebar-width` variable
-- Makes responsive calculations difficult and error-prone
-
-#### Issue 6: Cards/Components Without Consistent Min Heights
-- Match cards, progress cards have inconsistent heights
-- Creates visual "holes" when content is shorter
+This plan covers 4 major areas: (1) Leaderboard complete rework with animated podium, (2) Live Match cards redesign, (3) My Matches card improvements, and (4) Highlights voting system with weekly spotlight. All changes are desktop-only (lg: >= 1024px), mobile remains untouched.
 
 ---
 
-## IMPLEMENTATION PLAN
+## 1. LEADERBOARD PAGE - Complete Rework
 
-### PHASE 1: CSS Foundation (Global Layout System)
+### What Changes
 
-#### 1.1 Add Layout Custom Properties to `index.css`
+**Remove:**
+- Right column with "Current Season" card (Season 1, Players count, Prize Pool)
+- Right column with "Filter Options" card (All-Time, This Week, This Month)
+- "X wins / Y matches" text from rows - show ONLY wins and coins
+
+**Add:**
+- Animated Top 3 Podium section above the list
+- Full-width layout (no right panel) using the entire container width
+- Search bar at the top
+- Cleaner rows showing only: Rank, Avatar, Username, Wins, Coins Won, View Stats button
+
+### Top 3 Podium Design
+
+Layout inspired by the reference image (image-130): center podium with 1st place elevated in the middle, 2nd on the left, 3rd on the right.
+
+```
+     +--------+      +-----------+      +--------+
+     |  2nd   |      |   1st     |      |  3rd   |
+     | Silver |      |   Gold    |      | Bronze |
+     | Avatar |      |  Avatar   |      | Avatar |
+     | Name   |      |  Name     |      | Name   |
+     | Wins   |      |  Wins     |      | Wins   |
+     | Coins  |      |  Coins    |      | Coins  |
+     +--------+      +-----------+      +--------+
+```
+
+- 1st: Gold gradient, larger avatar (96px), gold glow, crown icon, elevated position
+- 2nd: Silver gradient, medium avatar (80px), subtle silver glow
+- 3rd: Bronze gradient, medium avatar (80px), amber glow
+- Entrance animation: cards rise from below with staggered delay (1st -> 2nd -> 3rd)
+- 1st place has a subtle continuous shine/shimmer effect
+- Hover: slight tilt + glow increase
+- Numbers do a count-up animation on first render
+
+### Ranking List (4th place and beyond)
+
+- Full-width table/rows with generous height (72-80px per row)
+- Columns: Rank # | Avatar + Username | Wins | Coins Won | View Stats
+- Hover highlights with subtle border glow
+- Remove "X matches" entirely - only show wins count and coins
+
+### Technical Implementation
+
+**File: `src/pages/Leaderboard.tsx`** - Complete rewrite of the desktop branch:
+- Remove the `grid-cols-[1fr_320px]` desktop layout
+- Replace with full-width single column
+- Add `PodiumSection` component inline or extracted
+- Entrance animations using CSS keyframes (no Framer Motion dependency needed - use CSS `@keyframes` with staggered `animation-delay`)
+- Count-up effect via a simple `useCountUp` hook using `requestAnimationFrame`
+
+**File: `src/index.css`** - Add podium-specific keyframes:
 ```css
-:root {
-  --header-height: 64px;       /* h-16 = 4rem = 64px */
-  --sidebar-width: 256px;      /* w-64 = 16rem = 256px */
-  --content-max-width: 1400px; /* Optimal for 1920px with sidebar */
-  --content-padding-x: 2rem;   /* px-8 */
+@keyframes podium-rise {
+  0% { opacity: 0; transform: translateY(60px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-@media (min-width: 1024px) {
-  .page-container {
-    width: 100%;
-    max-width: var(--content-max-width);
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: var(--content-padding-x);
-    padding-right: var(--content-padding-x);
-  }
-  
-  .content-area {
-    min-height: calc(100vh - var(--header-height));
-  }
-}
-```
-
-#### 1.2 Add Grid Utility Classes
-```css
-/* Desktop-only balanced grids */
-@media (min-width: 1024px) {
-  .grid-desktop-2-1 {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
-    gap: 1.5rem;
-  }
-  
-  .grid-desktop-3 {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(280px, 1fr));
-    gap: 1rem;
-  }
+@keyframes shine-sweep {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
 }
 ```
 
 ---
 
-### PHASE 2: MainLayout.tsx Fixes
+## 2. LIVE MATCH CARDS - Premium Redesign
 
-#### Changes:
-1. Add `--header-height` CSS variable to header
-2. Use controlled `max-w-[1400px]` for desktop content
-3. Add proper min-height calculation for content area
-4. Keep mobile layout completely unchanged
+### What Changes (reference: image-131 right side "Elite" style)
 
-```tsx
-// Updated main content wrapper
-<main className={cn(
-  "flex-1 py-4 lg:py-6 animate-page-enter",
-  // Mobile: standard padding
-  "px-4",
-  // Desktop: controlled container
-  "lg:px-0",
-  isMobile && "pb-24"
-)}>
-  <div className={cn(
-    // Mobile: full width
-    "w-full",
-    // Desktop: centered with max-width
-    "lg:max-w-[1400px] lg:mx-auto lg:px-8"
-  )}>
-    {children}
-  </div>
-</main>
+**Remove from card:**
+- "FN Match" header text + swords icon
+- "Players 0/2" count entirely
+- "Dettagli" button
+- Euro symbol (replace with coin icon)
+- "Prize Pool" hero section with euro
+
+**New card structure (cleaner, fewer elements):**
 ```
++-----------------------------------------+
+|  [OPEN badge]                    [timer] |
+|                                          |
+|  2V2 REALISTIC          (title = size   |
+|                           + mode)        |
+|  [EU]  [META LOOT]       (badges)       |
+|                                          |
+|  FIRST TO                                |
+|  FT 7                     (large)       |
+|                                          |
+|  ENTRY FEE         ->      PRIZE        |
+|  [coin] 0.50              [coin] 0.95   |
+|                                          |
+|  [ ========= JOIN MATCH ========== ]     |
++-----------------------------------------+
+```
+
+**Key design choices:**
+- Title combines team_size and mode: `"1V1 BOX FIGHT"` / `"2V2 REALISTIC"`
+- Entry Fee and Prize use CoinIcon (no euro symbol)
+- Arrow between entry and prize for visual flow
+- Single CTA: "JOIN MATCH" (full-width, gold, large)
+- Remove the separate "Dettagli" button from card (users click anywhere else for details)
+- Region + Platform as small badges
+- Timer/countdown stays
+- Card size: ~420-480px wide in a 3-column grid on 1920
+
+### Technical Implementation
+
+**File: `src/components/matches/MatchCard.tsx`** - Complete rewrite:
+- New card structure with unified title (`{team_size}V{team_size} {mode.toUpperCase()}`)
+- Replace euro amounts with CoinDisplay component
+- Remove "Players" stat box, remove "Dettagli" button
+- Full-width JOIN MATCH CTA
+- Click on card body navigates to details
+- Hover: card glow + border accent animation
+- Entry animation: count-up on numbers when card enters viewport (CSS only)
+
+**File: `src/pages/Matches.tsx`** - Update grid:
+- Change desktop grid from 4 columns to 3 on most viewports for larger cards
+- `lg:grid-cols-3 xl:grid-cols-4` with minmax constraints
+- Larger card sizing for 1920px
 
 ---
 
-### PHASE 3: Home Page (`Index.tsx`) Complete Redesign
+## 3. MY MATCHES CARDS - Premium Status + Avatar Fix
 
-#### Desktop Layout Structure:
-```text
-+--------------------------------------------------+
-| HeroCompact (full width, max-w-[1400px])         |
-+--------------------------------------------------+
-| LiveMatches (2fr)      | VideoBanner (minmax)    |
-| - min-w: 0             | - min-w: 360px          |
-| - Contains match grid  | - max-w: 480px          |
-|                        | - h: matches left col   |
-+------------------------+-------------------------+
-| ProgressCard (full width)                        |
-+--------------------------------------------------+
-```
+### What Changes (reference: image-132)
 
-#### Code Changes:
-```tsx
-export default function Index() {
-  const isDesktop = useIsDesktop();
+**Fix the "?" opponent avatar:**
+- When match is completed/resolved, always show opponent avatar and username
+- For team modes (2v2+), show only 2 avatars: team A creator vs team B first accepter
+- If opponent data genuinely missing, show a styled placeholder (silhouette icon, not "?")
 
-  return (
-    <MainLayout>
-      <div className="flex flex-col gap-4 lg:gap-6">
-        <HeroCompact />
-        
-        {/* STATS BAR - Mobile only */}
-        {!isDesktop && <StatsBar />}
-        
-        {/* MAIN GRID - Different layouts */}
-        {isDesktop ? (
-          <div className="grid grid-cols-[minmax(0,2fr)_minmax(360px,1fr)] gap-6">
-            {/* Left Column */}
-            <div className="flex flex-col gap-4">
-              <LiveMatchesCompact />
-              <ProgressCard />
-            </div>
-            
-            {/* Right Column - Video Banner */}
-            <VideoBanner className="h-full" />
-          </div>
-        ) : (
-          /* Mobile: unchanged */
-          <div className="grid grid-cols-1 gap-4">
-            <LiveMatchesCompact />
-            <div className="flex flex-col gap-3">
-              <LeaderboardCompact />
-              <WalletSnapshot />
-            </div>
-            <ProgressCard />
-          </div>
-        )}
+**Make LOST more visible:**
+- "LOST" badge: red gradient background, slightly larger, with subtle red glow
+- Card border gets a faint red tint when LOST
+- "WON" badge: gold gradient with gold glow (already partially done, enhance it)
 
-        {/* FEATURE CARDS - Mobile only */}
-        {!isDesktop && <FeatureCardsMini />}
-      </div>
-    </MainLayout>
-  );
-}
-```
+**Remove euro from stats:**
+- Replace euro amounts with CoinDisplay/CoinIcon
+
+### Technical Implementation
+
+**File: `src/components/matches/MyMatchCard.tsx`** - Updates:
+- Fix opponent display logic: for team modes, find captain_a and captain_b (or first participants of each team_side)
+- Replace "?" AvatarFallback with a proper user silhouette icon
+- Enhance LOST badge: `bg-gradient-to-r from-red-600 to-red-500 text-white` with `shadow-[0_0_15px_rgba(255,71,87,0.3)]`
+- Enhance WON badge: `bg-gradient-to-r from-amber-500 to-yellow-400 text-black` with gold glow
+- Replace all euro references with CoinDisplay component
+- Card gets `border-l-4 border-destructive/50` when LOST, `border-l-4 border-accent/50` when WON
 
 ---
 
-### PHASE 4: VideoBanner.tsx Height Fix
+## 4. HIGHLIGHTS - Community Voting System + Weekly Winner
 
-#### Changes:
-1. Use CSS Grid for proper height matching
-2. Add proper aspect ratio for video
-3. Responsive height that matches sibling content
+### Database Changes (New Table)
 
-```tsx
-// Updated container
-<div className={cn(
-  "relative rounded-2xl overflow-hidden group",
-  // Height: match parent grid cell
-  "h-full min-h-[500px] lg:min-h-0",
-  className
-)}>
+Create a `highlight_votes` table:
+
+```sql
+CREATE TABLE public.highlight_votes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  highlight_id uuid NOT NULL REFERENCES public.highlights(id) ON DELETE CASCADE,
+  week_start date NOT NULL DEFAULT date_trunc('week', now())::date,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, week_start)  -- One vote per user per week
+);
 ```
+
+Add `is_weekly_winner` and `winner_week` columns to highlights:
+```sql
+ALTER TABLE public.highlights 
+  ADD COLUMN is_weekly_winner boolean DEFAULT false,
+  ADD COLUMN winner_week date DEFAULT NULL;
+```
+
+RLS policies:
+- SELECT: public (anyone can see votes)
+- INSERT: authenticated users only
+- DELETE: only own votes
+- UPDATE: not allowed (switch = delete old + insert new via RPC)
+
+Create RPC function `vote_highlight(p_highlight_id uuid)`:
+- Checks if user already voted this week
+- If voted on different highlight: moves vote (delete old, insert new)
+- If voted on same highlight: removes vote (toggle)
+- If no vote: inserts new vote
+- Returns the action taken: 'voted', 'switched', 'unvoted'
+
+Create RPC function `get_highlights_with_votes(p_week_start date)`:
+- Returns highlights with vote counts and whether current user voted
+
+Admin RPC `mark_weekly_winner(p_highlight_id uuid, p_week date)`:
+- Sets is_weekly_winner = true, winner_week = p_week on the highlight
+- Only callable by admin role
+
+### UI Changes
+
+**File: `src/pages/Highlights.tsx`** - Updates:
+- Add "Weekly Spotlight" banner at top showing the current week's top voted highlight
+- Text: "Top voted this week - Weekly prize awarded manually by staff"
+- Crown icon + gold glow on the spotlight card
+- Grid cards now include vote button and count
+
+**File: `src/components/highlights/HighlightCard.tsx`** - Updates:
+- Add vote button (heart/star icon) with count
+- States: not voted (outline), voted (filled + glow + "Your vote" tag)
+- Vote animation: pop + brief glow on vote, fade on unvote
+- Show vote count next to the button
+
+**New File: `src/hooks/useHighlightVotes.ts`**:
+- Hook to manage voting state
+- Calls `vote_highlight` RPC
+- Tracks current user's vote for the week
+- Returns `{ userVotedHighlightId, voteCount, vote, isVoting }`
+
+**Admin panel addition** (in `src/pages/Admin.tsx` or new tab):
+- Simple section: "Weekly Highlights" showing top 10 by votes
+- Button "Mark as Winner" per highlight
+- Calls `mark_weekly_winner` RPC
 
 ---
 
-### PHASE 5: All Pages Premium Redesign
+## FILES SUMMARY
 
-#### For each page, apply:
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/hooks/useHighlightVotes.ts` | Hook for voting logic |
 
-**A. Consistent Container:**
-```tsx
-<div className="space-y-6 lg:max-w-[1400px] lg:mx-auto">
-```
-
-**B. Responsive Grids:**
-```tsx
-// 3-column grid that doesn't break
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-```
-
-**C. Card Minimum Heights:**
-```tsx
-<Card className="min-h-[200px] flex flex-col">
-```
-
-#### Pages to Update:
-
-| Page | Key Changes |
-|------|-------------|
-| `Matches.tsx` | Add `lg:max-w-[1400px]` wrapper, fix grid gap |
-| `MyMatches.tsx` | Same container, consistent card heights |
-| `MatchDetails.tsx` | Two-column layout with `minmax()` |
-| `Profile.tsx` | Fix `h-[calc(100vh-120px)]` to use CSS var |
-| `Teams.tsx` | Consistent card grid |
-| `TeamDetails.tsx` | Premium member list styling |
-| `Challenges.tsx` | Fix `max-w-screen-xl` to `max-w-[1400px]` |
-| `Leaderboard.tsx` | Table within container |
-| `Wallet.tsx` | Balance cards with proper widths |
-| `Highlights.tsx` | Video grid responsive |
-
----
-
-### PHASE 6: Header Refinements
-
-#### Changes:
-1. Add CSS variable for height
-2. Better spacing for 1920px viewports
-
-```tsx
-<header className="sticky top-0 z-30 h-16 glass-header"
-  style={{ '--header-height': '64px' } as React.CSSProperties}
->
-```
-
----
-
-### PHASE 7: Sidebar Premium Polish
-
-#### Changes:
-1. Better visual hierarchy
-2. Smoother hover states
-3. Active state glow refinement
-
----
-
-### PHASE 8: Debug Overlay (Optional Development Tool)
-
-Create `src/components/dev/LayoutDebugOverlay.tsx`:
-```tsx
-// Activated via ?debugLayout=1
-// Shows: viewport size, container width, breakpoint, header height
-```
-
----
-
-## FILES TO MODIFY
-
-### Core Layout (Priority 1)
+### Modified Files
 | File | Changes |
 |------|---------|
-| `src/index.css` | Add CSS custom properties, layout utilities |
-| `src/components/layout/MainLayout.tsx` | Fix container width, add CSS vars |
-| `src/pages/Index.tsx` | Use `minmax()` grid, proper heights |
-| `src/components/home/VideoBanner.tsx` | Fix height matching |
+| `src/index.css` | Add podium animation keyframes, count-up utility |
+| `src/pages/Leaderboard.tsx` | Complete desktop rewrite: podium + clean list |
+| `src/components/matches/MatchCard.tsx` | Premium redesign: unified title, coins, no euro, single CTA |
+| `src/components/matches/MyMatchCard.tsx` | Fix opponent avatar, enhance LOST/WON badges, coins |
+| `src/pages/Matches.tsx` | Adjust grid columns for larger cards |
+| `src/pages/Highlights.tsx` | Add voting UI, weekly spotlight banner |
+| `src/components/highlights/HighlightCard.tsx` | Add vote button/count, animations |
+| `src/pages/Admin.tsx` | Add weekly winner management section |
 
-### All Pages (Priority 2)
-| File | Changes |
-|------|---------|
-| `src/pages/Matches.tsx` | Container + grid fix |
-| `src/pages/MyMatches.tsx` | Container + grid fix |
-| `src/pages/MatchDetails.tsx` | Two-column with minmax |
-| `src/pages/Profile.tsx` | Use CSS var for height calc |
-| `src/pages/Teams.tsx` | Container + card grid |
-| `src/pages/TeamDetails.tsx` | Premium styling |
-| `src/pages/Challenges.tsx` | Fix max-width |
-| `src/pages/Leaderboard.tsx` | Container wrap |
-| `src/pages/Wallet.tsx` | Balance card widths |
-| `src/pages/Highlights.tsx` | Video grid |
-| `src/pages/CreateMatch.tsx` | Form container |
-| `src/pages/BuyCoins.tsx` | Package grid |
-| `src/pages/Admin.tsx` | Table container |
-
-### Components (Priority 3)
-| File | Changes |
-|------|---------|
-| `src/components/home/LiveMatchesCompact.tsx` | Card min-heights |
-| `src/components/home/ProgressCard.tsx` | Consistent sizing |
-| `src/components/home/HeroCompact.tsx` | Spacing refinement |
-| `src/components/matches/MatchCard.tsx` | Fixed height |
-| `src/components/matches/MyMatchCard.tsx` | Fixed height |
-| `src/components/layout/Sidebar.tsx` | Premium polish |
-| `src/components/layout/Header.tsx` | CSS var integration |
+### Database Migrations
+1. Create `highlight_votes` table with unique constraint per user per week
+2. Add `is_weekly_winner` and `winner_week` columns to `highlights`
+3. Create `vote_highlight` RPC function
+4. Create `get_highlights_with_votes` RPC function
+5. Create `mark_weekly_winner` admin RPC function
+6. Add RLS policies for `highlight_votes`
+7. Enable realtime on `highlight_votes`
 
 ---
 
-## MOBILE PRESERVATION RULES
+## DESIGN PRINCIPLES APPLIED
 
-All changes MUST follow these rules:
+- All changes desktop-only (lg: breakpoint, useIsDesktop hook)
+- Mobile layout 100% unchanged
+- No euro symbols - only CoinIcon/CoinDisplay everywhere
+- Premium animations via CSS keyframes (no new dependencies)
+- Consistent card heights with min-h constraints
+- Full-width layouts filling 1680px container on 1920 viewports
+- Typography scaled for desktop readability
 
-1. **Use `lg:` prefix** for all desktop-specific classes
-2. **Use `useIsDesktop()` hook** for conditional rendering
-3. **Never modify** classes without breakpoint prefix on shared elements
-4. **Test at 375px, 768px, 1024px, 1440px, 1920px**
-
-Example pattern:
-```tsx
-// CORRECT - Mobile unchanged, desktop modified
-<div className={cn(
-  "px-4",              // Mobile base
-  "lg:px-0 lg:max-w-[1400px] lg:mx-auto"  // Desktop override
-)}>
-
-// WRONG - Affects mobile
-<div className="max-w-[1400px] mx-auto">
-```
-
----
-
-## VERIFICATION CHECKLIST
-
-### Per-Page Testing:
-```text
-□ 1920×1080 @ 100% zoom - No gaps, balanced layout
-□ 1440×900 - Content fits, no horizontal scroll
-□ 1366×768 - All elements visible
-□ 768×1024 (tablet) - Mobile layout active
-□ 375×812 (mobile) - Unchanged from before
-```
-
-### Visual Checks:
-```text
-□ No stretched elements
-□ No empty gaps between sections
-□ Cards have consistent heights in grids
-□ Video banner matches sibling height
-□ Sidebar + content properly centered
-□ All animations smooth (60fps)
-```

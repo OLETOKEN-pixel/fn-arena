@@ -17,8 +17,10 @@ export function useHighlightVotes() {
   const [isVoting, setIsVoting] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Ref to prevent concurrent vote operations
-  const votingRef = useRef(false);
+  // Lock to prevent ANY concurrent operations — stays locked until cooldown ends
+  const lockRef = useRef(false);
+  // Track if we're in a cooldown after a vote to ignore realtime refetches
+  const cooldownRef = useRef(false);
 
   const currentWeekStart = (() => {
     const now = new Date();
@@ -30,6 +32,9 @@ export function useHighlightVotes() {
   })();
 
   const fetchVotes = useCallback(async () => {
+    // Skip refetch if we're in post-vote cooldown (optimistic state is authoritative)
+    if (cooldownRef.current) return;
+
     try {
       const { data: allVotes, error } = await supabase
         .from('highlight_votes')
@@ -65,7 +70,12 @@ export function useHighlightVotes() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'highlight_votes' },
-        () => fetchVotes()
+        () => {
+          // Only refetch if NOT in cooldown
+          if (!cooldownRef.current) {
+            fetchVotes();
+          }
+        }
       )
       .subscribe();
 
@@ -74,27 +84,30 @@ export function useHighlightVotes() {
     };
   }, [fetchVotes]);
 
-  // Helper to get vote state for a specific highlight
   const getVoteState = useCallback((highlightId: string): VoteState => {
     if (!user || !userVotedHighlightId) return 'NOT_VOTED';
     if (userVotedHighlightId === highlightId) return 'VOTED_THIS';
     return 'VOTED_OTHER';
   }, [user, userVotedHighlightId]);
 
-  // Internal vote call with optimistic UI
+  /**
+   * Core vote action. Handles optimistic UI, RPC call, cooldown, and rollback.
+   */
   const callVoteRpc = useCallback(async (
     highlightId: string,
     expectedAction: 'voted' | 'unvoted' | 'switched',
   ) => {
-    if (votingRef.current) return;
-    votingRef.current = true;
+    // Hard lock — reject if already processing
+    if (lockRef.current) return;
+    lockRef.current = true;
+    cooldownRef.current = true;
     setIsVoting(true);
 
-    // Save state for rollback
+    // Save pre-action state for rollback
     const prevVotedId = userVotedHighlightId;
     const prevCounts = { ...voteCounts };
 
-    // Optimistic update
+    // Apply optimistic update immediately
     if (expectedAction === 'voted') {
       setUserVotedHighlightId(highlightId);
       setVoteCounts(prev => ({
@@ -128,8 +141,12 @@ export function useHighlightVotes() {
         throw new Error(result.error || 'Vote failed');
       }
 
-      // If server returned a different action than expected, refetch to correct state
+      // If server action doesn't match what we expected, the RPC did something
+      // different (e.g. toggled when we expected insert). Refetch to get truth.
       if (result.action !== expectedAction) {
+        console.warn(`Vote action mismatch: expected=${expectedAction}, got=${result.action}`);
+        // Temporarily lift cooldown to allow refetch
+        cooldownRef.current = false;
         await fetchVotes();
       }
     } catch (error: any) {
@@ -144,11 +161,16 @@ export function useHighlightVotes() {
       });
     } finally {
       setIsVoting(false);
-      votingRef.current = false;
+      // Keep cooldown for 1.5s to let realtime events pass without overwriting state
+      setTimeout(() => {
+        cooldownRef.current = false;
+        lockRef.current = false;
+        // Do a final sync after cooldown to ensure consistency
+        fetchVotes();
+      }, 1500);
     }
   }, [userVotedHighlightId, voteCounts, fetchVotes, toast]);
 
-  // Cast a new vote (user has NOT voted yet this week)
   const castVote = useCallback(async (highlightId: string) => {
     if (!user) {
       toast({
@@ -158,22 +180,21 @@ export function useHighlightVotes() {
       });
       return;
     }
+    if (lockRef.current) return;
     await callVoteRpc(highlightId, 'voted');
   }, [user, callVoteRpc, toast]);
 
-  // Remove current vote
   const removeVote = useCallback(async () => {
-    if (!user || !userVotedHighlightId) return;
+    if (!user || !userVotedHighlightId || lockRef.current) return;
     await callVoteRpc(userVotedHighlightId, 'unvoted');
   }, [user, userVotedHighlightId, callVoteRpc]);
 
-  // Switch vote to a new highlight (called AFTER user confirms in modal)
   const switchVote = useCallback(async (newHighlightId: string) => {
-    if (!user || !userVotedHighlightId) return;
+    if (!user || !userVotedHighlightId || lockRef.current) return;
     await callVoteRpc(newHighlightId, 'switched');
   }, [user, userVotedHighlightId, callVoteRpc]);
 
-  // Get top voted highlight of the week
+  // Top voted highlight
   const topVoted = Object.entries(voteCounts).reduce(
     (top, [id, count]) => (count > (top.count || 0) ? { id, count } : top),
     { id: null as string | null, count: 0 }

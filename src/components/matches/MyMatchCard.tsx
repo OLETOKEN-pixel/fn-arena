@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Users, Trophy, Clock, CheckCircle2, AlertTriangle, XCircle, EyeOff, Zap, Swords, Crown, Skull } from 'lucide-react';
+import { Users, Trophy, Clock, CheckCircle2, AlertTriangle, XCircle, EyeOff, Zap, Swords, Crown, Skull, User } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
+import { CoinIcon } from '@/components/common/CoinIcon';
 import { ModeBadge, RegionBadge } from '@/components/ui/custom-badge';
 import { cn } from '@/lib/utils';
 import type { Match, MatchStatus } from '@/types';
@@ -38,7 +39,31 @@ const statusConfig: Record<MatchStatus, {
 
 export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
   const participant = match.participants?.find(p => p.user_id === currentUserId);
-  const opponent = match.participants?.find(p => p.user_id !== currentUserId);
+  
+  // For team modes, find captains/first players of each side
+  const teamAPlayers = match.participants?.filter(p => p.team_side === 'A') || [];
+  const teamBPlayers = match.participants?.filter(p => p.team_side === 'B') || [];
+  
+  // For 1v1, simple opponent
+  const opponent = match.team_size === 1
+    ? match.participants?.find(p => p.user_id !== currentUserId)
+    : null;
+
+  // For team modes: show captain/creator of each team
+  const teamACaptain = teamAPlayers.find(p => p.user_id === match.captain_a_user_id) || teamAPlayers[0];
+  const teamBCaptain = teamBPlayers.find(p => p.user_id === match.captain_b_user_id) || teamBPlayers[0];
+
+  // Determine which side is "me" and which is "opponent"
+  const isTeamMode = match.team_size > 1;
+  const myTeamCaptain = isTeamMode
+    ? (teamAPlayers.some(p => p.user_id === currentUserId) ? teamACaptain : teamBCaptain)
+    : null;
+  const opponentTeamCaptain = isTeamMode
+    ? (teamAPlayers.some(p => p.user_id === currentUserId) ? teamBCaptain : teamACaptain)
+    : null;
+
+  const displayOpponent = isTeamMode ? opponentTeamCaptain : opponent;
+  const displayMe = isTeamMode ? myTeamCaptain : participant;
   
   const config = statusConfig[match.status] || statusConfig.open;
   
@@ -58,6 +83,7 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
   // Check if user won
   const isWinner = match.result?.winner_user_id === currentUserId;
   const isCompleted = match.status === 'completed' || match.status === 'admin_resolved' || match.status === 'finished';
+  const isLost = isCompleted && !isWinner && match.result?.winner_user_id;
 
   // Anonymity: Hide opponent identity until all are ready OR match is completed
   const allReady = match.participants?.every(p => p.ready) ?? false;
@@ -68,7 +94,8 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
       'card-premium card-hover overflow-hidden relative group',
       actionRequired && 'ring-2 ring-primary/50 animate-pulse-glow',
       match.status === 'disputed' && 'ring-2 ring-destructive/50',
-      isCompleted && isWinner && 'ring-1 ring-accent/30',
+      isCompleted && isWinner && 'border-l-4 border-l-accent/60',
+      isLost && 'border-l-4 border-l-destructive/60',
       config.glow
     )}>
       {/* Action Required Overlay */}
@@ -93,32 +120,37 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
               </Badge>
             )}
           </div>
-          {isCompleted && (
-            <Badge variant={isWinner ? 'default' : 'secondary'} className={cn(
-              "flex items-center gap-1.5 px-3",
-              isWinner ? 'bg-gradient-to-r from-accent to-accent-glow text-accent-foreground glow-gold-soft' : 'bg-muted'
+          {isCompleted && match.result?.winner_user_id && (
+            <div className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full font-display font-bold text-xs tracking-wider",
+              isWinner
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black shadow-[0_0_20px_hsl(45_95%_55%/0.3)]'
+                : 'bg-gradient-to-r from-red-600 to-red-500 text-white shadow-[0_0_15px_hsl(0_85%_55%/0.3)]'
             )}>
-              {isWinner ? <Crown className="w-3 h-3" /> : <Skull className="w-3 h-3" />}
+              {isWinner ? <Crown className="w-3.5 h-3.5" /> : <Skull className="w-3.5 h-3.5" />}
               {isWinner ? 'WON' : 'LOST'}
-            </Badge>
+            </div>
           )}
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4 relative">
         {/* VS Section - Premium */}
-        <div className="flex items-center gap-4 p-3 rounded-xl bg-secondary/50 border border-border/50">
-          {/* Current User */}
+        <div className={cn(
+          "flex items-center gap-4 p-3 rounded-xl border border-border/50",
+          isLost ? 'bg-destructive/5' : 'bg-secondary/50'
+        )}>
+          {/* Current User / My team captain */}
           <div className="flex-1 flex items-center gap-2">
             <Avatar className="w-10 h-10 ring-2 ring-primary/30">
-              <AvatarImage src={participant?.profile?.avatar_url ?? undefined} />
+              <AvatarImage src={(displayMe?.profile?.avatar_url) ?? undefined} />
               <AvatarFallback className="bg-primary/20 text-primary font-bold">
-                {participant?.profile?.username?.charAt(0).toUpperCase() ?? 'U'}
+                {(displayMe?.profile?.username)?.charAt(0).toUpperCase() ?? 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="font-medium text-sm truncate">{participant?.profile?.username ?? 'You'}</p>
-              <p className="text-xs text-muted-foreground truncate">{participant?.profile?.epic_username}</p>
+              <p className="font-medium text-sm truncate">{(displayMe?.profile?.username) ?? 'You'}</p>
+              {isTeamMode && <p className="text-xs text-muted-foreground">Team {teamAPlayers.some(p => p.user_id === currentUserId) ? 'A' : 'B'}</p>}
             </div>
           </div>
 
@@ -131,17 +163,17 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
 
           {/* Opponent */}
           <div className="flex-1 flex items-center gap-2 justify-end text-right">
-            {opponent ? (
+            {displayOpponent ? (
               showOpponentIdentity ? (
                 <>
                   <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{opponent.profile?.username}</p>
-                    <p className="text-xs text-muted-foreground truncate">{opponent.profile?.epic_username}</p>
+                    <p className="font-medium text-sm truncate">{displayOpponent.profile?.username || 'Unknown'}</p>
+                    {isTeamMode && <p className="text-xs text-muted-foreground">Team {teamAPlayers.some(p => p.user_id === currentUserId) ? 'B' : 'A'}</p>}
                   </div>
                   <Avatar className="w-10 h-10 ring-2 ring-border">
-                    <AvatarImage src={opponent.profile?.avatar_url ?? undefined} />
+                    <AvatarImage src={displayOpponent.profile?.avatar_url ?? undefined} />
                     <AvatarFallback className="bg-muted text-muted-foreground font-bold">
-                      {opponent.profile?.username?.charAt(0).toUpperCase() ?? '?'}
+                      {displayOpponent.profile?.username?.charAt(0).toUpperCase() || <User className="w-4 h-4" />}
                     </AvatarFallback>
                   </Avatar>
                 </>
@@ -165,7 +197,7 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
                 </div>
                 <Avatar className="w-10 h-10 ring-2 ring-dashed ring-border">
                   <AvatarFallback className="bg-transparent text-muted-foreground">
-                    <Users className="w-4 h-4" />
+                    <User className="w-4 h-4" />
                   </AvatarFallback>
                 </Avatar>
               </>
@@ -179,15 +211,33 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
           <RegionBadge region={match.region} />
         </div>
 
-        {/* Stats Grid - Premium */}
+        {/* Stats Grid - Coins instead of Euro */}
         <div className="grid grid-cols-3 gap-2">
           <div className="p-3 rounded-xl bg-secondary/50 text-center border border-border/30">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Entry</p>
-            <p className="font-mono font-bold text-sm text-primary">€{match.entry_fee}</p>
+            <div className="flex items-center justify-center gap-1">
+              <CoinIcon size="xs" />
+              <span className="font-mono font-bold text-sm">{match.entry_fee}</span>
+            </div>
           </div>
-          <div className="p-3 rounded-xl bg-gradient-to-br from-accent/10 to-transparent text-center border border-accent/20">
+          <div className={cn(
+            "p-3 rounded-xl text-center border",
+            isWinner 
+              ? 'bg-gradient-to-br from-accent/15 to-transparent border-accent/30'
+              : isLost 
+                ? 'bg-gradient-to-br from-destructive/10 to-transparent border-destructive/20'
+                : 'bg-gradient-to-br from-accent/10 to-transparent border-accent/20'
+          )}>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Prize</p>
-            <p className="font-mono font-bold text-sm text-accent">€{prizePool.toFixed(0)}</p>
+            <div className="flex items-center justify-center gap-1">
+              <CoinIcon size="xs" />
+              <span className={cn(
+                "font-mono font-bold text-sm",
+                isWinner ? 'text-accent' : isLost ? 'text-destructive' : 'text-accent'
+              )}>
+                {prizePool.toFixed(0)}
+              </span>
+            </div>
           </div>
           <div className="p-3 rounded-xl bg-secondary/50 text-center border border-border/30">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">First to</p>
@@ -195,7 +245,7 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
           </div>
         </div>
 
-        {/* Ready Status - Premium */}
+        {/* Ready Status */}
         {(match.status === 'ready_check' || match.status === 'full') && (
           <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/20">
             <span className="text-sm text-muted-foreground flex items-center gap-2">
@@ -224,7 +274,7 @@ export function MyMatchCard({ match, currentUserId }: MyMatchCardProps) {
           </div>
         )}
 
-        {/* Action Button - Premium */}
+        {/* Action Button */}
         <Button 
           asChild 
           className={cn(

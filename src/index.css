@@ -602,6 +602,36 @@
   display: none;
 }
 
+/* ===== PODIUM ANIMATIONS ===== */
+@keyframes podium-rise {
+  0% { opacity: 0; transform: translateY(60px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-podium-rise {
+  animation: podium-rise 0.6s ease-out backwards;
+}
+
+@keyframes shine-sweep {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-shine-sweep {
+  animation: shine-sweep 3s ease-in-out infinite;
+}
+
+/* ===== VOTE ANIMATION ===== */
+@keyframes vote-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.animate-vote-pop {
+  animation: vote-pop 0.3s ease-out;
+}
+
 /* ===== REDUCED MOTION ===== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

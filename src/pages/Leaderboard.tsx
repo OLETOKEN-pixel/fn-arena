@@ -1,22 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, Award, BarChart3, ChevronDown, Calendar, Filter } from 'lucide-react';
+import { Trophy, BarChart3, ChevronDown, Search } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CoinDisplay } from '@/components/common/CoinDisplay';
 import { PlayerStatsModal } from '@/components/player/PlayerStatsModal';
+import { PodiumSection } from '@/components/leaderboard/PodiumSection';
 import { supabase } from '@/integrations/supabase/client';
 import type { LeaderboardEntry } from '@/types';
 import { cn } from '@/lib/utils';
 import { useIsDesktop } from '@/hooks/use-mobile';
-
-const rankConfig = [
-  { icon: Trophy, color: 'text-yellow-400', bg: 'bg-gradient-to-r from-yellow-500/20 to-yellow-600/10', ring: 'ring-yellow-500/30' },
-  { icon: Medal, color: 'text-gray-300', bg: 'bg-gradient-to-r from-gray-400/20 to-gray-500/10', ring: 'ring-gray-400/30' },
-  { icon: Award, color: 'text-amber-600', bg: 'bg-gradient-to-r from-amber-600/20 to-amber-700/10', ring: 'ring-amber-600/30' },
-];
 
 export default function Leaderboard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -24,6 +20,7 @@ export default function Leaderboard() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const isDesktop = useIsDesktop();
   const PAGE_SIZE = 25;
 
@@ -56,123 +53,179 @@ export default function Leaderboard() {
     fetchLeaderboard(nextPage);
   };
 
+  const filteredEntries = searchQuery
+    ? entries.filter(e => e.username?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : entries;
+
+  const top3 = filteredEntries.slice(0, 3);
+  const restEntries = filteredEntries.slice(3);
+
   return (
     <MainLayout>
       <div className="space-y-6 lg:space-y-8">
-        {/* Header - Bigger on desktop */}
-        <div className="flex items-center justify-between">
+        {/* Header + Search */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 lg:gap-6">
           <div>
             <h1 className="font-display text-2xl lg:text-4xl font-bold flex items-center gap-3 lg:gap-4">
               <div className="relative">
                 <Trophy className="w-7 h-7 lg:w-10 lg:h-10 text-yellow-400" />
-                <div className="absolute inset-0 bg-yellow-400/30 blur-lg lg:blur-xl rounded-full" />
+                <div className="absolute inset-0 bg-yellow-400/30 blur-xl rounded-full" />
               </div>
               Leaderboard
             </h1>
-            <p className="text-muted-foreground text-sm lg:text-base mt-1">All-time top players ranked by earnings</p>
+            <p className="text-muted-foreground text-sm lg:text-base mt-1">
+              All-time top players ranked by coins won
+            </p>
+          </div>
+          
+          {/* Search */}
+          <div className="relative w-full lg:w-[360px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search players..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-11 bg-background/50 h-11 lg:h-12"
+            />
           </div>
         </div>
 
-        {/* Desktop: 2-column layout with filters panel */}
-        {isDesktop ? (
-          <div className="grid grid-cols-[1fr_320px] gap-8 items-start">
-            {/* Main Leaderboard Table */}
-            <Card className="card-glass">
-              <CardHeader className="border-b border-border/50 py-5">
-                <CardTitle className="flex items-center gap-3 text-xl">
-                  <BarChart3 className="w-6 h-6 text-primary" />
+        {loading && page === 1 ? (
+          <div className="space-y-4">
+            <div className="flex justify-center gap-6">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="w-[200px] h-[280px] rounded-2xl skeleton-premium" />
+              ))}
+            </div>
+            <div className="space-y-2">
+              {[...Array(7)].map((_, i) => (
+                <Skeleton key={i} className="h-[72px] rounded-xl skeleton-premium" />
+              ))}
+            </div>
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="text-center py-20">
+            <Trophy className="w-16 h-16 mx-auto text-muted-foreground/30 mb-6" />
+            <p className="text-muted-foreground text-lg">
+              No players on the leaderboard yet. Start competing!
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Top 3 Podium - Desktop only gets premium animation, mobile gets simplified */}
+            {top3.length >= 3 && !searchQuery && (
+              isDesktop ? (
+                <PodiumSection entries={top3} onSelectUser={setSelectedUserId} />
+              ) : (
+                /* Mobile: simple top 3 cards */
+                <div className="grid grid-cols-3 gap-3">
+                  {top3.map((entry, index) => (
+                    <div
+                      key={entry.id}
+                      className="flex flex-col items-center p-3 rounded-xl bg-secondary/50 border border-border/50 cursor-pointer"
+                      onClick={() => entry.user_id && setSelectedUserId(entry.user_id)}
+                    >
+                      <div className={cn(
+                        'text-xs font-bold mb-2 px-2 py-0.5 rounded-full',
+                        index === 0 && 'bg-yellow-500/20 text-yellow-400',
+                        index === 1 && 'bg-gray-400/20 text-gray-300',
+                        index === 2 && 'bg-amber-600/20 text-amber-500'
+                      )}>
+                        #{index + 1}
+                      </div>
+                      <Avatar className="w-10 h-10 mb-1">
+                        <AvatarImage src={entry.avatar_url ?? undefined} />
+                        <AvatarFallback>{entry.username?.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <p className="text-xs font-medium truncate w-full text-center">{entry.username}</p>
+                      <CoinDisplay amount={Number(entry.total_earnings)} size="sm" />
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Rankings List */}
+            <Card className="card-glass overflow-hidden">
+              <CardHeader className="border-b border-border/50 py-4 lg:py-5">
+                <CardTitle className="flex items-center gap-3 text-lg lg:text-xl">
+                  <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
                   Rankings
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                {loading && page === 1 ? (
-                  <div className="space-y-2 p-6">
-                    {[...Array(10)].map((_, i) => (
-                      <div key={i} className="flex items-center gap-5 p-4">
-                        <Skeleton className="w-10 h-10" />
-                        <Skeleton className="w-14 h-14 rounded-full" />
-                        <Skeleton className="flex-1 h-6" />
-                        <Skeleton className="w-28 h-6" />
-                        <Skeleton className="w-24 h-10" />
-                      </div>
-                    ))}
+                {/* Desktop: Header row */}
+                {isDesktop && (
+                  <div className="hidden lg:grid grid-cols-[80px_1fr_120px_160px_120px] gap-4 px-6 py-3 border-b border-border/30 text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+                    <span>Rank</span>
+                    <span>Player</span>
+                    <span className="text-center">Wins</span>
+                    <span className="text-center">Coins Won</span>
+                    <span className="text-right">Action</span>
                   </div>
-                ) : entries.length === 0 ? (
-                  <div className="text-center py-20">
-                    <Trophy className="w-16 h-16 mx-auto text-muted-foreground/30 mb-6" />
-                    <p className="text-muted-foreground text-lg">
-                      No players on the leaderboard yet. Start competing!
-                    </p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border/50">
-                    {entries.map((entry, index) => {
-                      const config = rankConfig[index];
-                      const RankIcon = config?.icon;
+                )}
 
-                      return (
-                        <div
-                          key={entry.id}
-                          className={cn(
-                            'flex items-center gap-5 p-5 transition-all duration-200 cursor-pointer group',
-                            'hover:bg-secondary/50',
-                            config?.bg,
-                            index < 3 && 'ring-1 ring-inset',
-                            config?.ring,
-                            index === 0 && "animate-card-enter stagger-1",
-                            index === 1 && "animate-card-enter stagger-2",
-                            index === 2 && "animate-card-enter stagger-3"
-                          )}
-                          onClick={() => entry.user_id && setSelectedUserId(entry.user_id)}
-                        >
-                          {/* Rank - Bigger */}
-                          <div className="w-14 text-center">
-                            {RankIcon ? (
-                              <div className="relative inline-block">
-                                <RankIcon className={cn('w-9 h-9 mx-auto', config?.color)} />
-                                {index === 0 && (
-                                  <div className="absolute inset-0 w-9 h-9 bg-yellow-400/20 blur-lg rounded-full mx-auto" />
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-xl font-bold text-muted-foreground">
-                                #{index + 1}
-                              </span>
-                            )}
-                          </div>
+                <div className="divide-y divide-border/30">
+                  {(searchQuery ? filteredEntries : restEntries).map((entry, index) => {
+                    const displayRank = searchQuery ? index + 1 : index + 4;
 
-                          {/* Avatar - Bigger */}
+                    return (
+                      <div
+                        key={entry.id}
+                        className={cn(
+                          'flex items-center gap-4 lg:grid lg:grid-cols-[80px_1fr_120px_160px_120px] lg:gap-4',
+                          'p-4 lg:px-6 lg:py-5 transition-all duration-200 cursor-pointer group',
+                          'hover:bg-secondary/40'
+                        )}
+                        onClick={() => entry.user_id && setSelectedUserId(entry.user_id)}
+                      >
+                        {/* Rank */}
+                        <div className="w-10 lg:w-auto text-center">
+                          <span className="text-lg lg:text-xl font-bold text-muted-foreground group-hover:text-foreground transition-colors">
+                            #{displayRank}
+                          </span>
+                        </div>
+
+                        {/* Avatar + Name */}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                           <Avatar className={cn(
-                            "w-14 h-14 ring-2 ring-offset-2 ring-offset-background transition-all",
-                            index < 3 ? config?.ring : "ring-border/50",
-                            "group-hover:ring-primary/50"
+                            "w-11 h-11 lg:w-12 lg:h-12 ring-2 ring-offset-2 ring-offset-background ring-border/30",
+                            "group-hover:ring-primary/40 transition-all"
                           )}>
                             <AvatarImage src={entry.avatar_url ?? undefined} className="object-cover" />
-                            <AvatarFallback className="bg-primary/20 text-primary font-semibold text-lg">
+                            <AvatarFallback className="bg-primary/20 text-primary font-semibold">
                               {entry.username?.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
+                          <p className="font-semibold text-base lg:text-lg truncate group-hover:text-primary transition-colors">
+                            {entry.username}
+                          </p>
+                        </div>
 
-                          {/* Name & Stats */}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-lg truncate group-hover:text-primary transition-colors">
-                              {entry.username}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {entry.wins} wins / {entry.total_matches} matches
-                            </p>
+                        {/* Wins */}
+                        <div className="hidden lg:flex items-center justify-center">
+                          <div className="flex items-center gap-1.5">
+                            <Trophy className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-mono font-bold text-base">{entry.wins}</span>
                           </div>
+                        </div>
 
-                          {/* Earnings */}
-                          <div className="text-right">
-                            <CoinDisplay amount={Number(entry.total_earnings)} size="md" />
-                          </div>
+                        {/* Coins - always visible */}
+                        <div className="lg:flex lg:justify-center">
+                          <CoinDisplay amount={Number(entry.total_earnings)} size={isDesktop ? 'md' : 'sm'} />
+                        </div>
 
-                          {/* Stats Button */}
+                        {/* Mobile: wins inline */}
+                        <div className="lg:hidden text-xs text-muted-foreground">
+                          {entry.wins}W
+                        </div>
+
+                        {/* Stats Button - Desktop */}
+                        <div className="hidden lg:flex justify-end">
                           <Button
                             variant="outline"
-                            size="default"
-                            className="hover-lift h-11 px-5"
+                            size="sm"
+                            className="hover-lift h-9 px-4 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => {
                               e.stopPropagation();
                               entry.user_id && setSelectedUserId(entry.user_id);
@@ -181,169 +234,33 @@ export default function Leaderboard() {
                             View Stats
                           </Button>
                         </div>
-                      );
-                    })}
-
-                    {/* Load More */}
-                    {hasMore && (
-                      <div className="p-8 text-center">
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          onClick={loadMore}
-                          disabled={loading}
-                          className="hover-lift h-12 px-8"
-                        >
-                          {loading ? 'Loading...' : (
-                            <>
-                              <ChevronDown className="w-5 h-5 mr-2" />
-                              Load More
-                            </>
-                          )}
-                        </Button>
                       </div>
-                    )}
+                    );
+                  })}
+                </div>
+
+                {/* Load More */}
+                {hasMore && !searchQuery && (
+                  <div className="p-6 lg:p-8 text-center border-t border-border/30">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      onClick={loadMore}
+                      disabled={loading}
+                      className="hover-lift h-11 lg:h-12 px-8"
+                    >
+                      {loading ? 'Loading...' : (
+                        <>
+                          <ChevronDown className="w-5 h-5 mr-2" />
+                          Load More
+                        </>
+                      )}
+                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
-
-            {/* Right Panel - Filters & Info */}
-            <div className="space-y-6 sticky top-24">
-              {/* Season Info Card */}
-              <Card className="card-glass">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Calendar className="w-5 h-5 text-primary" />
-                    Current Season
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 to-accent/5 border border-primary/20">
-                    <p className="text-2xl font-bold text-primary">Season 1</p>
-                    <p className="text-sm text-muted-foreground mt-1">All-time rankings</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-secondary/50 text-center">
-                      <p className="text-2xl font-bold">{entries.length}+</p>
-                      <p className="text-xs text-muted-foreground">Players</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-secondary/50 text-center">
-                      <p className="text-2xl font-bold text-accent">€50K+</p>
-                      <p className="text-xs text-muted-foreground">Prize Pool</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Stats */}
-              <Card className="card-glass">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Filter className="w-5 h-5 text-primary" />
-                    Filter Options
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start h-11">
-                    <Trophy className="w-4 h-4 mr-2 text-yellow-400" />
-                    All-Time
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start h-11 text-muted-foreground">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    This Week
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start h-11 text-muted-foreground">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    This Month
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        ) : (
-          /* Mobile: Single column */
-          <Card className="card-glass">
-            <CardHeader className="border-b border-border/50">
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                Rankings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading && page === 1 ? (
-                <div className="space-y-2 p-4">
-                  {[...Array(10)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-4 p-3">
-                      <Skeleton className="w-8 h-8" />
-                      <Skeleton className="w-10 h-10 rounded-full" />
-                      <Skeleton className="flex-1 h-5" />
-                      <Skeleton className="w-24 h-5" />
-                      <Skeleton className="w-20 h-8" />
-                    </div>
-                  ))}
-                </div>
-              ) : entries.length === 0 ? (
-                <div className="text-center py-16">
-                  <Trophy className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-                  <p className="text-muted-foreground">
-                    No players on the leaderboard yet. Start competing!
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-border/50">
-                  {entries.map((entry, index) => {
-                    const config = rankConfig[index];
-                    const RankIcon = config?.icon;
-
-                    return (
-                      <div
-                        key={entry.id}
-                        className={cn(
-                          'flex items-center gap-4 p-4 transition-all duration-200 cursor-pointer group',
-                          'hover:bg-secondary/50',
-                          config?.bg,
-                          index < 3 && 'ring-1 ring-inset',
-                          config?.ring
-                        )}
-                        onClick={() => entry.user_id && setSelectedUserId(entry.user_id)}
-                      >
-                        <div className="w-12 text-center">
-                          {RankIcon ? (
-                            <RankIcon className={cn('w-7 h-7 mx-auto', config?.color)} />
-                          ) : (
-                            <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>
-                          )}
-                        </div>
-
-                        <Avatar className="w-11 h-11 ring-2 ring-offset-2 ring-offset-background">
-                          <AvatarImage src={entry.avatar_url ?? undefined} />
-                          <AvatarFallback>{entry.username?.charAt(0).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{entry.username}</p>
-                          <p className="text-xs text-muted-foreground">{entry.wins} wins</p>
-                        </div>
-
-                        <CoinDisplay amount={Number(entry.total_earnings)} size="sm" />
-
-                        <Button variant="outline" size="sm">Stats</Button>
-                      </div>
-                    );
-                  })}
-
-                  {hasMore && (
-                    <div className="p-6 text-center">
-                      <Button variant="outline" onClick={loadMore} disabled={loading}>
-                        {loading ? 'Loading...' : 'Load More'}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          </>
         )}
       </div>
 

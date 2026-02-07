@@ -251,7 +251,7 @@ export default function Matches() {
         {loading ? (
           <div className={cn(
             "grid grid-cols-1 md:grid-cols-2 gap-4",
-            isDesktop && "lg:grid-cols-4 lg:gap-5"
+            isDesktop && "lg:grid-cols-3 xl:grid-cols-4 lg:gap-5"
           )}>
             {[...Array(8)].map((_, i) => (
               <Skeleton key={i} className="h-[380px] lg:h-[400px] rounded-xl lg:rounded-2xl skeleton-premium" />
@@ -283,7 +283,7 @@ export default function Matches() {
         ) : (
           <div className={cn(
             "grid grid-cols-1 md:grid-cols-2 gap-4",
-            isDesktop && "lg:grid-cols-4 lg:gap-5"
+            isDesktop && "lg:grid-cols-3 xl:grid-cols-4 lg:gap-5"
           )}>
             {matches.map((match, index) => (
               <div 

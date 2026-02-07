@@ -311,31 +311,69 @@ export type Database = {
         }
         Relationships: []
       }
+      highlight_votes: {
+        Row: {
+          created_at: string | null
+          highlight_id: string
+          id: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string | null
+          highlight_id: string
+          id?: string
+          user_id: string
+          week_start?: string
+        }
+        Update: {
+          created_at?: string | null
+          highlight_id?: string
+          id?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "highlight_votes_highlight_id_fkey"
+            columns: ["highlight_id"]
+            isOneToOne: false
+            referencedRelation: "highlights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       highlights: {
         Row: {
           created_at: string | null
           id: string
+          is_weekly_winner: boolean | null
           title: string
           updated_at: string | null
           user_id: string
+          winner_week: string | null
           youtube_url: string
           youtube_video_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          is_weekly_winner?: boolean | null
           title: string
           updated_at?: string | null
           user_id: string
+          winner_week?: string | null
           youtube_url: string
           youtube_video_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          is_weekly_winner?: boolean | null
           title?: string
           updated_at?: string | null
           user_id?: string
+          winner_week?: string | null
           youtube_url?: string
           youtube_video_id?: string
         }
@@ -1967,6 +2005,10 @@ export type Database = {
         }
         Returns: string
       }
+      mark_weekly_winner: {
+        Args: { p_highlight_id: string; p_week: string }
+        Returns: Json
+      }
       process_withdrawal: {
         Args: {
           p_admin_notes?: string
@@ -2051,6 +2093,7 @@ export type Database = {
         Args: { p_metric_type: string; p_source_id: string; p_user_id: string }
         Returns: undefined
       }
+      vote_highlight: { Args: { p_highlight_id: string }; Returns: Json }
       withdraw_platform_earnings: {
         Args: {
           p_amount: number

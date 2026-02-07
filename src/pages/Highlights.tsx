@@ -3,13 +3,14 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Youtube, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Youtube, Loader2, AlertCircle, Crown, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { HighlightCard } from '@/components/highlights/HighlightCard';
 import { AddHighlightModal } from '@/components/highlights/AddHighlightModal';
 import { VideoPlayerModal } from '@/components/highlights/VideoPlayerModal';
+import { useHighlightVotes } from '@/hooks/useHighlightVotes';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +31,8 @@ interface Highlight {
   created_at: string;
   username?: string;
   avatar_url?: string | null;
+  is_weekly_winner?: boolean;
+  winner_week?: string | null;
 }
 
 type FilterType = 'all' | 'mine';
@@ -47,6 +50,8 @@ export default function Highlights() {
   const [editingHighlight, setEditingHighlight] = useState<Highlight | null>(null);
   const [playingHighlight, setPlayingHighlight] = useState<Highlight | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Highlight | null>(null);
+
+  const { userVotedHighlightId, voteCounts, vote, isVoting, topVotedId, topVotedCount } = useHighlightVotes();
 
   const fetchHighlights = useCallback(async () => {
     try {
@@ -68,10 +73,8 @@ export default function Highlights() {
         return;
       }
 
-      // Get unique user IDs
       const userIds = [...new Set(highlightsData.map(h => h.user_id))];
       
-      // Fetch profiles
       const { data: profilesData } = await supabase
         .from('profiles_public')
         .select('user_id, username, avatar_url')
@@ -101,16 +104,11 @@ export default function Highlights() {
   useEffect(() => {
     fetchHighlights();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel('highlights-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'highlights',
-        },
+        { event: '*', schema: 'public', table: 'highlights' },
         () => fetchHighlights()
       )
       .subscribe();
@@ -122,79 +120,53 @@ export default function Highlights() {
 
   const handleAddHighlight = async (data: { youtubeUrl: string; title: string; youtubeVideoId: string }) => {
     if (!user) {
-      toast({
-        title: 'Login required',
-        description: 'Please login to add highlights',
-        variant: 'destructive',
-      });
+      toast({ title: 'Login required', description: 'Please login to add highlights', variant: 'destructive' });
       return;
     }
 
-    const { error } = await supabase
-      .from('highlights')
-      .insert({
-        user_id: user.id,
-        youtube_url: data.youtubeUrl,
-        youtube_video_id: data.youtubeVideoId,
-        title: data.title,
-      });
-
-    if (error) {
-      throw new Error('Failed to add highlight');
-    }
-
-    toast({
-      title: 'Highlight added',
-      description: 'Your video has been added successfully',
+    const { error } = await supabase.from('highlights').insert({
+      user_id: user.id,
+      youtube_url: data.youtubeUrl,
+      youtube_video_id: data.youtubeVideoId,
+      title: data.title,
     });
+
+    if (error) throw new Error('Failed to add highlight');
+
+    toast({ title: 'Highlight added', description: 'Your video has been added successfully' });
   };
 
   const handleEditHighlight = async (data: { youtubeUrl: string; title: string; youtubeVideoId: string }) => {
     if (!editingHighlight) return;
 
-    const { error } = await supabase
-      .from('highlights')
-      .update({
-        youtube_url: data.youtubeUrl,
-        youtube_video_id: data.youtubeVideoId,
-        title: data.title,
-      })
-      .eq('id', editingHighlight.id);
+    const { error } = await supabase.from('highlights').update({
+      youtube_url: data.youtubeUrl,
+      youtube_video_id: data.youtubeVideoId,
+      title: data.title,
+    }).eq('id', editingHighlight.id);
 
-    if (error) {
-      throw new Error('Failed to update highlight');
-    }
+    if (error) throw new Error('Failed to update highlight');
 
     setEditingHighlight(null);
-    toast({
-      title: 'Highlight updated',
-      description: 'Your video has been updated successfully',
-    });
+    toast({ title: 'Highlight updated', description: 'Your video has been updated successfully' });
   };
 
   const handleDeleteHighlight = async () => {
     if (!deleteConfirm) return;
 
-    const { error } = await supabase
-      .from('highlights')
-      .delete()
-      .eq('id', deleteConfirm.id);
+    const { error } = await supabase.from('highlights').delete().eq('id', deleteConfirm.id);
 
     if (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete highlight',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: 'Failed to delete highlight', variant: 'destructive' });
       return;
     }
 
     setDeleteConfirm(null);
-    toast({
-      title: 'Highlight deleted',
-      description: 'The video has been removed',
-    });
+    toast({ title: 'Highlight deleted', description: 'The video has been removed' });
   };
+
+  // Find the top voted highlight for Weekly Spotlight
+  const topVotedHighlight = topVotedId ? highlights.find(h => h.id === topVotedId) : null;
 
   return (
     <MainLayout>
@@ -221,6 +193,37 @@ export default function Highlights() {
             </div>
           </CardHeader>
         </Card>
+
+        {/* Weekly Spotlight */}
+        {topVotedHighlight && topVotedCount > 0 && (
+          <Card className="border-accent/30 bg-gradient-to-r from-accent/10 via-card to-accent/5 overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
+            <CardContent className="flex items-center gap-4 py-4 px-5">
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-accent/15 border border-accent/30">
+                <Crown className="w-6 h-6 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-bold text-sm lg:text-base flex items-center gap-2">
+                  <Star className="w-4 h-4 text-accent fill-accent" />
+                  Weekly Spotlight
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  <span className="font-semibold text-foreground">{topVotedHighlight.title}</span>
+                  {' · '}{topVotedCount} vote{topVotedCount !== 1 ? 's' : ''}
+                  {' · '}Weekly prize awarded manually by staff
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPlayingHighlight(topVotedHighlight)}
+                className="shrink-0"
+              >
+                Watch
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Filters */}
         <div className="flex items-center justify-between">
@@ -277,17 +280,17 @@ export default function Highlights() {
                 onPlay={() => setPlayingHighlight(highlight)}
                 onEdit={() => setEditingHighlight(highlight)}
                 onDelete={() => setDeleteConfirm(highlight)}
+                voteCount={voteCounts[highlight.id] || 0}
+                isVoted={userVotedHighlightId === highlight.id}
+                onVote={() => vote(highlight.id)}
+                isVoting={isVoting}
               />
             ))}
           </div>
         )}
 
         {/* Modals */}
-        <AddHighlightModal
-          open={showAddModal}
-          onOpenChange={setShowAddModal}
-          onSubmit={handleAddHighlight}
-        />
+        <AddHighlightModal open={showAddModal} onOpenChange={setShowAddModal} onSubmit={handleAddHighlight} />
 
         {editingHighlight && (
           <AddHighlightModal
@@ -295,10 +298,7 @@ export default function Highlights() {
             onOpenChange={() => setEditingHighlight(null)}
             onSubmit={handleEditHighlight}
             editMode
-            initialData={{
-              youtubeUrl: editingHighlight.youtube_url,
-              title: editingHighlight.title,
-            }}
+            initialData={{ youtubeUrl: editingHighlight.youtube_url, title: editingHighlight.title }}
           />
         )}
 

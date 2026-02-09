@@ -9,14 +9,8 @@ export function HeroCompact() {
 
   return (
     <section className="relative py-5 lg:py-8 overflow-hidden">
-      {/* Premium background effects */}
-      <div className="absolute inset-0 bg-gradient-to-r from-primary/8 via-transparent to-accent/8 rounded-2xl" />
-      <div className="absolute inset-0 gradient-radial opacity-50" />
-      
-      {/* Animated border glow */}
-      <div className="absolute inset-0 rounded-2xl opacity-30">
-        <div className="absolute inset-0 rounded-2xl border border-primary/20 animate-pulse-soft" />
-      </div>
+      {/* Subtle scrim for readability */}
+      <div className="absolute inset-0 bg-background/30 backdrop-blur-[2px] rounded-2xl" />
       
       <div className="relative flex flex-col sm:flex-row items-center justify-between gap-4 lg:gap-6">
         {/* Left: Logo + Title */}

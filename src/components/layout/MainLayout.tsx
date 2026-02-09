@@ -43,7 +43,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   }, [unlockAudio, audioUnlocked]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent relative z-[1]">
       {/* Sidebar - Desktop ONLY (hidden on mobile completely) */}
       {/* Wider sidebar (300px) for 1920×1080 premium feel */}
       <div className="hidden lg:block fixed left-0 top-0 h-full z-50">

@@ -82,41 +82,14 @@ export default function Auth() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center relative z-[1]">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4">
-      {/* Animated Gaming Background */}
-      <div className="fixed inset-0 bg-background" />
-      
-      {/* Gaming pattern layer */}
-      <div className="fixed inset-0 gaming-pattern-bg opacity-[0.03]" />
-      
-      {/* Animated neon circles */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {/* Large circle - top right */}
-        <div className="absolute -top-1/4 -right-1/4 w-[600px] h-[600px] rounded-full border-2 border-primary/20 animate-neon-pulse-slow" />
-        {/* Medium circle - bottom left */}
-        <div className="absolute -bottom-1/3 -left-1/4 w-[500px] h-[500px] rounded-full border border-primary/15 animate-neon-pulse-medium" />
-        {/* Small circle - center accent */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-primary/10 animate-neon-pulse-fast" />
-      </div>
-      
-      {/* Gradient overlay */}
-      <div className="fixed inset-0 bg-gradient-radial from-primary/5 via-transparent to-transparent opacity-50" />
-      
-      {/* Floating particles */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute w-2 h-2 bg-primary/30 rounded-full animate-float-1 top-1/4 left-1/4" />
-        <div className="absolute w-1.5 h-1.5 bg-accent/40 rounded-full animate-float-2 top-3/4 right-1/4" />
-        <div className="absolute w-1 h-1 bg-primary/40 rounded-full animate-float-3 top-1/2 left-3/4" />
-        <div className="absolute w-2 h-2 bg-accent/30 rounded-full animate-float-4 bottom-1/4 left-1/3" />
-      </div>
-
+    <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 z-[1]">
       {/* Back button */}
       <Link
         to="/"
@@ -127,7 +100,7 @@ export default function Auth() {
       </Link>
 
       {/* Auth Card */}
-      <Card className="w-full max-w-md relative z-10 bg-card/95 backdrop-blur-sm border-border/50 shadow-2xl shadow-primary/5">
+      <Card className="w-full max-w-md relative z-10 bg-card/[0.92] backdrop-blur-xl border-white/[0.06] shadow-2xl shadow-primary/5">
         <CardContent className="text-center py-10 px-8">
           {/* Logo */}
           <img

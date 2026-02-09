@@ -101,8 +101,8 @@ export default {
         "glow-blue": "0 0 20px hsl(var(--electric-blue) / 0.25), 0 0 40px hsl(var(--electric-blue) / 0.1)",
         "glow-gold": "0 0 20px hsl(var(--gold) / 0.25), 0 0 40px hsl(var(--gold) / 0.1)",
         "glow-success": "0 0 15px hsl(var(--success) / 0.25)",
-        premium: "0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px hsl(var(--border) / 0.5)",
-        "premium-hover": "0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px hsl(var(--primary) / 0.2)",
+        premium: "0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.04)",
+        "premium-hover": "0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,45,45,0.15)",
       },
       keyframes: {
         "accordion-down": {

@@ -33,7 +33,7 @@ export function Footer() {
   }
 
   return (
-    <footer className="bg-sidebar border-t border-sidebar-border mt-auto relative">
+    <footer className="bg-sidebar/[0.88] backdrop-blur-xl border-t border-white/[0.06] mt-auto relative">
       {/* Gradient top border accent */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
       

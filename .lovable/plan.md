@@ -1,162 +1,82 @@
 
 
-# Community Highlights - Complete Frontend Rebuild
+# Spline Test Page - Admin-Only Background Test
 
-## Problem Analysis
+## Overview
 
-The database layer is **already correct and stays as-is**:
-- `highlight_votes` table with `UNIQUE(user_id, week_start)` constraint
-- `vote_highlight` RPC handles vote/unvote/switch atomically
-- RLS policies for SELECT (public), INSERT (authenticated), DELETE (own)
-- Realtime subscription on `highlight_votes` table
-
-The problems are **purely frontend**:
-1. Vote button is a tiny star icon that looks cheap
-2. Switch-vote happens silently (no confirmation modal)
-3. No clear visual states for NOT_VOTED / VOTED_THIS / VOTED_OTHER
-4. Info banner only shows when there are votes (should always be visible)
-5. Weekly Spotlight conditionally hidden when no votes exist
-6. No debounce protection on rapid clicks
-
-## What Gets Rebuilt (Frontend Only)
-
-No database changes needed. All modifications are to React components and the voting hook.
+Create a new admin-protected page at `/admin/spline-test` that loads a Spline 3D scene as a fullscreen background with interactive controls for opacity, pointer events, and performance monitoring. Uses the existing `is_admin()` RPC check (same pattern as other admin pages).
 
 ---
 
-## File 1: `src/hooks/useHighlightVotes.ts` - Rewrite
+## New Files
 
-**Changes:**
-- Split the single `vote()` function into three explicit actions:
-  - `castVote(highlightId)` - vote when user has NOT voted yet
-  - `removeVote()` - unvote current selection
-  - `switchVote(newHighlightId)` - move vote (called AFTER user confirms in modal)
-- All three call the same `vote_highlight` RPC (backend handles logic) but the hook tracks the intent
-- Add `isVotePending` flag per action to disable buttons during requests
-- Add debounce: ignore calls if `isVoting` is already true
-- Optimistic UI: update counts + user vote state immediately, rollback on error with toast
-- Real-time: keep existing `postgres_changes` subscription on `highlight_votes` table - this auto-refreshes vote counts when ANY user votes (cross-tab, cross-user)
-- Return a `getVoteState(highlightId)` helper that returns `'NOT_VOTED' | 'VOTED_THIS' | 'VOTED_OTHER'` for clean UI logic
+### 1. `src/pages/SplineTest.tsx`
 
----
+Single self-contained page with:
 
-## File 2: `src/components/highlights/HighlightCard.tsx` - Complete Rewrite
+**Admin Guard (same pattern as `Admin.tsx`):**
+- Calls `supabase.rpc('is_admin')` on mount
+- If not admin or not logged in: redirect to `/`
+- Shows loading spinner while checking
 
-**New props interface:**
+**Spline Background Layer:**
+- `position: fixed; inset: 0; z-index: 0; pointer-events: none` wrapper
+- Dynamically loads `@splinetool/viewer` script via `useEffect` (appends `<script>` tag if not already present, checks for duplicates)
+- Renders `<spline-viewer url="...">` web component inside the fixed wrapper
+- Opacity controlled via inline style bound to state (default 0.85)
+- Pointer events toggled via state (default off)
+- Fallback: if script fails to load or errors, shows a dark aurora gradient background
+
+**Overlay UI (z-index: 1, relative positioning):**
+- Glass card centered on page with:
+  - Title: "Spline Background Test"
+  - Scene ID info text
+  - Opacity slider (0.2 to 1.0, step 0.05) using existing `Slider` component
+  - Toggle: "Pointer Events" (default OFF) using existing `Switch` component
+  - Toggle: "Pause when tab hidden" (default ON) using existing `Switch` component
+  - Button: "Open Spline in new tab" (opens scene URL)
+  - Button: "Copy embed code" (copies HTML snippet to clipboard, shows toast)
+- Status badge (bottom-right of card):
+  - States: "Loading..." / "Loaded" (with load time in ms) / "Error"
+  - Color-coded: yellow/green/red
+
+**Page Visibility API:**
+- Listens to `visibilitychange` event
+- When tab hidden + "Pause" toggle ON: hides the spline-viewer (display: none) and shows "Paused" overlay
+- When tab visible again: restores spline-viewer
+
+**Script Loading Logic:**
 ```
-id, youtubeVideoId, title, createdAt, author, currentUserId, isAdmin,
-onPlay, onEdit, onDelete,
-voteCount, voteState ('NOT_VOTED' | 'VOTED_THIS' | 'VOTED_OTHER'),
-onCastVote, onRemoveVote, onSwitchVote, isVoting
+1. Check if script tag with spline src already exists in DOM
+2. If not: create script tag, set type="module", set src, append to body
+3. Listen for load event -> set status "loaded" + record load time
+4. Listen for error event -> set status "error" + show toast
 ```
 
-**Card structure (premium):**
-- Thumbnail with aspect-video, hover play overlay (kept, improved)
-- Title + author row (kept, improved sizing)
-- Management dropdown (kept for owner/admin)
-- **NEW: Vote Module** - a dedicated section at the bottom of the card, NOT a tiny icon
-
-**Vote Module - 3 visual states:**
-
-1. **NOT_VOTED** (user hasn't voted this week OR not logged in):
-   - Full-width button: "VOTE" with star icon
-   - Styled as outlined/ghost with hover glow
-   - Vote count displayed next to button
-   - If not logged in: button disabled with "Login to vote" tooltip
-
-2. **VOTED_THIS** (user voted for THIS highlight):
-   - Gold/accent background section with "YOUR VOTE" badge
-   - Button changes to "REMOVE VOTE" (smaller, outlined, muted)
-   - Vote count prominent with gold accent
-   - Subtle gold border glow on entire card
-
-3. **VOTED_OTHER** (user already voted for a DIFFERENT highlight):
-   - Button: "SWITCH VOTE" with swap icon
-   - Clicking triggers the switch-vote confirmation modal (handled by parent)
-   - Vote count displayed normally
-
-**Animations:**
-- Vote count changes: CSS transition on opacity/transform for number swap
-- Card border: transition-colors for gold glow when voted
-- Button hover: subtle glow + scale(1.02)
-- Button press: scale(0.98)
+**Embed Code (copied on button click):**
+```html
+<script type="module" src="https://unpkg.com/@splinetool/viewer/build/spline-viewer.js"></script>
+<spline-viewer url="https://prod.spline.design/OsDg3A0bZO-AUr9b/scene.splinecode"></spline-viewer>
+```
 
 ---
 
-## File 3: `src/pages/Highlights.tsx` - Rewrite
+## Modified Files
 
-**Layout structure (top to bottom):**
+### 2. `src/App.tsx`
 
-### Section 1: Header Bar
-- Title "Community Highlights" with YouTube icon
-- "Add Your Highlight" CTA button (right aligned)
-- Tabs: All Highlights / My Highlights
-
-### Section 2: Info Banner (ALWAYS VISIBLE - never conditionally hidden)
-- Premium card with gradient background
-- Three info items with icons:
-  - "Share your best plays" (video icon)
-  - "1 vote per week - you can change it anytime" (vote/star icon)  
-  - "Weekly prize awarded manually by staff" (crown icon)
-- Compact but visually rich, always present at top of content
-
-### Section 3: Weekly Spotlight (only shown when votes exist)
-- Card showing the current top-voted highlight
-- Crown icon, title, vote count, "Watch" button
-- Gold accent styling
-
-### Section 4: Video Grid
-- 3 columns on desktop (`lg:grid-cols-3`), responsive on mobile
-- Each card uses the new `HighlightCard` component with proper vote states
-
-### Switch Vote Confirmation Modal
-- `AlertDialog` that appears when user clicks "SWITCH VOTE" on a card
-- Text: "You already voted for [current video title]. Move your vote to [new video title]?"
-- Buttons: "Cancel" / "Switch Vote"
-- On confirm: calls `switchVote(newHighlightId)` from hook
-- State managed in Highlights.tsx: `switchTarget: Highlight | null`
-
-### Delete Confirmation (kept as-is)
-
-**Vote flow in parent:**
-- `onCastVote(id)`: directly calls `castVote(id)` from hook
-- `onRemoveVote()`: directly calls `removeVote()` from hook  
-- `onSwitchVote(id)`: sets `switchTarget` state, opens confirmation modal. On confirm, calls hook's RPC
+- Add import for `SplineTest` page (lazy or direct)
+- Add route: `<Route path="/admin/spline-test" element={<SplineTest />} />`
 
 ---
 
-## Real-Time Behavior (Already Working - Kept)
+## Technical Details
 
-The existing pattern is correct and stays:
-1. `useHighlightVotes` subscribes to `postgres_changes` on `highlight_votes` table
-2. Any INSERT/DELETE triggers `fetchVotes()` which recounts all votes for current week
-3. This handles: cross-tab sync, multi-user updates, page refresh state
+**No database changes needed.** Admin check uses the existing `is_admin()` RPC.
 
-The only improvement: after a successful vote/unvote/switch, we do **optimistic UI first** (update local state immediately), then the realtime event arrives and confirms/corrects.
+**No new dependencies.** The Spline viewer is loaded as a script tag at runtime, not as an npm package. The page uses existing UI components: `Slider`, `Switch`, `Button`, `Card`, and `toast`.
 
----
+**TypeScript:** Will need a `declare namespace JSX` or module declaration for the `spline-viewer` custom element to avoid TS errors. This will be added inline in the page file or in `src/vite-env.d.ts`.
 
-## Edge Cases Handled
-
-1. **Double-click**: `isVoting` flag prevents concurrent calls; buttons disabled while pending
-2. **Latency**: optimistic UI updates immediately; on error, rollback + refetch + toast
-3. **Two tabs**: realtime subscription auto-syncs state across tabs
-4. **Switch while pending**: button disabled during any vote operation
-5. **Page refresh**: `fetchVotes()` runs on mount, restores correct `userVotedHighlightId`
-6. **Server error**: try/catch with rollback to pre-optimistic state, premium toast with error message
-7. **Negative counts**: `Math.max(0, count - 1)` prevents negative vote counts
-
----
-
-## Files Summary
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/hooks/useHighlightVotes.ts` | Rewrite | Split vote into castVote/removeVote/switchVote, add debounce, keep realtime |
-| `src/components/highlights/HighlightCard.tsx` | Rewrite | Premium vote module with 3 states, proper buttons, animations |
-| `src/pages/Highlights.tsx` | Rewrite | Always-visible info banner, switch-vote modal, clean layout |
-| `src/components/highlights/AddHighlightModal.tsx` | Keep | No changes needed |
-| `src/components/highlights/VideoPlayerModal.tsx` | Keep | No changes needed |
-
-No database migrations. No new tables. No RPC changes. Pure frontend rebuild.
+**Mobile:** Page works on mobile but is optimized for 1920x1080 desktop. The glass card is responsive with max-width.
 

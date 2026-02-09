@@ -33,6 +33,7 @@ import Challenges from "./pages/Challenges";
 import Rules from "./pages/Rules";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import SplineTest from "./pages/SplineTest";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,7 @@ function App() {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/matches/:id" element={<AdminMatchDetail />} />
                 <Route path="/admin/users/:id" element={<AdminUserDetail />} />
+                <Route path="/admin/spline-test" element={<SplineTest />} />
                 <Route path="/highlights" element={<Highlights />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/challenges" element={<Challenges />} />

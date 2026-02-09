@@ -68,13 +68,13 @@ export function Sidebar() {
 
   return (
     <aside 
-      className="fixed left-0 top-0 z-40 h-screen w-20 lg:w-[300px] bg-sidebar border-r border-sidebar-border flex flex-col"
+      className="fixed left-0 top-0 z-40 h-screen w-20 lg:w-[300px] bg-sidebar/[0.88] backdrop-blur-xl border-r border-white/[0.06] flex flex-col"
       style={{ '--sidebar-width': '300px' } as React.CSSProperties}
     >
       {/* Logo - Bigger for 1920 */}
       <Link 
         to="/" 
-        className="flex items-center justify-center lg:justify-start gap-4 px-5 h-[72px] border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/50 transition-all duration-200 group"
+        className="flex items-center justify-center lg:justify-start gap-4 px-5 h-[72px] border-b border-white/[0.06] cursor-pointer hover:bg-sidebar-accent/50 transition-all duration-200 group"
       >
         <img 
           src={logoOleboy} 
@@ -119,15 +119,15 @@ export function Sidebar() {
                         className={cn(
                           'flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group relative',
                           isActive && !isLocked
-                            ? 'bg-gradient-to-r from-primary/20 to-primary/5 text-primary shadow-[0_0_25px_rgba(79,142,255,0.2)]' 
+                            ? 'bg-gradient-to-r from-primary/20 to-primary/5 text-primary shadow-[0_0_25px_rgba(255,45,45,0.15)]' 
                             : isLocked 
                               ? 'text-muted-foreground/40 hover:text-muted-foreground/60'
                               : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:translate-x-1'
                         )}
                       >
                         {/* Active indicator - thicker */}
-                        {isActive && !isLocked && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 bg-primary rounded-r-full shadow-[0_0_12px_rgba(79,142,255,0.6)]" />
+                         {isActive && !isLocked && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 bg-primary rounded-r-full shadow-[0_0_12px_rgba(255,45,45,0.5)]" />
                         )}
                         
                         <Icon className={cn(
@@ -158,13 +158,13 @@ export function Sidebar() {
       </nav>
 
       {/* Quick Actions - Bigger for 1920 */}
-      <div className="p-4 border-t border-sidebar-border space-y-3">
+      <div className="p-4 border-t border-white/[0.06] space-y-3">
         <Link
           to={user ? "/matches/create" : "/auth?next=/matches/create"}
           className={cn(
             "group relative flex items-center justify-center lg:justify-start gap-3 px-5 py-4 rounded-xl font-semibold transition-all duration-300 overflow-hidden",
             "bg-gradient-to-r from-primary via-primary to-primary/80 text-primary-foreground",
-            "hover:shadow-[0_0_30px_rgba(79,142,255,0.5)] hover:-translate-y-1",
+            "hover:shadow-[0_0_30px_rgba(255,45,45,0.4)] hover:-translate-y-1",
             "active:scale-[0.98]",
             "border border-primary/30",
             user ? "" : "opacity-80"

@@ -5,9 +5,8 @@ import logoOleboy from '@/assets/logo-oleboy.png';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      {/* Background effects */}
-      <div className="fixed inset-0 gradient-radial opacity-20 pointer-events-none" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative z-[1]">
+      {/* Content */}
       
       <div className="text-center relative">
         <img

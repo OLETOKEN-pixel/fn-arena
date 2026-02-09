@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLoadingGuard } from "@/components/common/AppLoadingGuard";
 import { GlobalMatchEventListener } from "@/components/common/GlobalMatchEventListener";
+import { SplineBackground } from "@/components/common/SplineBackground";
 
 // Pages
 import Index from "./pages/Index";
@@ -60,6 +61,7 @@ function AuthenticatedGlobalListeners() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <SplineBackground />
       <AuthProvider>
         <TooltipProvider>
           <Toaster />

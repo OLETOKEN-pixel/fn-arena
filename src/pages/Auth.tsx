@@ -100,7 +100,7 @@ export default function Auth() {
       </Link>
 
       {/* Auth Card */}
-      <Card className="w-full max-w-md relative z-10 bg-card/[0.92] backdrop-blur-xl border-white/[0.06] shadow-2xl shadow-primary/5">
+      <Card className="w-full max-w-md relative z-10 bg-card shadow-2xl shadow-primary/5">
         <CardContent className="text-center py-10 px-8">
           {/* Logo */}
           <img

@@ -324,7 +324,7 @@ export function NotificationsDropdown() {
       </PopoverTrigger>
       <PopoverContent 
         align="end" 
-        className="w-[420px] p-0 bg-card/95 backdrop-blur-xl border-border shadow-xl max-h-[600px] flex flex-col"
+        className="w-[420px] p-0 bg-[rgba(15,15,35,0.92)] backdrop-blur-[28px] border-white/[0.08] shadow-[0_25px_80px_rgba(0,0,0,0.7)] max-h-[600px] flex flex-col"
         sideOffset={8}
       >
         <NotificationsContent onClose={() => setOpen(false)} />

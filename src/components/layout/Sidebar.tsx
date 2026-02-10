@@ -119,7 +119,7 @@ export function Sidebar() {
                         className={cn(
                           'flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group relative',
                           isActive && !isLocked
-                            ? 'bg-gradient-to-r from-primary/20 to-primary/5 text-primary shadow-[0_0_25px_hsl(217_95%_62%/0.15)]' 
+                            ? 'bg-[rgba(0,255,255,0.08)] text-primary border border-[rgba(0,255,255,0.18)] shadow-[0_0_26px_rgba(0,255,255,0.10)]' 
                             : isLocked 
                               ? 'text-muted-foreground/40 hover:text-muted-foreground/60'
                               : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:translate-x-1'
@@ -127,7 +127,7 @@ export function Sidebar() {
                       >
                         {/* Active indicator - thicker */}
                          {isActive && !isLocked && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-10 bg-primary rounded-r-full shadow-[0_0_12px_hsl(217_95%_62%/0.5)]" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 rounded-r-full bg-gradient-to-b from-primary via-[hsl(var(--c3))] to-[hsl(var(--c4))] shadow-[0_0_12px_rgba(0,255,255,0.5)]" />
                         )}
                         
                         <Icon className={cn(
@@ -163,8 +163,8 @@ export function Sidebar() {
           to={user ? "/matches/create" : "/auth?next=/matches/create"}
           className={cn(
             "group relative flex items-center justify-center lg:justify-start gap-3 px-5 py-4 rounded-xl font-semibold transition-all duration-300 overflow-hidden",
-            "bg-gradient-to-r from-primary via-primary to-primary/80 text-primary-foreground",
-            "hover:shadow-[0_0_30px_hsl(217_95%_62%/0.4)] hover:-translate-y-1",
+            "bg-[linear-gradient(135deg,rgba(0,255,255,0.18),rgba(255,0,255,0.12))] text-foreground border-[rgba(0,255,255,0.22)]",
+            "hover:shadow-[0_0_34px_rgba(0,255,255,0.14),0_0_34px_rgba(255,0,255,0.08)] hover:-translate-y-1",
             "active:scale-[0.98]",
             "border border-primary/30",
             user ? "" : "opacity-80"

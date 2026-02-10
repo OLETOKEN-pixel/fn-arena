@@ -14,7 +14,7 @@ export function HeroCompact() {
         <div className="flex items-center gap-4 lg:gap-5">
           <div className="relative">
             {/* Glow effect behind logo */}
-            <div className="absolute inset-0 bg-accent/20 blur-2xl rounded-full scale-150" />
+            <div className="absolute inset-0 bg-[rgba(0,255,255,0.15)] blur-2xl rounded-full scale-150" />
             <img 
               src={logoOleboy} 
               alt="OLEBOY TOKEN" 

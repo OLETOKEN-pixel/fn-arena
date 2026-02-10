@@ -62,7 +62,7 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Custom OLEBOY colors
+        // Custom OLEBOY neon colors
         gold: {
           DEFAULT: "hsl(var(--gold))",
           dark: "hsl(var(--gold-dark))",
@@ -84,6 +84,16 @@ export default {
         },
         warning: "hsl(var(--warning))",
         error: "hsl(var(--error))",
+        // Neon palette direct access
+        cyan: {
+          neon: "hsl(var(--c2))",
+        },
+        magenta: {
+          neon: "hsl(var(--c3))",
+        },
+        violet: {
+          neon: "hsl(var(--c4))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -98,11 +108,13 @@ export default {
         mono: ["JetBrains Mono", "monospace"],
       },
       boxShadow: {
-        "glow-blue": "0 0 20px hsl(217 95% 62% / 0.25), 0 0 40px hsl(217 95% 62% / 0.1)",
+        "glow-blue": "0 0 20px rgba(0,255,255,0.2), 0 0 40px rgba(0,255,255,0.08)",
         "glow-gold": "0 0 20px hsl(var(--gold) / 0.25), 0 0 40px hsl(var(--gold) / 0.1)",
         "glow-success": "0 0 15px hsl(var(--success) / 0.25)",
-        premium: "0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.03)",
-        "premium-hover": "0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(75,139,255,0.15)",
+        "glow-magenta": "0 0 20px rgba(255,0,255,0.2), 0 0 40px rgba(255,0,255,0.08)",
+        premium: "0 18px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
+        "premium-hover": "0 22px 65px rgba(0,0,0,0.65), 0 0 0 1px rgba(0,255,255,0.14), 0 0 42px rgba(255,0,255,0.06)",
+        "neon-edge": "0 0 0 1px rgba(0,255,255,0.12), 0 0 20px rgba(0,255,255,0.06), 0 0 40px rgba(255,0,255,0.04)",
       },
       keyframes: {
         "accordion-down": {
@@ -122,8 +134,8 @@ export default {
           "50%": { transform: "translateY(-10px)" },
         },
         "pulse-glow": {
-          "0%, 100%": { opacity: "1", boxShadow: "0 0 20px hsl(var(--electric-blue) / 0.3)" },
-          "50%": { opacity: "0.8", boxShadow: "0 0 40px hsl(var(--electric-blue) / 0.5)" },
+          "0%, 100%": { opacity: "1", boxShadow: "0 0 20px rgba(0,255,255,0.2)" },
+          "50%": { opacity: "0.8", boxShadow: "0 0 40px rgba(0,255,255,0.35)" },
         },
         "page-enter": {
           "0%": { opacity: "0", transform: "translateY(8px)" },
@@ -167,21 +179,22 @@ export default {
         shimmer: "shimmer 2s linear infinite",
         float: "float 3s ease-in-out infinite",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        "page-enter": "page-enter 0.3s ease-out",
-        "card-enter": "card-enter 0.4s ease-out backwards",
+        "page-enter": "page-enter 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "card-enter": "card-enter 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) backwards",
         "bell-ring": "bell-ring 0.5s ease-in-out",
         "shimmer-premium": "shimmer-premium 1.5s ease-in-out infinite",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
-        "slide-up": "slide-up 0.3s ease-out",
-        "slide-down": "slide-down 0.3s ease-out",
-        "scale-in": "scale-in 0.2s ease-out",
+        "slide-up": "slide-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "slide-down": "slide-down 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "scale-in": "scale-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)",
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "hero-pattern": "linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--carbon)) 50%, hsl(var(--background)) 100%)",
         "gradient-premium": "linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--secondary) / 0.6) 50%, hsl(var(--card)) 100%)",
         "gradient-gold": "linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--accent-glow)) 50%, hsl(var(--gold-dark)) 100%)",
-        "gradient-blue": "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-glow)) 50%, hsl(var(--electric-blue-soft)) 100%)",
+        "gradient-blue": "linear-gradient(135deg, hsl(var(--c2)) 0%, hsl(var(--c3) / 0.5) 50%, hsl(var(--c4)) 100%)",
+        "gradient-neon": "linear-gradient(135deg, hsl(var(--c2)) 0%, hsl(var(--c3)) 55%, hsl(var(--c4)) 100%)",
       },
     },
   },

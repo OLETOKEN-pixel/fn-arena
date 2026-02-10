@@ -151,7 +151,7 @@ export default function Auth() {
       </Card>
       
       {/* Bottom decoration */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(0,255,255,0.2)] via-50% to-transparent" />
     </div>
   );
 }

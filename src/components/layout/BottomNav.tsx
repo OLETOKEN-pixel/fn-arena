@@ -25,10 +25,10 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       {/* Premium glass background */}
-      <div className="absolute inset-0 bg-background/95 backdrop-blur-xl border-t border-border" />
+      <div className="absolute inset-0 bg-[rgba(11,11,26,0.92)] backdrop-blur-xl border-t border-white/[0.06]" />
       
       {/* Gradient accent line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(0,255,255,0.3)] to-transparent" />
       
       {/* Nav items */}
       <div className="relative flex items-center justify-around px-1 py-1.5 safe-area-bottom">

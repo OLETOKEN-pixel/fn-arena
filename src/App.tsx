@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLoadingGuard } from "@/components/common/AppLoadingGuard";
 import { GlobalMatchEventListener } from "@/components/common/GlobalMatchEventListener";
-import { SplineBackground } from "@/components/common/SplineBackground";
 
 // Pages
 import Index from "./pages/Index";
@@ -34,7 +33,7 @@ import Challenges from "./pages/Challenges";
 import Rules from "./pages/Rules";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import SplineTest from "./pages/SplineTest";
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,7 +60,6 @@ function AuthenticatedGlobalListeners() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SplineBackground />
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
@@ -89,7 +87,6 @@ function App() {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/matches/:id" element={<AdminMatchDetail />} />
                 <Route path="/admin/users/:id" element={<AdminUserDetail />} />
-                <Route path="/admin/spline-test" element={<SplineTest />} />
                 <Route path="/highlights" element={<Highlights />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/challenges" element={<Challenges />} />

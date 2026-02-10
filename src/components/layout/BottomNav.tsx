@@ -25,7 +25,7 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       {/* Premium glass background */}
-      <div className="absolute inset-0 bg-background/[0.88] backdrop-blur-xl border-t border-white/[0.06]" />
+      <div className="absolute inset-0 bg-background/95 backdrop-blur-xl border-t border-border" />
       
       {/* Gradient accent line */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />

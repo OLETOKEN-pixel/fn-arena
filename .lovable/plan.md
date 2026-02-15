@@ -1,596 +1,229 @@
 
+# Playmode-Style Gaming Platform Visual Overhaul
+
+## Current State Assessment
+
+- **No crash detected** -- the app loads and navigates correctly. The only console error is an expired auth session token (normal behavior).
+- **No Spline remnants** -- already cleaned in previous iterations.
+- **Current style**: Neon cyberpunk (cyan/magenta/violet) with glassmorphism. Looks decent but not "wow" or Playmode-level.
+
+## Design Direction: Playmode Reference Analysis
+
+The Playmode template features:
+- **Pure black (#050505-#0A0A0A) background** with subtle texture lines, NOT colorful gradient blobs
+- **Huge typography** (70-96px hero titles), uppercase, tight tracking
+- **Minimal, clean layout** -- lots of negative space, no neon glow chaos
+- **Thin white/grey borders** as section dividers
+- **Monochrome first, accent color sparingly** -- white text on black, accent only on CTAs
+- **Understated motion** -- smooth, professional, not flashy
+- **No blur/glass chaos** -- clean solid surfaces with subtle depth
+
+This is the **opposite** of the current neon cyberpunk style. The overhaul needs to strip back the glow/neon excess and go **clean, bold, cinematic black**.
+
+---
+
+## Phase 1: Strip Back the Neon -- New Design Tokens
+
+### Modify `src/index.css` -- Complete palette and background overhaul
+
+**New palette direction: Cinematic Black + Single Cyan Accent**
+
+| Token | New Value | Purpose |
+|-------|-----------|---------|
+| `--background` | `240 10% 3.5%` | Near-pure black (#08080D) |
+| `--foreground` | `220 20% 93%` | Soft white (#EAF0FF) |
+| `--card` | `240 8% 6%` | Slightly elevated black |
+| `--card-elevated` | `240 8% 8%` | Hover/elevated card |
+| `--primary` | `180 100% 50%` | Cyan (kept, but used sparingly) |
+| `--secondary` | `240 6% 10%` | Subtle dark surface |
+| `--muted` | `240 5% 12%` | Muted surface |
+| `--muted-foreground` | `220 8% 45%` | Subdued text |
+| `--accent` | `43 95% 48%` | Gold (unchanged for coins) |
+| `--border` | `240 6% 14%` | Very subtle border |
+| `--destructive` | `0 72% 51%` | Clean red for errors |
+| `--sidebar-background` | `240 10% 3%` | Near-black sidebar |
+
+**Background overhaul:**
+- Remove the animated glow blobs (`body::before` and `body::after`)
+- Replace with a static clean dark background: solid `#08080D` with an extremely subtle noise texture overlay at 3% opacity
+- Optional: ONE tiny radial glow (cyan at 2-3% opacity) near top-center for depth -- NOT the current 3 bright blobs
+- No `floatGlow` animation -- clean and still
+
+**Utility class cleanup:**
+- `.glass`, `.glass-premium`, `.glass-overlay` -- reduce blur from 22px to 12px, make backgrounds more opaque (0.85-0.92 alpha), remove inner cyan/magenta glows
+- `.card-premium` -- solid dark bg (`rgba(12,12,18,0.92)`) + subtle 1px border, no neon inner shadow
+- `.card-hover:hover` -- subtle lift (2px) + slightly brighter border, NO cyan/magenta dual glow
+- `.glow-blue` -- tone down from current aggressive to soft: `0 0 20px rgba(0,255,255,0.08)`
+- `.btn-premium::after` shimmer -- keep but reduce opacity from 0.18 to 0.08 for subtlety
+- Remove `.gaming-pattern-bg`, `.neon-orb-ring`, `.badge-pulse`, `.pulse-dot` -- too flashy
+- Keep: `.animate-page-enter`, `.animate-card-enter`, stagger delays, `.hover-lift`
+
+### Modify `tailwind.config.ts`
+
+- `--radius` back to `0.75rem` (12px) -- Playmode uses smaller, cleaner radius
+- Update `boxShadow.premium` -- deeper, less glowy: `0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)`
+- Update `boxShadow.premium-hover` -- remove cyan/magenta, just deeper black shadow
+- `boxShadow.glow-blue` -- reduced: `0 0 15px rgba(0,255,255,0.1)`
+- `backgroundImage.gradient-neon` -- keep but won't be used much
+- Add `boxShadow.neon-edge` -- very subtle: `0 0 0 1px rgba(0,255,255,0.08)`
+
+---
+
+## Phase 2: Typography Scale (Playmode-style)
+
+### Modify `src/index.css` -- Typography
+
+- Add utility classes for Playmode-style giant headings:
+  - `.text-hero` -- 72-96px, uppercase, tracking -0.04em, font-weight 800
+  - `.text-section` -- 36-48px, uppercase, tracking -0.02em, font-weight 700
+- Body text stays Inter 14-16px
+- All headings: Space Grotesk (already configured)
+- Numbers: tabular-nums + monospace weight
+
+---
+
+## Phase 3: Base UI Components -- Clean Up
 
-Piano INSANE Neon Cyberpunk Glass UI (2D + fake 3D)
-0) Obiettivo e regole non negoziabili
+### `src/components/ui/card.tsx`
+- Remove `backdrop-blur-[22px]` from default card
+- Use `bg-card border border-white/[0.05]` (solid, clean)
+- Shadow: subtle `shadow-[0_2px_12px_rgba(0,0,0,0.4)]`
+- Hover: `hover:border-white/[0.08]` (just brightens border slightly)
 
-Zero changes di logica: match engine, creazione/join, wallet, pagamenti, voting realtime, API, database, routing, business rules non si toccano.
+### `src/components/ui/button.tsx`
+- `default` variant: keep cyan but reduce glow on hover
+- `premium` variant: simplify to `bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15`
+- `gold` variant: unchanged
+- Remove aggressive scale/translate on hover, keep `active:scale-[0.98]`
 
-Cambi solo UI/UX visual: theme, colori, spacing, typography, component styling, animazioni, overlay, stati, layout (puoi spostare header/sidebar se non rompe la logica).
+### `src/components/ui/dialog.tsx`
+- Overlay: `bg-black/60 backdrop-blur-[8px]` (less blur, more opacity)
+- Content: `bg-[#0C0C14] border border-white/[0.06]` (solid, not glass)
 
-Copertura totale: ogni pagina, ogni sezione, ogni overlay, ogni dropdown, ogni toast, ogni stato (loading/empty/error/disabled/hover/focus/active) deve essere ridisegnato.
+### `src/components/ui/input.tsx`
+- Clean dark bg, subtle border
+- Focus: thin cyan ring, NOT dual glow
 
-Qualità prima di quantità: meglio ridisegnare 100% delle superfici e microstati, anche se non aggiungi feature.
+### `src/components/ui/tabs.tsx`, `select.tsx`, `dropdown-menu.tsx`
+- Solid dark backgrounds, clean borders, no glass excess
 
-Deliverable finale: la piattaforma sembra “nuova”, più premium di Elite, con firma visiva riconoscibile (glow/edge/shine/depth), coerente ovunque.
+---
 
-1) Identità visiva: firma “wow” (quello che rende riconoscibile il sito)
+## Phase 4: Layout -- Playmode Shell
 
-Il redesign deve avere una “signature” ripetibile ovunque, non solo palette:
+### `src/components/layout/Sidebar.tsx`
+- Clean solid black bg, no glass
+- Active item: subtle bg highlight + thin left cyan bar (2px, solid, no gradient)
+- Remove animated gradient bar, neon glow on icons
+- "Create Match" CTA: clean primary button with subtle border, no shimmer overlay
+- "Buy Coins": keep gold but tone down glow
+
+### `src/components/layout/Header.tsx`
+- Clean solid dark bg (`bg-[#08080D]/95 backdrop-blur-[8px]`)
+- Thin bottom border `border-b border-white/[0.04]`
+- Clean, minimal layout
+
+### `src/components/layout/BottomNav.tsx`
+- Solid dark bg, clean active indicator (dot or underline, no glow)
+
+### `src/components/layout/Footer.tsx`
+- Already minimal -- just ensure solid dark bg
 
-A) Neon Edge System
-Bordi “vivi” con gradient cyan→magenta→violet, con un leggero movimento (solo su elementi hero/CTA).
+### `src/components/layout/MainLayout.tsx`
+- No changes needed (structure is fine)
 
-B) Glass Depth System a 3 livelli
-Tre livelli di superfici (background/panel/card/overlay) con blur e ombre differenziate. Serve per non risultare piatto.
+---
 
-C) Shine Sweep (riflesso premium)
-Un “colpo di luce” che passa su CTA e card premium con frequenza lenta, mai fastidiosa.
+## Phase 5: Home Page -- Playmode Hero
 
-D) Fake 3D Hover
-Tilt leggerissimo + ombre multilayer + highlight interno. Deve essere elegante, non “giocattolo”.
+### `src/components/home/HeroCompact.tsx` -- Major rework
+- **Giant title**: "OLEBOY TOKEN" in 72px+ uppercase, tight tracking
+- **Subtitle**: smaller, muted, clean
+- **CTAs**: clean buttons (primary cyan for "Create Match", outline for "Browse")
+- Remove floating logo glow effect
+- Clean layout: left-aligned or centered, lots of breathing room
+- Thin horizontal divider line below hero
 
-E) Motion language coerente
-Tutte le animazioni hanno la stessa logica (durate/easing), così sembra un prodotto serio.
+### `src/pages/Index.tsx`
+- Restructure layout to be more editorial/Playmode:
+  - Giant hero section (full width, big text)
+  - Section dividers (thin white/5% lines)
+  - Live Matches in a clean grid
+  - Stats/Progress as clean inline elements
 
-2) Design tokens: palette, gradienti, scale, regole di contrasto
-2.1 Palette (6 colori principali + derivati)
+### `src/components/home/LiveMatchesCompact.tsx`
+- Card: cleaner, less glass, more solid
+- Empty state: simpler icon, less glow
+- Remove the animated pulse circles around icons
 
-Base
+### `src/components/home/VideoBanner.tsx`
+- Keep video functionality
+- Clean up gradient overlays (less aggressive)
+- Typography: bigger, bolder
 
-Midnight: #0B0B1A (background)
+### `src/components/home/ProgressCard.tsx`
+- Clean up gradient backgrounds
+- Simpler progress bar styling
 
-Deep Indigo: #0F0F23 (surface base)
+---
 
-Neon Cyan: #00FFFF (primary / focus / highlight)
+## Phase 6: Key Component Touch-ups
 
-Neon Magenta: #FF00FF (accent / energetic / error-ish)
+### `src/components/matches/MatchCard.tsx`
+- Clean card style (inherits from card.tsx changes)
+- Status pills: clean, minimal glow
 
-Violet: #7C3AED (secondary accent)
+### `src/components/notifications/NotificationsDropdown.tsx`
+- Solid dark popover, clean items
 
-Gold: #F7B500 (coins / premium)
+### `src/pages/Auth.tsx`
+- Clean card on dark background
+- Remove flashy decoration lines
 
-Derivati (obbligatori per coerenza, non usare verde/rosso “puri” a caso)
+### `src/pages/NotFound.tsx`
+- Clean 404 with big typography
 
-Success: cyan-shift (tende al turchese, non verde puro)
+---
 
-Warning: gold
+## Phase 7: Motion -- Subtle and Professional
 
-Error: magenta-shift (non rosso puro)
+All existing animations stay but get toned down:
+- `animate-page-enter` -- keep (already subtle)
+- `animate-card-enter` -- keep
+- Shimmer effects -- reduce intensity
+- Hover interactions -- keep `translateY(-2px)` but remove dual glow
+- Add `prefers-reduced-motion` coverage (already exists)
 
-Text: near-white + grigi freddi coerenti
+---
 
-Regola fondamentale contrasto:
+## Files Summary
 
-Cyan = azione (primary action)
+| File | Action | Scope |
+|------|--------|-------|
+| `src/index.css` | HEAVY MODIFY | New palette, remove animated bg, clean utilities, add Playmode typography |
+| `tailwind.config.ts` | MODIFY | Radius, shadows, gradients |
+| `src/components/ui/card.tsx` | MODIFY | Solid bg, remove glass |
+| `src/components/ui/button.tsx` | MODIFY | Clean variants, less glow |
+| `src/components/ui/dialog.tsx` | MODIFY | Solid overlay |
+| `src/components/ui/input.tsx` | MODIFY | Clean focus |
+| `src/components/ui/tabs.tsx` | MODIFY | Solid bg |
+| `src/components/ui/select.tsx` | MODIFY | Solid dropdown |
+| `src/components/ui/dropdown-menu.tsx` | MODIFY | Solid dropdown |
+| `src/components/layout/Sidebar.tsx` | MODIFY | Clean active states |
+| `src/components/layout/BottomNav.tsx` | MODIFY | Clean nav |
+| `src/components/layout/Header.tsx` | MINOR | Glass header adjustments |
+| `src/components/home/HeroCompact.tsx` | HEAVY MODIFY | Playmode-style giant hero |
+| `src/pages/Index.tsx` | MODIFY | Layout restructure |
+| `src/pages/Auth.tsx` | MINOR | Clean card |
+| `src/components/home/LiveMatchesCompact.tsx` | MINOR | Clean cards |
+| `src/components/home/ProgressCard.tsx` | MINOR | Clean gradients |
+| `src/components/home/VideoBanner.tsx` | MINOR | Clean overlays |
+| `src/components/notifications/NotificationsDropdown.tsx` | MINOR | Solid popover |
 
-Gold = soldi/coins/VIP (solo lì)
+**Total: ~19 files modified, 0 new, 0 deleted. Zero logic changes.**
 
-Magenta/Violet = energia/alert/accents (non ovunque)
+## Technical Approach
 
-2.2 Gradienti “firma”
+The redesign cascades primarily through CSS variable updates in `index.css`. By switching to near-black backgrounds, reducing blur/glow, and cleaning up utility classes, most components auto-inherit the cleaner look. Only components with hardcoded neon values (inline styles, specific rgba values) need individual attention.
 
-Gradient Neon: linear-gradient(135deg, cyan, magenta 55%, violet)
-
-Gradient Indigo Premium: linear-gradient(180deg, #0F0F23, #0B0B1A)
-
-Gradient Gold Premium: linear-gradient(135deg, #F7B500, #FFD36A)
-
-2.3 Spacing & radius
-
-Grid spacing: 12 / 16 / 24 / 32 / 48 (niente numeri casuali)
-
-Radius globale: 18px (premium)
-
-Componenti grandi (hero card/modals): 22–26px
-
-3) Background globale: “insane” ma leggero (NO SPLINE)
-
-Il background deve essere “wow” ma non deve distruggere performance.
-
-Layer stack consigliato (tutti CSS)
-
-Base gradient midnight→indigo
-
-Soft cyber radial glows (3-4 macchie grandi blur 20–40px)
-
-Cyber grid ultra soft (repeating-linear-gradient con opacità 0.03–0.06)
-
-Scanline leggerissima (0.02–0.04) con drift lento
-
-Noise overlay (SVG noise) opacity 0.06–0.10, mix-blend overlay
-
-Vignette (radiale scuro ai bordi per focus)
-
-Regole:
-
-Animazioni disabilitate su prefers-reduced-motion.
-
-Su mobile: riduci blur, riduci layer, riduci opacità, evita filtri pesanti.
-
-Opzione WebGL pronta (solo se necessario e ben ottimizzata)
-
-tsParticles (molto controllabile, spesso più leggero di three.js)
-
-Vanta.js (ma attenzione performance)
-Se lo usi: deve essere opzionale e degradare bene. Default: CSS.
-
-4) Sistema di superfici: 3 livelli di profondità (anti “piatto”)
-
-Obbligatorio: ogni componente deve appartenere a uno dei 3 livelli.
-
-Surface 1: panels / contenitori pagina
-
-background: indigo scuro con bassa opacità
-
-blur: 10–14px
-
-shadow: morbida
-
-Surface 2: cards / elementi interattivi
-
-background: più “glass”
-
-blur: 18–24px
-
-border: 1px white 0.06–0.10
-
-shadow: profonda + highlight interno inset
-
-Surface 3: overlays / dropdown / modali
-
-background: più opaco (leggibilità)
-
-blur: 24–30px
-
-edge neon soft opzionale
-
-shadow: molto profonda
-
-Se non imponi questa gerarchia, la UI resterà “carina” ma non premium.
-
-5) Motion system: animazioni eleganti, ovunque
-
-Regole globali motion
-
-Durate standard: 160ms (micro), 220ms (hover), 280ms (overlay), 420ms (hero)
-
-Easing premium: cubic-bezier(0.2, 0.8, 0.2, 1)
-
-Mai “rimbalzi” cartoon, solo elasticità leggerissima sui momenti “win” o “match found”.
-
-Microinteractions obbligatorie
-
-Hover card: lift 2px + shadow premium + bordo neon soft + highlight interno
-
-Press: scale 0.98, glow ridotto
-
-Focus input: ring cyan + inner glow
-
-Tabs: underline neon animated
-
-Dropdown open: fade + blur-in + slight scale
-
-Toast: slide-in + glow controllato
-
-Skeleton: shimmer coerente con palette (non grigio random)
-
-Signature animations (solo per elementi chiave)
-
-Shine sweep su CTA premium (ogni 6–10s)
-
-Neon edge animated su card hero e modals VIP/buy (molto lento)
-
-6) Component library: ridisegno totale dei mattoni base
-
-Questa è la parte che “cascata” su tutto il sito.
-
-6.1 Card
-
-Varianti obbligatorie
-
-card-default (surface-2)
-
-card-premium (surface-2 + neon edge + shine)
-
-card-compact (per liste)
-
-card-interactive (hover/press)
-
-Dettagli “fake 3D”
-
-doppia ombra: una soft + una tight
-
-inset highlight: 1px white 0.06–0.10
-
-overlay gradient on hover (cyan/magenta leggerissimo)
-
-6.2 Button
-
-Varianti obbligatorie
-
-primary neon (cyan)
-
-premium neon gradient (cyan→magenta→violet)
-
-gold coin (solo coins)
-
-ghost (testo + underline neon on hover)
-
-danger (magenta-shift, non rosso)
-
-Micro: ripple controllato (non enorme), shimmer solo su premium.
-
-6.3 Input / Search / Select
-
-Input glass: background rgba indigo, blur, border soft
-
-Focus: ring cyan + glow magenta leggerissimo
-
-Search bar: expand on focus (desktop), con icona glow
-
-Select/Dropdown: surface-3, niente menu “piatti”
-
-6.4 Badge / Status pill
-
-Obbligatorio: stati sempre leggibili
-
-OPEN: cyan pill con glow soft
-
-WON: gold highlight (o cyan + gold accent)
-
-LOST: magenta premium (non rosso piatto)
-
-CANCELED: muted con bordo
-
-6.5 Progress / Slider / Switch
-
-Progress: shimmer line, dot neon
-
-Switch: track glow + knob light
-
-6.6 Toast / Tooltip
-
-Toast: surface-3 + neon edge soft, icon glow
-
-Tooltip: piccolo, leggibile, glass premium
-
-7) Layout: ristruttura per “wow” (senza rompere logica)
-
-Puoi cambiare layout, e qui serve farlo per evitare “sito normale”.
-
-7.1 Header
-
-Header glass “floating” (surface-1/2)
-
-Search: pill espandibile
-
-Coins: pill gold con micro shine
-
-Notifications: popover surface-3 con tab underline neon
-
-Avatar: orb ring (border neon), dropdown premium
-
-7.2 Sidebar
-
-Sidebar più “tattile”: indicator neon verticale + background depth
-
-Active item: glow + left bar gradient neon
-
-Hover: icon glow + background tint
-
-CTA “Create Match”: premium neon gradient con shimmer slow
-
-“Buy Coins”: gold, sempre riconoscibile
-
-7.3 Content area
-
-Riduci “vuoto morto”: sezioni più compatte, card più larghe, spacing coerente
-
-Tutte le pagine devono avere: header section + content section + empty/loading system
-
-7.4 Mobile
-
-BottomNav glass, active dot neon
-
-Sidebar diventa sheet con animazione premium
-
-Performance-first: riduci blur e glow
-
-8) Overlay/Modal stack: deve essere perfetto e coerente
-
-Questa parte spesso è “brutta” anche in siti belli.
-
-Regole
-
-Tutti gli overlay condividono lo stesso backdrop system
-
-Backdrop: blur + tint indigo + noise leggero
-
-Content: surface-3
-
-Z-index standard: modal > sheet > popover > dropdown > tooltip
-
-Animazioni
-
-Open: fade-in + blur-in + scale 0.98→1
-
-Close: reverse con 120–180ms
-
-Stati overlay obbligatori
-
-confirm modal
-
-error modal
-
-success modal
-
-vip modal
-
-coins overlay
-Tutti devono sembrare “premium” uguale.
-
-9) Page-by-page: cosa deve cambiare (grafica + animazioni) su ogni pagina
-
-Qui l’idea è: ogni pagina deve avere 1 “signature moment” visivo, senza aggiungere feature.
-
-9.1 Home
-
-Signature moment
-
-Hero card premium (surface-2 premium) con neon edge + shine sweep
-
-CTA primarie: premium neon + ripple + micro pulse
-
-Sezione “Live Matches” empty state: icona fluttuante + CTA glow
-
-Micro
-
-Hover su card: tilt leggero
-
-Sezione progress: shimmer progress + badge glow
-
-9.2 Matches (Live Matches)
-
-Signature moment
-
-Filter bar “rail” glass con underline neon animato
-
-Match cards: super clean e premium (anche qui: card-interactive + gold CTA)
-
-Regole match card (grafica)
-
-Mostrare solo: modalità (unita con size) es “1v1 Box Fight”, FT, entry fee coin icon, prize coin icon, CTA join
-
-Togli tutto ciò che confonde visivamente
-
-Icone coin sempre, niente simbolo €
-
-Micro
-
-JOIN button gold con shine soft
-
-card hover: lift + neon border + background gradient overlay
-
-9.3 My Matches
-
-Signature moment
-
-Cards “completed” con status pill enorme e chiaro (WON gold, LOST magenta premium)
-
-Avversario: sempre visibile (no “?”), con avatar ring e mini glow
-
-Regole team modes
-
-2v2/3v3/4v4: mostra solo creator del match e primo accepter dell’altro team (come hai richiesto), ma in UI deve sembrare intenzionale: “Primary players” con piccolo badge “Team”.
-
-Micro
-
-View details button ghost premium con underline neon
-
-9.4 Match Details
-
-Signature moment
-
-Card “Match Summary” premium con layout pulitissimo
-
-Sezione players con card mini “player chip” (orb avatar + glow ring)
-
-Stato match (open/resolved/canceled) come badge “hero”
-
-9.5 Create Match
-
-Signature moment
-
-Wizard-like layout (solo UI): step indicator neon (senza cambiare logica)
-
-Ogni select: glass premium, focus ring neon
-
-Preview card match: mostra live come apparirà la card (solo UI)
-
-9.6 Leaderboard (all-time)
-
-Signature moment
-
-Podium top 3: cards premium animate
-
-#1 gold glow + crown + ring animate
-
-#2 silver-ish (indigo + cyan edge)
-
-#3 bronze-ish (indigo + magenta edge)
-
-Animazione obbligatoria: “podium rise” + shine + halo
-
-Regole dati
-
-Solo wins e coins won (come hai richiesto)
-
-Tabella sotto: hover row con neon rail laterale
-
-9.7 Highlights
-
-Signature moment
-
-Banner sempre visibile, spiegazione chiara, super premium
-
-Voting UI: non un’icona brutta; deve essere un componente premium (pulsante + counter animato)
-
-Grafica voting (senza toccare realtime logic)
-
-Stato “votato”: bottone cambia in “Voted” con glow, possibilità “Remove vote”
-
-Stato “non votato”: CTA “Vote” premium
-
-Counter si aggiorna realtime: micro animazione “count pop” (solo UI)
-
-Non deve mai richiedere refresh pagina: UI reattiva
-
-9.8 Teams / Team Details
-
-Signature moment
-
-Empty state con card premium “Create your first team”
-
-Team cards: badge size mode (2v2/3v3/4v4) con neon pills
-
-9.9 Wallet
-
-Signature moment
-
-Balance card con heartbeat glow lento (molto elegante)
-
-Lista transazioni: slide-in items + hover glow rail
-
-Buy coins CTA gold premium con shine
-
-9.10 Buy Coins / Payments / Success / Cancel
-
-Signature moment
-
-Checkout overlay premium, steps UI pulita
-
-Success: confetti minimale (2D) o glow burst, non infantile
-
-Cancel: card muted ma premium
-
-9.11 Profile + Settings (Account/Game/Payments/Connections)
-
-Signature moment
-
-Profile header card con avatar orb ring
-
-Menu settings: tabs/pills con underline neon
-
-Save button premium con feedback “saved” (toast premium)
-
-9.12 Auth / Callback pages / NotFound
-
-Signature moment
-
-Auth card: surface-3, neon edge, focus ring perfetto
-
-Callback: loader token rotate (2D) + glow
-
-NotFound: big neon typography + CTA back
-
-9.13 Admin pages
-
-Signature moment
-
-Tabelle admin: row hover neon rail + sticky header glass
-
-Modali admin: surface-3, leggibilità altissima
-
-10) Stati globali: loading/empty/error devono essere “wow”
-
-Questa è una delle parti più importanti per sembrare premium.
-
-Loading
-
-Skeleton shimmer coerente (indigo + neon reflect)
-
-Su card grandi: skeleton con “shine line” molto soft
-
-Empty
-
-Icon + testo + CTA, ma in card premium
-
-Piccola animazione float 3–5s loop
-
-Error
-
-Non rosso piatto: magenta premium con icon glow
-
-CTA “retry” neon
-
-Disabled
-
-Riduci saturazione + glow off + cursor not-allowed, ma sempre elegante
-
-11) Performance e accessibilità (per non creare un sito lento)
-
-Regole performance
-
-Blur: usare blur moderati, non 60px ovunque
-
-Glow: box-shadow multipli solo su hover o su pochi elementi hero
-
-Animazioni: preferire transform/opacity, evitare layout thrash
-
-Mobile: ridurre layers background e filtri
-
-Accessibilità
-
-Contrast text minimo garantito
-
-Focus outline sempre visibile (cyan ring)
-
-prefers-reduced-motion: disattivare shine/edge animations e background drifting
-
-12) Processo di lavoro (come farlo davvero senza caos)
-
-Fase A: Foundation
-
-Tokens + background + surface levels + motion system
-
-Fase B: Component library
-
-Card/Button/Input/Badge/Modal/Dropdown/Toast/Tooltip/Progress
-
-Fase C: Layout
-
-Header/Sidebar/BottomNav/MainLayout
-
-Fase D: Pagine (una per una)
-
-Home → Matches → MyMatches → Wallet → Leaderboard → Profile → Highlights → Teams → resto
-
-Fase E: Stati globali
-
-loading/empty/error/disabled ovunque
-
-Fase F: QA visiva e refactor finale
-
-pulizia hardcode, coerenza spacing, riduzione eccessi glow
-
-13) Checklist di accettazione “wow” (se non passa, si rifà)
-
-In 3 secondi, differenza evidente: background + depth + neon edge + motion
-
-Ogni overlay sembra premium e coerente
-
-Ogni dropdown/tooltip/toast è glass neon, non “default”
-
-Match cards: pulite, premium, leggibili, con coin icon coerenti
-
-Leaderboard podium: top3 spettacolare, animato, all-time
-
-Highlights voting: UI premium e chiara, stati “vote/remove” bellissimi
-
-Mobile: non lagga, mantiene stile, blur ridotto, leggibile
-
-14) “Nota finale” davvero obbligatoria (la regola madre)
-
-Se una modifica grafica non è chiaramente visibile e non sembra premium, è da rifare.
-Non voglio un restyling “carino”: voglio un ribaltamento totale con firma cyberpunk glass, depth, neon edge e micro-animazioni eleganti su ogni elemento (pagine, modali, dropdown, empty/loading/error).
-Meglio ridurre l’intensità che fare caos: ma ogni cosa deve sembrare progettata da un team top-tier, non da template.
+The key philosophical shift: **from "neon cyberpunk excess" to "cinematic black minimalism with surgical cyan accents"** -- matching the Playmode reference's clean, bold, professional feel while keeping the gaming platform's identity.

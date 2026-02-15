@@ -24,11 +24,8 @@ export function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
-      {/* Premium glass background */}
-      <div className="absolute inset-0 bg-[rgba(11,11,26,0.92)] backdrop-blur-xl border-t border-white/[0.06]" />
-      
-      {/* Gradient accent line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(0,255,255,0.3)] to-transparent" />
+      {/* Solid dark background */}
+      <div className="absolute inset-0 bg-[hsl(240_10%_3.5%/0.95)] backdrop-blur-[8px] border-t border-white/[0.04]" />
       
       {/* Nav items */}
       <div className="relative flex items-center justify-around px-1 py-1.5 safe-area-bottom">
@@ -47,7 +44,7 @@ export function BottomNav() {
               key={item.href}
               to={href}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-xl min-w-[64px] transition-all duration-200',
+                'flex flex-col items-center justify-center gap-0.5 px-3 py-2 rounded-lg min-w-[64px] transition-all duration-150',
                 isActive
                   ? 'text-primary'
                   : isLocked
@@ -56,22 +53,22 @@ export function BottomNav() {
               )}
             >
               <div className={cn(
-                'relative p-2 rounded-xl transition-all duration-300',
-                isActive && 'bg-primary/15 shadow-[0_0_15px_hsl(var(--primary)/0.3)]'
+                'relative p-1.5 rounded-lg transition-all duration-200',
+                isActive && 'bg-primary/10'
               )}>
                 <Icon className={cn(
-                  'w-5 h-5 transition-all duration-200',
-                  isActive && 'scale-110'
+                  'w-5 h-5 transition-all duration-150',
+                  isActive && 'scale-105'
                 )} />
                 
-                {/* Active indicator dot with glow */}
+                {/* Active dot — clean */}
                 {isActive && (
-                  <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
+                  <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
                 )}
               </div>
               
               <span className={cn(
-                'text-[10px] font-medium transition-all',
+                'text-[10px] font-medium',
                 isActive && 'font-semibold text-primary'
               )}>
                 {item.label}
@@ -81,7 +78,6 @@ export function BottomNav() {
         })}
       </div>
       
-      {/* Safe area padding for devices with home indicator */}
       <style>{`
         .safe-area-bottom {
           padding-bottom: max(8px, env(safe-area-inset-bottom));

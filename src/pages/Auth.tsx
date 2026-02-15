@@ -7,7 +7,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import logoOleboy from '@/assets/logo-oleboy.png';
 
-// Discord Icon component
 function DiscordIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -22,25 +21,19 @@ export default function Auth() {
   const { toast } = useToast();
   const { user, profile, loading, isProfileComplete } = useAuth();
 
-  // Get redirect URL from "next" parameter or localStorage (for OAuth callback)
   const urlRedirect = searchParams.get('next') || '/';
   const storedRedirect = typeof window !== 'undefined' ? localStorage.getItem('auth_redirect') : null;
   const redirectTo = storedRedirect || urlRedirect;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user && profile && !loading) {
-      // Clear stored redirect
       localStorage.removeItem('auth_redirect');
-      
-      // If profile is incomplete, redirect to profile first
       if (!isProfileComplete) {
         const profileRedirect = redirectTo !== '/' ? `/profile?next=${encodeURIComponent(redirectTo)}` : '/profile';
         navigate(profileRedirect, { replace: true });
       } else {
-        // Profile is complete, go to intended destination
         navigate(redirectTo, { replace: true });
       }
     }
@@ -49,9 +42,7 @@ export default function Auth() {
   const handleDiscordSignIn = async () => {
     setIsSubmitting(true);
     try {
-      // Store redirect for after OAuth callback
       localStorage.setItem('auth_redirect', redirectTo);
-      
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/discord-auth-start`,
         {
@@ -60,14 +51,10 @@ export default function Auth() {
           body: JSON.stringify({ redirectAfter: redirectTo }),
         }
       );
-      
       const data = await response.json();
-      
       if (!response.ok || data.error) {
         throw new Error(data.error || 'Failed to start Discord login');
       }
-      
-      // Redirect to Discord
       window.location.href = data.authUrl;
     } catch (err) {
       console.error('Discord sign-in error:', err);
@@ -90,7 +77,6 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col items-center justify-center p-4 z-[1]">
-      {/* Back button */}
       <Link
         to="/"
         className="absolute top-4 left-4 z-10 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -99,17 +85,14 @@ export default function Auth() {
         Back to Home
       </Link>
 
-      {/* Auth Card */}
-      <Card className="w-full max-w-md relative z-10 bg-card shadow-2xl shadow-primary/5">
+      <Card className="w-full max-w-md relative z-10">
         <CardContent className="text-center py-10 px-8">
-          {/* Logo */}
           <img
             src={logoOleboy}
             alt="OLEBOY TOKEN"
-            className="w-20 h-20 mx-auto mb-6 drop-shadow-lg"
+            className="w-16 h-16 mx-auto mb-6"
           />
           
-          {/* Title */}
           <h1 className="font-display text-2xl font-bold mb-2 text-foreground">
             Sign in to OLEBOY TOKEN
           </h1>
@@ -117,11 +100,10 @@ export default function Auth() {
             The gaming platform for true champions
           </p>
           
-          {/* Discord Button - Primary CTA */}
           <Button
             onClick={handleDiscordSignIn}
             disabled={isSubmitting}
-            className="w-full py-6 text-lg font-semibold bg-[#5865F2] hover:bg-[#4752C4] text-white transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#5865F2]/25"
+            className="w-full py-6 text-lg font-semibold bg-[#5865F2] hover:bg-[#4752C4] text-white transition-all duration-200 hover:scale-[1.01]"
           >
             {isSubmitting ? (
               <>
@@ -136,22 +118,14 @@ export default function Auth() {
             )}
           </Button>
           
-          {/* Terms and Privacy */}
           <p className="text-xs text-muted-foreground mt-8">
             By signing in, you agree to our{' '}
-            <Link to="/terms" className="text-primary hover:underline">
-              Terms of Service
-            </Link>{' '}
+            <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>{' '}
             and{' '}
-            <Link to="/privacy" className="text-primary hover:underline">
-              Privacy Policy
-            </Link>
+            <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
           </p>
         </CardContent>
       </Card>
-      
-      {/* Bottom decoration */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[rgba(0,255,255,0.2)] via-50% to-transparent" />
     </div>
   );
 }

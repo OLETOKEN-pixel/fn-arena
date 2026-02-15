@@ -52,13 +52,11 @@ export function Sidebar() {
 
   const isAdmin = profile?.role === 'admin';
 
-  // Filter items based on permissions
   const displayNavItems = navItems.filter(item => {
     if (item.requiresAdmin && !isAdmin) return false;
     return true;
   });
 
-  // Group items
   const groupedItems = displayNavItems.reduce((acc, item) => {
     const group = item.group || 'core';
     if (!acc[group]) acc[group] = [];
@@ -71,7 +69,7 @@ export function Sidebar() {
       className="fixed left-0 top-0 z-40 h-screen w-20 lg:w-[300px] bg-sidebar border-r border-sidebar-border flex flex-col"
       style={{ '--sidebar-width': '300px' } as React.CSSProperties}
     >
-      {/* Logo - Bigger for 1920 */}
+      {/* Logo */}
       <Link 
         to="/" 
         className="flex items-center justify-center lg:justify-start gap-4 px-5 h-[72px] border-b border-sidebar-border cursor-pointer hover:bg-sidebar-accent/50 transition-all duration-200 group"
@@ -79,30 +77,29 @@ export function Sidebar() {
         <img 
           src={logoOleboy} 
           alt="OLEBOY TOKEN" 
-          className="w-12 h-12 object-contain transition-transform duration-200 group-hover:scale-105"
+          className="w-10 h-10 object-contain transition-transform duration-200 group-hover:scale-105"
         />
-        <span className="hidden lg:block font-display font-bold text-2xl tracking-tight">
+        <span className="hidden lg:block font-display font-bold text-xl tracking-tight">
           <span className="text-foreground">OLEBOY</span>
           <span className="text-accent ml-2">TOKEN</span>
         </span>
       </Link>
 
-      {/* Navigation - Bigger spacing for 1920 */}
-      <nav className="flex-1 py-5 px-4 overflow-y-auto scrollbar-thin">
+      {/* Navigation */}
+      <nav className="flex-1 py-4 px-3 overflow-y-auto scrollbar-thin">
         {['core', 'social', 'account'].map((group, groupIndex) => {
           const items = groupedItems[group];
           if (!items || items.length === 0) return null;
 
           return (
-            <div key={group} className={cn(groupIndex > 0 && "mt-8")}>
-              {/* Group Label - Desktop only, bigger */}
-              <div className="hidden lg:block px-4 pb-3">
-                <span className="text-xs uppercase tracking-widest text-muted-foreground/60 font-semibold">
+            <div key={group} className={cn(groupIndex > 0 && "mt-6")}>
+              <div className="hidden lg:block px-3 pb-2">
+                <span className="text-[11px] uppercase tracking-widest text-muted-foreground/50 font-medium">
                   {groupLabels[group]}
                 </span>
               </div>
               
-              <ul className="space-y-1.5">
+              <ul className="space-y-0.5">
                 {items.map((item) => {
                   const isActive = location.pathname === item.href;
                   const isLocked = item.requiresAuth && !user;
@@ -117,35 +114,35 @@ export function Sidebar() {
                       <Link
                         to={href}
                         className={cn(
-                          'flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group relative',
+                          'flex items-center gap-3.5 px-3 py-2.5 rounded-lg transition-all duration-150 group relative',
                           isActive && !isLocked
-                            ? 'bg-[rgba(0,255,255,0.08)] text-primary border border-[rgba(0,255,255,0.18)] shadow-[0_0_26px_rgba(0,255,255,0.10)]' 
+                            ? 'bg-white/[0.06] text-foreground' 
                             : isLocked 
                               ? 'text-muted-foreground/40 hover:text-muted-foreground/60'
-                              : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground hover:translate-x-1'
+                              : 'text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
                         )}
                       >
-                        {/* Active indicator - thicker */}
-                         {isActive && !isLocked && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-10 rounded-r-full bg-gradient-to-b from-primary via-[hsl(var(--c3))] to-[hsl(var(--c4))] shadow-[0_0_12px_rgba(0,255,255,0.5)]" />
+                        {/* Active indicator — solid cyan bar */}
+                        {isActive && !isLocked && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-5 rounded-r bg-primary" />
                         )}
                         
                         <Icon className={cn(
-                          'w-6 h-6 shrink-0 transition-all duration-200',
+                          'w-5 h-5 shrink-0 transition-colors duration-150',
                           isActive && !isLocked 
                             ? 'text-primary' 
                             : isLocked
                               ? 'text-muted-foreground/30'
-                              : 'group-hover:text-foreground group-hover:scale-110'
+                              : 'group-hover:text-foreground'
                         )} />
                         <span className={cn(
-                          'hidden lg:block font-medium text-base',
-                          isActive && !isLocked && 'text-primary font-semibold'
+                          'hidden lg:block text-sm',
+                          isActive && !isLocked && 'text-foreground font-medium'
                         )}>
                           {item.label}
                         </span>
                         {isLocked && (
-                          <Lock className="hidden lg:block ml-auto w-4 h-4 text-muted-foreground/30" />
+                          <Lock className="hidden lg:block ml-auto w-3.5 h-3.5 text-muted-foreground/30" />
                         )}
                       </Link>
                     </li>
@@ -157,42 +154,36 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Quick Actions - Bigger for 1920 */}
-      <div className="p-4 border-t border-sidebar-border space-y-3">
+      {/* Quick Actions */}
+      <div className="p-3 border-t border-sidebar-border space-y-2">
         <Link
           to={user ? "/matches/create" : "/auth?next=/matches/create"}
           className={cn(
-            "group relative flex items-center justify-center lg:justify-start gap-3 px-5 py-4 rounded-xl font-semibold transition-all duration-300 overflow-hidden",
-            "bg-[linear-gradient(135deg,rgba(0,255,255,0.18),rgba(255,0,255,0.12))] text-foreground border-[rgba(0,255,255,0.22)]",
-            "hover:shadow-[0_0_34px_rgba(0,255,255,0.14),0_0_34px_rgba(255,0,255,0.08)] hover:-translate-y-1",
+            "group flex items-center justify-center lg:justify-start gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-all duration-200",
+            "bg-primary/10 text-primary border border-primary/20",
+            "hover:bg-primary/15 hover:border-primary/30",
             "active:scale-[0.98]",
-            "border border-primary/30",
-            user ? "" : "opacity-80"
+            user ? "" : "opacity-70"
           )}
         >
-          {/* Shimmer effect */}
-          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          <Plus className="w-6 h-6 relative z-10" />
-          <span className="hidden lg:block relative z-10 text-base font-bold">Create Match</span>
-          {!user && <Lock className="hidden lg:block ml-auto w-4 h-4 opacity-50 relative z-10" />}
+          <Plus className="w-5 h-5" />
+          <span className="hidden lg:block">Create Match</span>
+          {!user && <Lock className="hidden lg:block ml-auto w-3.5 h-3.5 opacity-50" />}
         </Link>
         
         <Link
           to={user ? "/buy" : "/auth?next=/buy"}
           className={cn(
-            "group relative flex items-center justify-center lg:justify-start gap-3 px-5 py-4 rounded-xl font-bold transition-all duration-300 overflow-hidden",
+            "group flex items-center justify-center lg:justify-start gap-3 px-4 py-3 rounded-lg font-bold text-sm transition-all duration-200",
             "bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 text-black",
-            "hover:shadow-[0_0_30px_rgba(245,158,11,0.5)] hover:-translate-y-1",
+            "hover:shadow-glow-gold",
             "active:scale-[0.98]",
-            "border border-amber-400/50",
-            user ? "" : "opacity-80"
+            user ? "" : "opacity-70"
           )}
         >
-          {/* Shimmer effect */}
-          <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
           <CoinIcon size="sm" />
-          <span className="hidden lg:block relative z-10 text-base">Buy Coins</span>
-          {!user && <Lock className="hidden lg:block ml-auto w-4 h-4 opacity-50 relative z-10" />}
+          <span className="hidden lg:block">Buy Coins</span>
+          {!user && <Lock className="hidden lg:block ml-auto w-3.5 h-3.5 opacity-50" />}
         </Link>
       </div>
     </aside>

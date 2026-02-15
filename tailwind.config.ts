@@ -62,7 +62,6 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // Custom OLEBOY neon colors
         gold: {
           DEFAULT: "hsl(var(--gold))",
           dark: "hsl(var(--gold-dark))",
@@ -84,7 +83,6 @@ export default {
         },
         warning: "hsl(var(--warning))",
         error: "hsl(var(--error))",
-        // Neon palette direct access
         cyan: {
           neon: "hsl(var(--c2))",
         },
@@ -108,13 +106,13 @@ export default {
         mono: ["JetBrains Mono", "monospace"],
       },
       boxShadow: {
-        "glow-blue": "0 0 20px rgba(0,255,255,0.2), 0 0 40px rgba(0,255,255,0.08)",
-        "glow-gold": "0 0 20px hsl(var(--gold) / 0.25), 0 0 40px hsl(var(--gold) / 0.1)",
-        "glow-success": "0 0 15px hsl(var(--success) / 0.25)",
-        "glow-magenta": "0 0 20px rgba(255,0,255,0.2), 0 0 40px rgba(255,0,255,0.08)",
-        premium: "0 18px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
-        "premium-hover": "0 22px 65px rgba(0,0,0,0.65), 0 0 0 1px rgba(0,255,255,0.14), 0 0 42px rgba(255,0,255,0.06)",
-        "neon-edge": "0 0 0 1px rgba(0,255,255,0.12), 0 0 20px rgba(0,255,255,0.06), 0 0 40px rgba(255,0,255,0.04)",
+        "glow-blue": "0 0 15px rgba(0,240,255,0.1)",
+        "glow-gold": "0 0 20px hsl(var(--gold) / 0.2)",
+        "glow-success": "0 0 12px hsl(var(--success) / 0.15)",
+        "glow-magenta": "0 0 15px rgba(255,0,255,0.1)",
+        premium: "0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+        "premium-hover": "0 20px 56px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06)",
+        "neon-edge": "0 0 0 1px rgba(0,240,255,0.08)",
       },
       keyframes: {
         "accordion-down": {
@@ -134,8 +132,8 @@ export default {
           "50%": { transform: "translateY(-10px)" },
         },
         "pulse-glow": {
-          "0%, 100%": { opacity: "1", boxShadow: "0 0 20px rgba(0,255,255,0.2)" },
-          "50%": { opacity: "0.8", boxShadow: "0 0 40px rgba(0,255,255,0.35)" },
+          "0%, 100%": { opacity: "1", boxShadow: "0 0 15px rgba(0,240,255,0.1)" },
+          "50%": { opacity: "0.8", boxShadow: "0 0 25px rgba(0,240,255,0.15)" },
         },
         "page-enter": {
           "0%": { opacity: "0", transform: "translateY(8px)" },

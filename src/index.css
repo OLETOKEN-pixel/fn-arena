@@ -18,9 +18,9 @@
     --content-max-width: 1680px;
     --content-padding-x: 2.5rem;
     
-    /* ===== CINEMATIC BLACK PALETTE ===== */
-    --c0: 240 10% 3.5%;   /* #08080D near-black */
-    --c1: 240 8% 6%;      /* #0E0E14 elevated black */
+    /* ===== WARM INDIGO PALETTE (Figma Gaming) ===== */
+    --c0: 245 40% 7%;     /* #0B0B1A midnight base */
+    --c1: 245 30% 11%;    /* #141432 card surface */
     --c2: 180 100% 50%;   /* #00FFFF cyan (accent only) */
     --c3: 300 100% 50%;   /* #FF00FF magenta */
     --c4: 263 84% 58%;    /* #7C3AED violet */
@@ -28,47 +28,47 @@
 
     /* Background */
     --background: var(--c0);
-    --background-elevated: var(--c1);
+    --background-elevated: 245 35% 9%;
     --foreground: 220 20% 93%;
 
     /* Card system */
     --card: var(--c1);
-    --card-elevated: 240 8% 8%;
+    --card-elevated: 245 28% 14%;
     --card-foreground: 220 20% 93%;
 
     /* Popover/Dropdown */
-    --popover: 240 8% 7%;
+    --popover: 245 35% 10%;
     --popover-foreground: 220 20% 93%;
 
     /* Primary = Cyan (used sparingly) */
     --primary: var(--c2);
     --primary-glow: 180 100% 60%;
-    --primary-foreground: 240 10% 3.5%;
+    --primary-foreground: 245 40% 7%;
 
     /* Secondary */
-    --secondary: 240 6% 10%;
+    --secondary: 245 25% 13%;
     --secondary-foreground: 220 20% 93%;
 
     /* Muted */
-    --muted: 240 5% 12%;
+    --muted: 245 22% 16%;
     --muted-foreground: 220 8% 45%;
 
     /* Gold Accent - coins/prizes */
     --accent: var(--c5);
     --accent-glow: 43 100% 58%;
-    --accent-foreground: 240 10% 3.5%;
+    --accent-foreground: 245 40% 7%;
 
     /* Destructive */
     --destructive: 0 72% 51%;
     --destructive-foreground: 220 20% 93%;
 
-    /* Borders - very subtle */
-    --border: 240 6% 14%;
+    /* Borders - slightly more visible */
+    --border: 245 18% 18%;
     --border-glow: 180 30% 25%;
-    --input: 240 6% 10%;
+    --input: 245 25% 13%;
     --ring: var(--c2);
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
     /* ===== CUSTOM TOKENS ===== */
     --gold: var(--c5);
@@ -105,13 +105,13 @@
     --g-neon: linear-gradient(135deg, hsl(var(--c2)) 0%, hsl(var(--c3)) 55%, hsl(var(--c4)) 100%);
 
     /* ===== SIDEBAR TOKENS ===== */
-    --sidebar-background: 240 10% 3%;
+    --sidebar-background: 245 40% 5.5%;
     --sidebar-foreground: 220 20% 93%;
     --sidebar-primary: var(--c2);
-    --sidebar-primary-foreground: 240 10% 3.5%;
-    --sidebar-accent: 240 6% 8%;
+    --sidebar-primary-foreground: 245 40% 7%;
+    --sidebar-accent: 245 30% 10%;
     --sidebar-accent-foreground: 220 20% 93%;
-    --sidebar-border: 240 6% 10%;
+    --sidebar-border: 245 25% 13%;
     --sidebar-ring: var(--c2);
 
     /* Chat */
@@ -120,36 +120,36 @@
 
   .dark {
     --background: var(--c0);
-    --background-elevated: var(--c1);
+    --background-elevated: 245 35% 9%;
     --foreground: 220 20% 93%;
     --card: var(--c1);
-    --card-elevated: 240 8% 8%;
+    --card-elevated: 245 28% 14%;
     --card-foreground: 220 20% 93%;
-    --popover: 240 8% 7%;
+    --popover: 245 35% 10%;
     --popover-foreground: 220 20% 93%;
     --primary: var(--c2);
     --primary-glow: 180 100% 60%;
-    --primary-foreground: 240 10% 3.5%;
-    --secondary: 240 6% 10%;
+    --primary-foreground: 245 40% 7%;
+    --secondary: 245 25% 13%;
     --secondary-foreground: 220 20% 93%;
-    --muted: 240 5% 12%;
+    --muted: 245 22% 16%;
     --muted-foreground: 220 8% 45%;
     --accent: var(--c5);
     --accent-glow: 43 100% 58%;
-    --accent-foreground: 240 10% 3.5%;
+    --accent-foreground: 245 40% 7%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 220 20% 93%;
-    --border: 240 6% 14%;
+    --border: 245 18% 18%;
     --border-glow: 180 30% 25%;
-    --input: 240 6% 10%;
+    --input: 245 25% 13%;
     --ring: var(--c2);
-    --sidebar-background: 240 10% 3%;
+    --sidebar-background: 245 40% 5.5%;
     --sidebar-foreground: 220 20% 93%;
     --sidebar-primary: var(--c2);
-    --sidebar-primary-foreground: 240 10% 3.5%;
-    --sidebar-accent: 240 6% 8%;
+    --sidebar-primary-foreground: 245 40% 7%;
+    --sidebar-accent: 245 30% 10%;
     --sidebar-accent-foreground: 220 20% 93%;
-    --sidebar-border: 240 6% 10%;
+    --sidebar-border: 245 25% 13%;
     --sidebar-ring: var(--c2);
   }
 }
@@ -164,16 +164,15 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* ===== CINEMATIC BACKGROUND ===== */
-  /* Single subtle radial for depth — no animated blobs */
+  /* ===== WARM INDIGO BACKGROUND ===== */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     z-index: -2;
     background:
-      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,240,255,0.03), transparent 60%),
-      hsl(240 10% 3.5%);
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,0.03), transparent 60%),
+      hsl(245 40% 7%);
     pointer-events: none;
   }
 

@@ -52,10 +52,27 @@ export function Header() {
   return (
     <header className="sticky top-0 z-30 h-16 glass-header" style={{ '--header-height': '64px' } as React.CSSProperties}>
       {/* Container aligned with main content for 1920×1080 */}
-      <div className="h-full px-4 lg:px-8 lg:max-w-[calc(1400px+4rem)] lg:mx-auto flex items-center justify-between gap-4">
-        {/* Left side: Search */}
-        <div className="flex items-center gap-3">
+      <div className="h-full px-4 lg:px-8 flex items-center justify-between gap-4">
+        {/* Left side: Search + Category Links */}
+        <div className="flex items-center gap-6">
           <PlayerSearchBar />
+          {/* Desktop category quick-links */}
+          <nav className="hidden lg:flex items-center gap-1">
+            {[
+              { label: 'Matches', href: '/matches' },
+              { label: 'Challenges', href: '/challenges' },
+              { label: 'Highlights', href: '/highlights' },
+              { label: 'Leaderboard', href: '/leaderboard' },
+            ].map(link => (
+              <Link
+                key={link.href}
+                to={link.href}
+                className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/[0.04]"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
         {/* Center: Tip Button - MOBILE ONLY */}

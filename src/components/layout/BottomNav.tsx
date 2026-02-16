@@ -25,7 +25,7 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
       {/* Solid dark background */}
-      <div className="absolute inset-0 bg-[hsl(240_10%_3.5%/0.95)] backdrop-blur-[8px] border-t border-white/[0.04]" />
+      <div className="absolute inset-0 bg-[hsl(245_40%_7%/0.95)] backdrop-blur-[8px] border-t border-white/[0.04]" />
       
       {/* Nav items */}
       <div className="relative flex items-center justify-around px-1 py-1.5 safe-area-bottom">

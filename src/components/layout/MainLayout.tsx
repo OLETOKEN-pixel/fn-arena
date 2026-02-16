@@ -44,14 +44,13 @@ export function MainLayout({ children }: MainLayoutProps) {
 
   return (
     <div className="min-h-screen relative z-[1]">
-      {/* Sidebar - Desktop ONLY (hidden on mobile completely) */}
-      {/* Wider sidebar (300px) for 1920×1080 premium feel */}
+      {/* Sidebar - Desktop ONLY (compact 80px icon-only) */}
       <div className="hidden lg:block fixed left-0 top-0 h-full z-50">
         <Sidebar />
       </div>
 
-      {/* Main content area - offset by 300px sidebar on desktop */}
-      <div className="lg:pl-[300px]">
+      {/* Main content area - offset by 80px sidebar on desktop */}
+      <div className="lg:pl-20">
         <div className="flex flex-col min-h-screen">
           <Header />
           
@@ -65,15 +64,11 @@ export function MainLayout({ children }: MainLayoutProps) {
             // Extra padding for bottom nav on mobile
             isMobile && "pb-24"
           )}>
-            {/* Desktop container: max-w-1680px for FULL 1920 usage */}
-            {/* This fills the space properly on 1920×1080 */}
             <div 
               data-layout-container
               className={cn(
-                // Mobile: full width
                 "w-full",
-                // Desktop: wider max-width (1680px) with generous padding
-                "lg:max-w-[1680px] lg:mx-auto lg:px-10"
+                "lg:max-w-[1600px] lg:mx-auto lg:px-8"
               )}
             >
               {children}

@@ -6,7 +6,7 @@ import { LeaderboardCompact } from '@/components/home/LeaderboardCompact';
 import { ProgressCard } from '@/components/home/ProgressCard';
 import { WalletSnapshot } from '@/components/home/WalletSnapshot';
 import { FeatureCardsMini } from '@/components/home/FeatureCardsMini';
-import { VideoBanner } from '@/components/home/VideoBanner';
+import { FilterBar } from '@/components/home/FilterBar';
 import { useIsDesktop } from '@/hooks/use-mobile';
 
 export default function Index() {
@@ -14,29 +14,29 @@ export default function Index() {
 
   return (
     <MainLayout>
-      <div className="flex flex-col gap-6 lg:gap-10">
-        {/* Hero Section — Playmode giant typography */}
+      <div className="flex flex-col gap-6 lg:gap-8">
+        {/* Filter bar — desktop */}
+        {isDesktop && <FilterBar />}
+
+        {/* Hero Banner — Figma "Hot & New" */}
         <HeroCompact />
         
         {/* Stats Bar - Mobile only */}
         {!isDesktop && <StatsBar />}
         
-        {/* Main Content Grid */}
+        {/* Live Matches — full width */}
+        <LiveMatchesCompact />
+
+        {/* Progress + extras */}
         {isDesktop ? (
-          <div className="grid grid-cols-[minmax(0,2fr)_minmax(520px,1fr)] gap-8 items-start">
-            <div className="flex flex-col gap-6">
-              <LiveMatchesCompact />
-              <ProgressCard />
-            </div>
-            <VideoBanner className="h-auto min-h-[560px] sticky top-24" />
+          <div className="grid grid-cols-2 gap-6">
+            <ProgressCard />
+            <LeaderboardCompact />
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <LiveMatchesCompact />
-            <div className="flex flex-col gap-3">
-              <LeaderboardCompact />
-              <WalletSnapshot />
-            </div>
+            <LeaderboardCompact />
+            <WalletSnapshot />
             <ProgressCard />
           </div>
         )}

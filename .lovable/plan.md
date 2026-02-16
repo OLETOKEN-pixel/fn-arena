@@ -1,198 +1,179 @@
 
-# Playmode-Style Gaming Platform Visual Overhaul
 
-## Current State Assessment
+# Figma "Gaming Website by Andy" -- Full Visual Integration
 
-- **No crash detected** -- the app loads and navigates correctly. The only console error is an expired auth session token (normal behavior).
-- **No Spline remnants** -- already cleaned in previous iterations.
-- **Current style**: Neon cyberpunk (cyan/magenta/violet) with glassmorphism. Looks decent but not "wow" or Playmode-level.
+## What the Figma Shows
 
-## Design Direction: Playmode Reference Analysis
+The design features a gaming platform with:
+- **Dark navy/indigo background** (#0F0F23 to #141432 range) -- warmer and deeper than the current near-black
+- **Compact icon-only sidebar** (~70px wide) with rounded icons on hover/active states
+- **Horizontal top navigation bar** with category links (adapted to: Live Matches, Challenges, Highlights, etc.)
+- **User area in header**: avatar with level badge, notification bell, coins counter
+- **Filter/control bar** with dropdown pills and list/grid view toggle
+- **"Hot & New" hero carousel** with large image banners (full-width cards with game artwork)
+- **"Trending" content grid** with image-heavy cards showing title, category, price/coins, platform icons
+- **Rounded corners everywhere** (16-20px radius), clean spacing, soft glow accents (teal/cyan)
+- **Color accent**: teal/cyan for active states and interactive elements, exactly matching the current primary
 
-The Playmode template features:
-- **Pure black (#050505-#0A0A0A) background** with subtle texture lines, NOT colorful gradient blobs
-- **Huge typography** (70-96px hero titles), uppercase, tight tracking
-- **Minimal, clean layout** -- lots of negative space, no neon glow chaos
-- **Thin white/grey borders** as section dividers
-- **Monochrome first, accent color sparingly** -- white text on black, accent only on CTAs
-- **Understated motion** -- smooth, professional, not flashy
-- **No blur/glass chaos** -- clean solid surfaces with subtle depth
+## Adaptation Strategy
 
-This is the **opposite** of the current neon cyberpunk style. The overhaul needs to strip back the glow/neon excess and go **clean, bold, cinematic black**.
-
----
-
-## Phase 1: Strip Back the Neon -- New Design Tokens
-
-### Modify `src/index.css` -- Complete palette and background overhaul
-
-**New palette direction: Cinematic Black + Single Cyan Accent**
-
-| Token | New Value | Purpose |
-|-------|-----------|---------|
-| `--background` | `240 10% 3.5%` | Near-pure black (#08080D) |
-| `--foreground` | `220 20% 93%` | Soft white (#EAF0FF) |
-| `--card` | `240 8% 6%` | Slightly elevated black |
-| `--card-elevated` | `240 8% 8%` | Hover/elevated card |
-| `--primary` | `180 100% 50%` | Cyan (kept, but used sparingly) |
-| `--secondary` | `240 6% 10%` | Subtle dark surface |
-| `--muted` | `240 5% 12%` | Muted surface |
-| `--muted-foreground` | `220 8% 45%` | Subdued text |
-| `--accent` | `43 95% 48%` | Gold (unchanged for coins) |
-| `--border` | `240 6% 14%` | Very subtle border |
-| `--destructive` | `0 72% 51%` | Clean red for errors |
-| `--sidebar-background` | `240 10% 3%` | Near-black sidebar |
-
-**Background overhaul:**
-- Remove the animated glow blobs (`body::before` and `body::after`)
-- Replace with a static clean dark background: solid `#08080D` with an extremely subtle noise texture overlay at 3% opacity
-- Optional: ONE tiny radial glow (cyan at 2-3% opacity) near top-center for depth -- NOT the current 3 bright blobs
-- No `floatGlow` animation -- clean and still
-
-**Utility class cleanup:**
-- `.glass`, `.glass-premium`, `.glass-overlay` -- reduce blur from 22px to 12px, make backgrounds more opaque (0.85-0.92 alpha), remove inner cyan/magenta glows
-- `.card-premium` -- solid dark bg (`rgba(12,12,18,0.92)`) + subtle 1px border, no neon inner shadow
-- `.card-hover:hover` -- subtle lift (2px) + slightly brighter border, NO cyan/magenta dual glow
-- `.glow-blue` -- tone down from current aggressive to soft: `0 0 20px rgba(0,255,255,0.08)`
-- `.btn-premium::after` shimmer -- keep but reduce opacity from 0.18 to 0.08 for subtlety
-- Remove `.gaming-pattern-bg`, `.neon-orb-ring`, `.badge-pulse`, `.pulse-dot` -- too flashy
-- Keep: `.animate-page-enter`, `.animate-card-enter`, stagger delays, `.hover-lift`
-
-### Modify `tailwind.config.ts`
-
-- `--radius` back to `0.75rem` (12px) -- Playmode uses smaller, cleaner radius
-- Update `boxShadow.premium` -- deeper, less glowy: `0 16px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)`
-- Update `boxShadow.premium-hover` -- remove cyan/magenta, just deeper black shadow
-- `boxShadow.glow-blue` -- reduced: `0 0 15px rgba(0,255,255,0.1)`
-- `backgroundImage.gradient-neon` -- keep but won't be used much
-- Add `boxShadow.neon-edge` -- very subtle: `0 0 0 1px rgba(0,255,255,0.08)`
+Map the Figma's "game store" UI to OleBoy Token's gaming platform:
+- "Hot & New" carousel becomes the **Hero/Featured Matches** banner section
+- "Trending" grid becomes the **Live Matches** card grid
+- Filter bar becomes the **match filters** (mode, region, platform, price)
+- Sidebar icons map to existing navigation (Home, Matches, My Matches, Challenges, etc.)
+- Top nav categories become quick-access links in the header
 
 ---
 
-## Phase 2: Typography Scale (Playmode-style)
+## Phase 1: Color & Background Update
 
-### Modify `src/index.css` -- Typography
+### `src/index.css` -- Palette shift to match Figma's warmer indigo
 
-- Add utility classes for Playmode-style giant headings:
-  - `.text-hero` -- 72-96px, uppercase, tracking -0.04em, font-weight 800
-  - `.text-section` -- 36-48px, uppercase, tracking -0.02em, font-weight 700
-- Body text stays Inter 14-16px
-- All headings: Space Grotesk (already configured)
-- Numbers: tabular-nums + monospace weight
+The Figma uses a warmer, slightly more blue/purple background vs the current cold near-black. Update CSS variables:
 
----
+| Token | Current | New | Why |
+|-------|---------|-----|-----|
+| `--background` | `240 10% 3.5%` (#08080D) | `245 40% 7%` (#0B0B1A) | Matches Figma's midnight base |
+| `--background-elevated` | `240 8% 6%` | `245 35% 9%` (#0F0F23) | Figma's surface color |
+| `--card` | `240 8% 6%` | `245 30% 11%` (#141432) | Warmer card surface |
+| `--card-elevated` | `240 8% 8%` | `245 28% 14%` | Elevated state |
+| `--secondary` | `240 6% 10%` | `245 25% 13%` | Subtle surface |
+| `--muted` | `240 5% 12%` | `245 22% 16%` | Muted bg |
+| `--border` | `240 6% 14%` | `245 18% 18%` | Slightly more visible borders |
+| `--sidebar-background` | `240 10% 3%` | `245 40% 5.5%` | Deep sidebar |
+| `--popover` | `240 8% 7%` | `245 35% 10%` | Popover bg |
 
-## Phase 3: Base UI Components -- Clean Up
+Primary (cyan), accent (gold), success, destructive all stay the same -- they already match the Figma's teal/cyan accent.
 
-### `src/components/ui/card.tsx`
-- Remove `backdrop-blur-[22px]` from default card
-- Use `bg-card border border-white/[0.05]` (solid, clean)
-- Shadow: subtle `shadow-[0_2px_12px_rgba(0,0,0,0.4)]`
-- Hover: `hover:border-white/[0.08]` (just brightens border slightly)
-
-### `src/components/ui/button.tsx`
-- `default` variant: keep cyan but reduce glow on hover
-- `premium` variant: simplify to `bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15`
-- `gold` variant: unchanged
-- Remove aggressive scale/translate on hover, keep `active:scale-[0.98]`
-
-### `src/components/ui/dialog.tsx`
-- Overlay: `bg-black/60 backdrop-blur-[8px]` (less blur, more opacity)
-- Content: `bg-[#0C0C14] border border-white/[0.06]` (solid, not glass)
-
-### `src/components/ui/input.tsx`
-- Clean dark bg, subtle border
-- Focus: thin cyan ring, NOT dual glow
-
-### `src/components/ui/tabs.tsx`, `select.tsx`, `dropdown-menu.tsx`
-- Solid dark backgrounds, clean borders, no glass excess
+### Background treatment
+- Remove the current single subtle radial glow
+- Add a very subtle warm indigo gradient: `radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,0.03), transparent 60%)` -- slight violet tint at top
+- Keep noise texture at 3% opacity
 
 ---
 
-## Phase 4: Layout -- Playmode Shell
+## Phase 2: Sidebar -- Compact Icon Style (Figma layout)
 
-### `src/components/layout/Sidebar.tsx`
-- Clean solid black bg, no glass
-- Active item: subtle bg highlight + thin left cyan bar (2px, solid, no gradient)
-- Remove animated gradient bar, neon glow on icons
-- "Create Match" CTA: clean primary button with subtle border, no shimmer overlay
-- "Buy Coins": keep gold but tone down glow
+### `src/components/layout/Sidebar.tsx` -- Major rework
 
-### `src/components/layout/Header.tsx`
-- Clean solid dark bg (`bg-[#08080D]/95 backdrop-blur-[8px]`)
-- Thin bottom border `border-b border-white/[0.04]`
-- Clean, minimal layout
+The Figma shows a narrow (~70px) icon-only sidebar with:
+- Logo/icon at top
+- Vertical icon navigation with rounded hover backgrounds
+- Active state: filled/highlighted icon background
+- No text labels visible (icon-only, no "lg:w-[300px]" expansion)
 
-### `src/components/layout/BottomNav.tsx`
-- Solid dark bg, clean active indicator (dot or underline, no glow)
-
-### `src/components/layout/Footer.tsx`
-- Already minimal -- just ensure solid dark bg
+Changes:
+- Remove the `lg:w-[300px]` dual-width system -- make sidebar always **80px** wide (icon-only)
+- Remove group labels ("Core", "Discover", "Account"), text labels, and the `hidden lg:block` pattern
+- Each nav item: centered icon in a **48px rounded-xl** container
+- Active state: `bg-primary/15 text-primary` filled background (like Figma's highlighted icons)
+- Hover: `bg-white/[0.06]` soft highlight
+- Remove the left cyan bar indicator -- use filled background instead (Figma style)
+- Keep tooltips on hover to show labels (using existing Tooltip component)
+- Bottom actions ("Create Match", "Buy Coins"): icon-only buttons with tooltips
+- Logo area: just the logo image, centered, no text
 
 ### `src/components/layout/MainLayout.tsx`
-- No changes needed (structure is fine)
+- Change `lg:pl-[300px]` to `lg:pl-20` (80px sidebar)
+- This gives the content area much more space (matching the Figma's wide content area)
+
+### `src/components/layout/Header.tsx`
+- Add horizontal category quick-links on desktop (left side, after search): "Matches", "Challenges", "Highlights", "Leaderboard" -- small text links with hover underline
+- User area (right): stays the same but matches Figma's grouping (avatar with ring, coins pill, bell icon)
+- Remove the `lg:max-w-[calc(1400px+4rem)]` constraint -- let it fill full width
 
 ---
 
-## Phase 5: Home Page -- Playmode Hero
+## Phase 3: Home Page -- Figma "Hot & New" + "Trending" Layout
 
-### `src/components/home/HeroCompact.tsx` -- Major rework
-- **Giant title**: "OLEBOY TOKEN" in 72px+ uppercase, tight tracking
-- **Subtitle**: smaller, muted, clean
-- **CTAs**: clean buttons (primary cyan for "Create Match", outline for "Browse")
-- Remove floating logo glow effect
-- Clean layout: left-aligned or centered, lots of breathing room
-- Thin horizontal divider line below hero
+### `src/components/home/HeroCompact.tsx` -- "Hot & New" Banner Style
 
-### `src/pages/Index.tsx`
-- Restructure layout to be more editorial/Playmode:
-  - Giant hero section (full width, big text)
-  - Section dividers (thin white/5% lines)
-  - Live Matches in a clean grid
-  - Stats/Progress as clean inline elements
+Replace the current giant typography hero with a **Figma-style hero banner**:
+- Large banner card (~400px tall) with the VideoBanner content inside
+- Overlay text: "OLEBOY TOKEN" title + "The competitive Fortnite platform" subtitle
+- CTA buttons overlaid on the banner (bottom-left or centered)
+- Rounded-2xl corners, subtle border
+- Section label above: "Hot & New" or "Featured" in small caps
+
+### `src/pages/Index.tsx` -- Restructure to match Figma
+
+New layout structure:
+1. **Filter/Control bar** at top (horizontal pills for mode/region + view toggle)
+2. **"Hot & New" section**: full-width hero banner (VideoBanner integrated)
+3. **"Live Matches" section**: grid of match cards (Figma's "Trending" equivalent)
+4. **Stats/Progress below** (compact)
+
+Remove the current 2-column split. Use full-width sections stacked vertically, matching the Figma's single-column scrollable layout.
 
 ### `src/components/home/LiveMatchesCompact.tsx`
-- Card: cleaner, less glass, more solid
-- Empty state: simpler icon, less glow
-- Remove the animated pulse circles around icons
+- Remove the wrapping Card container -- show matches directly in a grid
+- Section title "Live Matches" with "View All" link (Figma style: bold left, link right)
+- Grid: 4-5 columns on desktop (Figma shows 5 cards per row)
 
-### `src/components/home/VideoBanner.tsx`
-- Keep video functionality
-- Clean up gradient overlays (less aggressive)
-- Typography: bigger, bolder
+---
+
+## Phase 4: Match Cards -- Figma "Trending" Card Style
+
+### `src/components/matches/MatchCard.tsx` -- Visual rework
+
+The Figma shows game cards with:
+- **Image/visual area** at top (60% of card height)
+- **Info area** below: title, category/genre, price, platform icons
+- Rounded-xl, subtle border, clean layout
+
+Adapted for matches:
+- Top section: colored gradient or pattern background (based on mode: 1v1=cyan, 2v2=violet, etc.) with large mode text overlay
+- Bottom section: entry fee + prize (with coin icons), region/platform badges
+- Remove the current "First To" giant number -- integrate it into the title line (e.g., "1V1 BOX FIGHT -- FT3")
+- JOIN button: full-width gold at bottom (keep current)
+- Card height: more compact, image-like proportions
+
+---
+
+## Phase 5: Radius & Spacing Adjustments
+
+### `tailwind.config.ts`
+- `--radius`: change to `1rem` (16px) -- matches Figma's rounded corners
+- Add utility for `rounded-2xl` cards (20px)
+
+### Global spacing
+- Cards gap: `gap-4` (16px) for the grid (Figma uses tight grid)
+- Section spacing: `gap-8` between sections
+- Card padding: `p-4` internal (16px)
+
+---
+
+## Phase 6: Filter/Control Bar Component (New)
+
+### New: `src/components/home/FilterBar.tsx`
+
+A horizontal bar matching the Figma's filter row:
+- Pill-style dropdown buttons: "Mode", "Region", "Platform", "Entry Fee"
+- Right side: list/grid view toggle icons
+- Background: subtle card surface with rounded-xl, border
+- This is purely visual/decorative on the home page (filters are functional on /matches page already)
+
+---
+
+## Phase 7: Minor Component Touch-ups
+
+### `src/components/home/StatsBar.tsx`
+- Keep but adjust to Figma's cleaner style: remove backdrop-blur, use solid card bg
 
 ### `src/components/home/ProgressCard.tsx`
-- Clean up gradient backgrounds
-- Simpler progress bar styling
+- Simplify gradient backgrounds to solid card colors
 
----
+### `src/components/home/WalletSnapshot.tsx`, `LeaderboardCompact.tsx`
+- Replace `card-glass` with solid card backgrounds
+- Clean up glow effects
 
-## Phase 6: Key Component Touch-ups
+### `src/components/layout/BottomNav.tsx`
+- Update active states to match Figma: filled background instead of dots/underlines
 
-### `src/components/matches/MatchCard.tsx`
-- Clean card style (inherits from card.tsx changes)
-- Status pills: clean, minimal glow
-
-### `src/components/notifications/NotificationsDropdown.tsx`
-- Solid dark popover, clean items
-
-### `src/pages/Auth.tsx`
-- Clean card on dark background
-- Remove flashy decoration lines
-
-### `src/pages/NotFound.tsx`
-- Clean 404 with big typography
-
----
-
-## Phase 7: Motion -- Subtle and Professional
-
-All existing animations stay but get toned down:
-- `animate-page-enter` -- keep (already subtle)
-- `animate-card-enter` -- keep
-- Shimmer effects -- reduce intensity
-- Hover interactions -- keep `translateY(-2px)` but remove dual glow
-- Add `prefers-reduced-motion` coverage (already exists)
+### `src/components/ui/card.tsx`
+- Ensure default card uses the new warmer indigo card color
+- Border: `border-white/[0.06]` (Figma's subtle strokes)
 
 ---
 
@@ -200,30 +181,22 @@ All existing animations stay but get toned down:
 
 | File | Action | Scope |
 |------|--------|-------|
-| `src/index.css` | HEAVY MODIFY | New palette, remove animated bg, clean utilities, add Playmode typography |
-| `tailwind.config.ts` | MODIFY | Radius, shadows, gradients |
-| `src/components/ui/card.tsx` | MODIFY | Solid bg, remove glass |
-| `src/components/ui/button.tsx` | MODIFY | Clean variants, less glow |
-| `src/components/ui/dialog.tsx` | MODIFY | Solid overlay |
-| `src/components/ui/input.tsx` | MODIFY | Clean focus |
-| `src/components/ui/tabs.tsx` | MODIFY | Solid bg |
-| `src/components/ui/select.tsx` | MODIFY | Solid dropdown |
-| `src/components/ui/dropdown-menu.tsx` | MODIFY | Solid dropdown |
-| `src/components/layout/Sidebar.tsx` | MODIFY | Clean active states |
-| `src/components/layout/BottomNav.tsx` | MODIFY | Clean nav |
-| `src/components/layout/Header.tsx` | MINOR | Glass header adjustments |
-| `src/components/home/HeroCompact.tsx` | HEAVY MODIFY | Playmode-style giant hero |
-| `src/pages/Index.tsx` | MODIFY | Layout restructure |
-| `src/pages/Auth.tsx` | MINOR | Clean card |
-| `src/components/home/LiveMatchesCompact.tsx` | MINOR | Clean cards |
-| `src/components/home/ProgressCard.tsx` | MINOR | Clean gradients |
-| `src/components/home/VideoBanner.tsx` | MINOR | Clean overlays |
-| `src/components/notifications/NotificationsDropdown.tsx` | MINOR | Solid popover |
+| `src/index.css` | MODIFY | Warmer indigo palette, background gradient |
+| `tailwind.config.ts` | MODIFY | Radius to 16px |
+| `src/components/layout/Sidebar.tsx` | HEAVY MODIFY | Icon-only 80px sidebar |
+| `src/components/layout/MainLayout.tsx` | MODIFY | pl-20 instead of pl-[300px] |
+| `src/components/layout/Header.tsx` | MODIFY | Add category links, remove max-width |
+| `src/components/home/HeroCompact.tsx` | HEAVY MODIFY | Banner-style hero |
+| `src/pages/Index.tsx` | MODIFY | Full-width stacked layout |
+| `src/components/home/LiveMatchesCompact.tsx` | MODIFY | Grid without card wrapper |
+| `src/components/matches/MatchCard.tsx` | MODIFY | Figma card proportions |
+| `src/components/home/FilterBar.tsx` | NEW | Filter/control bar |
+| `src/components/home/StatsBar.tsx` | MINOR | Clean up glass effects |
+| `src/components/home/ProgressCard.tsx` | MINOR | Solid card bg |
+| `src/components/layout/BottomNav.tsx` | MINOR | Active state style |
+| `src/components/ui/card.tsx` | MINOR | Ensure solid bg |
 
-**Total: ~19 files modified, 0 new, 0 deleted. Zero logic changes.**
+**Total: ~14 files (1 new, ~13 modified). Zero logic changes.**
 
-## Technical Approach
+The biggest visual impact comes from Phase 2 (compact sidebar) and Phase 3 (home page layout) -- these two changes alone transform the look to match the Figma's spatial feel. The warmer indigo palette in Phase 1 sets the mood.
 
-The redesign cascades primarily through CSS variable updates in `index.css`. By switching to near-black backgrounds, reducing blur/glow, and cleaning up utility classes, most components auto-inherit the cleaner look. Only components with hardcoded neon values (inline styles, specific rgba values) need individual attention.
-
-The key philosophical shift: **from "neon cyberpunk excess" to "cinematic black minimalism with surgical cyan accents"** -- matching the Playmode reference's clean, bold, professional feel while keeping the gaming platform's identity.
